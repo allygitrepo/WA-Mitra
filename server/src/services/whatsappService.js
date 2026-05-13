@@ -1,4 +1,16 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+let makeWASocket;
+let useMultiFileAuthState;
+let DisconnectReason;
+let Browsers;
+
+async function loadBaileys() {
+    const baileys = await import('@whiskeysockets/baileys');
+
+    makeWASocket = baileys.default;
+    useMultiFileAuthState = baileys.useMultiFileAuthState;
+    DisconnectReason = baileys.DisconnectReason;
+    Browsers = baileys.Browsers;
+}
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +28,7 @@ function getSessionPath(instanceKey) {
 }
 
 async function startSession(instanceKey) {
+    await loadBaileys();
     // Check if session already exists and is already OPEN
     if (sessions.has(instanceKey)) {
         const session = sessions.get(instanceKey);
@@ -70,9 +83,9 @@ async function startSession(instanceKey) {
             sessionData.qrCodeData = null;
             sessionData.connectionStatus = 'connected';
             sessionData.userPhone = sock.user.id.split(':')[0];
-            
-            await WhatsAppInstance.update({ 
-                status: 'connected', 
+
+            await WhatsAppInstance.update({
+                status: 'connected',
                 phone: sessionData.userPhone,
                 lastConnected: new Date()
             }, { where: { instanceKey } });
@@ -88,7 +101,7 @@ async function startSession(instanceKey) {
         if (connection === 'close') {
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
             console.log(`[INSTANCE] ${instanceKey} closed. Reason: ${statusCode}`);
-            
+
             if (statusCode !== DisconnectReason.loggedOut) {
                 sessionData.connectionStatus = 'connecting';
                 getIO().emit('loading', { instanceKey, message: 'Reconnecting...' });
@@ -99,7 +112,7 @@ async function startSession(instanceKey) {
                 sessionData.qrCodeData = null;
                 sessionData.userPhone = null;
                 sessions.delete(instanceKey);
-                
+
                 await WhatsAppInstance.update({ status: 'disconnected', phone: null }, { where: { instanceKey } });
 
                 if (fs.existsSync(sessionDir)) {
@@ -137,10 +150,10 @@ async function disconnect(instanceKey) {
     if (sessionData && sessionData.sock) {
         try {
             await sessionData.sock.logout();
-        } catch (e) {}
+        } catch (e) { }
     }
     sessions.delete(instanceKey);
-    
+
     const sessionDir = getSessionPath(instanceKey);
     if (fs.existsSync(sessionDir)) {
         fs.rmSync(sessionDir, { recursive: true, force: true });

@@ -45,5 +45,8 @@ app.use(`${prefix}/api/whatsapp`, whatsappRoutes); // Legacy/Portal session mana
 
 // External API Routes (Require Master API Token)
 app.use(`${prefix}/api/v1`, apiRoutes);
+app.get(`${prefix}/test`, (req, res) => {
+  res.json({ message: 'WA Mitra API is running' });
+})
 
 module.exports = app;
