@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WA-Mitra API Tester</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #111827;
+            color: white;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: #1f2937;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #111827;
+            border-radius: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: #374151;
+            color: white;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: none;
+            height: 120px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 12px;
+            background: #10b981;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #059669;
+        }
+
+        .qr-box {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .qr-box img {
+            width: 300px;
+            height: 300px;
+            object-fit: contain;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .success {
+            color: #10b981;
+            margin-top: 15px;
+        }
+
+        .error {
+            color: #ef4444;
+            margin-top: 15px;
+        }
+
+        .instance {
+            margin-top: 15px;
+            word-break: break-all;
+            background: #374151;
+            padding: 10px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>🚀 WA-Mitra API Tester</h1>
+
+        <!-- CONNECT -->
+        <div class="section">
+
+            <h2>Connect WhatsApp</h2>
+
+            <label>Bearer Token</label>
+            <input type="text" id="token" placeholder="mitra_xxxxxxxxx">
+
+            <button onclick="connectWhatsapp()">
+                Generate QR Code
+            </button>
+
+            <div class="instance" id="instanceKeyBox" style="display:none;"></div>
+
+            <div class="qr-box">
+                <img id="qrImage" style="display:none;">
+            </div>
+
+            <div id="connectStatus"></div>
+
+        </div>
+
+        <!-- SEND MESSAGE -->
+        <div class="section">
+
+            <h2>Send Message</h2>
+
+            <label>Phone Number</label>
+            <input type="text" id="number" placeholder="919876543210">
+
+            <label>Message</label>
+            <textarea id="message" placeholder="Type your message"></textarea>
+
+            <label>Attach File (Optional)</label>
+            <input type="file" id="file">
+
+            <button onclick="sendMessage()">
+                Send Message
+            </button>
+
+            <div id="messageStatus"></div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        // =========================
+        // API BASE URL
+        // =========================
+        const BASE_URL = "http://localhost:3000";
+
+        let instanceKey = "";
+
+        // =========================
+        // CONNECT WHATSAPP
+        // =========================
+        async function connectWhatsapp() {
+
+            const token = document.getElementById("token").value;
+
+            if (!token) {
+                alert("Please enter token");
+                return;
+            }
+
+            try {
+
+                document.getElementById("connectStatus").innerHTML =
+                    "Generating QR Code...";
+
+                const response = await fetch(
+                    `${BASE_URL}/api/v1/instance/initiate`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({})
+                    }
+                );
+
+                const text = await response.text();
+
+                console.log("RAW RESPONSE:", text);
+
+                let data;
+
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+
+                    document.getElementById("connectStatus").innerHTML = `
+    <div class="error">
+      Invalid JSON Response <br><br>
+      ${text}
+    </div>
+  `;
+
+                    return;
+                }
+                console.log("QR Response:", data);
+
+                if (data.success) {
+
+                    instanceKey = data.instanceKey;
+
+                    // SHOW QR
+                    const qrImage = document.getElementById("qrImage");
+
+                    qrImage.src = data.qr;
+                    qrImage.style.display = "block";
+
+                    // SHOW INSTANCE KEY
+                    const instanceBox =
+                        document.getElementById("instanceKeyBox");
+
+                    instanceBox.style.display = "block";
+
+                    instanceBox.innerHTML = `
+          <b>Instance Key:</b><br>
+          ${instanceKey}
+        `;
+
+                    document.getElementById("connectStatus").innerHTML =
+                        `<div class="success">
+            QR Generated Successfully
+          </div>`;
+
+                } else {
+
+                    document.getElementById("connectStatus").innerHTML =
+                        `<div class="error">
+            Failed to generate QR
+          </div>`;
+                }
+
+            } catch (err) {
+
+                console.error(err);
+
+                document.getElementById("connectStatus").innerHTML =
+                    `<div class="error">
+          ${err.message}
+        </div>`;
+            }
+        }
+
+        // =========================
+        // SEND MESSAGE
+        // =========================
+        async function sendMessage() {
+
+            const token =
+                document.getElementById("token").value;
+
+            const number =
+                document.getElementById("number").value;
+
+            const message =
+                document.getElementById("message").value;
+
+            const fileInput =
+                document.getElementById("file");
+
+            if (!instanceKey) {
+                alert("Please connect WhatsApp first");
+                return;
+            }
+
+            if (!number) {
+                alert("Please enter number");
+                return;
+            }
+
+            try {
+
+                document.getElementById("messageStatus").innerHTML =
+                    "Sending message...";
+
+                let response;
+
+                // =========================
+                // SEND MEDIA
+                // =========================
+                if (fileInput.files.length > 0) {
+
+                    const formData = new FormData();
+
+                    formData.append("instanceKey", instanceKey);
+                    formData.append("number", number);
+                    formData.append("message", message);
+                    formData.append("file", fileInput.files[0]);
+
+                    response = await fetch(
+                        `${BASE_URL}/api/v1/messages/send`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Authorization": `Bearer ${token}`
+                            },
+                            body: formData
+                        }
+                    );
+
+                } else {
+
+                    // =========================
+                    // SEND TEXT
+                    // =========================
+                    response = await fetch(
+                        `${BASE_URL}/api/v1/messages/send`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Authorization": `Bearer ${token}`,
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                instanceKey,
+                                number,
+                                message
+                            })
+                        }
+                    );
+                }
+
+                const data = await response.json();
+
+                console.log("Message Response:", data);
+
+                if (data.success) {
+
+                    document.getElementById("messageStatus").innerHTML =
+                        `<div class="success">
+            Message Sent Successfully
+          </div>`;
+
+                } else {
+
+                    document.getElementById("messageStatus").innerHTML =
+                        `<div class="error">
+            ${data.message || "Failed to send message"}
+          </div>`;
+                }
+
+            } catch (err) {
+
+                console.error(err);
+
+                document.getElementById("messageStatus").innerHTML =
+                    `<div class="error">
+          ${err.message}
+        </div>`;
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WA-Mitra | Enterprise WhatsApp Gateway</title>
+    <meta name="description" content="Next-gen WhatsApp Gateway for developers. Scale your business with multi-instance API and real-time monitoring." />
+    <script>
+      (function() {
+        try {
+          const storage = localStorage.getItem('wa-mitra-theme');
+          let theme = 'system';
+          if (storage) {
+            theme = JSON.parse(storage).state.theme;
+          }
+          
+          let isDark = theme === 'dark';
+          if (theme === 'system') {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          
+          if (isDark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.style.backgroundColor = '#0a0a0a';
+          } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.style.backgroundColor = '#ffffff';
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

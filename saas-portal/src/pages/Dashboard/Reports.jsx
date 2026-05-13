@@ -1,0 +1,180 @@
+import React, { useState, useEffect } from 'react';
+import { BarChart3, Calendar, Smartphone, MessageSquare, Download, Filter } from 'lucide-react';
+import { messageService } from '../../api/services';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import './Reports.css';
+
+const Reports = () => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const res = await messageService.getReports();
+      setReports(res.data.reports || []);
+    } catch (err) {
+      console.error("Fetch Reports Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filtered reports based on dates (Local filtering as requested)
+  const filteredReports = reports.filter(item => {
+    if (!fromDate && !toDate) return true;
+    
+    // Normalize date from report (it's often just YYYY-MM-DD from the DB)
+    const reportDate = new Date(item.date);
+    
+    if (fromDate) {
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+      if (reportDate < from) return false;
+    }
+    
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      if (reportDate > to) return false;
+    }
+    
+    return true;
+  });
+
+  // Group by date for rendering
+  const groupedReports = filteredReports.reduce((acc, curr) => {
+    const date = curr.date;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(curr);
+    return acc;
+  }, {});
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(0, 168, 132); // WhatsApp Green
+    doc.text('WA-Mitra Message Report', 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    if (fromDate || toDate) {
+      doc.text(`Period: ${fromDate || 'Start'} to ${toDate || 'End'}`, 14, 37);
+    }
+
+    const tableRows = [];
+    filteredReports.forEach(report => {
+      tableRows.push([
+        new Date(report.date).toLocaleDateString(),
+        report.instance?.name || 'Unknown',
+        report.instanceId,
+        report.count
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Date', 'Instance Name', 'Instance ID', 'Messages Sent']],
+      body: tableRows,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 168, 132] },
+      margin: { top: 45 }
+    });
+
+    doc.save(`WA-Mitra_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  return (
+    <div className="reports-container">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Message Reports</h1>
+          <p className="page-subtitle">Track your message usage across all instances.</p>
+        </div>
+        <button className="btn-primary" onClick={downloadPDF} disabled={filteredReports.length === 0}>
+          <Download size={18} /> Download PDF
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="report-filters glass animate-fade-in">
+        <div className="filter-group">
+          <div className="input-with-icon">
+            <Calendar size={18} />
+            <input 
+              type="date" 
+              value={fromDate} 
+              onChange={(e) => setFromDate(e.target.value)}
+              className="filter-date-input"
+              placeholder="From Date"
+            />
+          </div>
+          <span className="filter-separator">to</span>
+          <div className="input-with-icon">
+            <Calendar size={18} />
+            <input 
+              type="date" 
+              value={toDate} 
+              onChange={(e) => setToDate(e.target.value)}
+              className="filter-date-input"
+              placeholder="To Date"
+            />
+          </div>
+          <button 
+            className="text-btn" 
+            style={{ marginLeft: 'auto' }}
+            onClick={() => { setFromDate(''); setToDate(''); }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
+      <div className="reports-content glass">
+        {loading ? (
+          <div className="loading-state">Loading reports...</div>
+        ) : filteredReports.length === 0 ? (
+          <div className="empty-state">No message data found for the selected period.</div>
+        ) : (
+          Object.keys(groupedReports).map(date => (
+            <div key={date} className="report-group">
+              <div className="date-header">
+                <Calendar size={18} />
+                <h3>{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+              </div>
+              <div className="instance-stats-grid">
+                {groupedReports[date].map((stat, i) => (
+                  <div key={i} className="stat-item glass">
+                    <div className="stat-left">
+                      <Smartphone size={20} className="text-primary" />
+                      <div>
+                        <h4>{stat.instance?.name || 'Unknown Instance'}</h4>
+                        <p>ID: {stat.instanceId}</p>
+                      </div>
+                    </div>
+                    <div className="stat-right">
+                      <span className="count-badge">{stat.count}</span>
+                      <span className="count-label">Messages Sent</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Reports;

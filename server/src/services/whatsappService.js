@@ -3,29 +3,34 @@ const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
 const { getIO } = require('../config/socket');
+const WhatsAppInstance = require('../models/instanceModel');
 
-// Store all active sessions: Map<sessionId, sessionData>
+const pino = require('pino');
+const QRCode = require('qrcode');
+
+// Store all active sessions: Map<instanceKey, sessionData>
 const sessions = new Map();
 
-function getSessionPath(sessionId) {
-    return path.join(__dirname, '../../sessions', sessionId);
+function getSessionPath(instanceKey) {
+    return path.join(__dirname, '../../sessions', `instance_${instanceKey}`);
 }
 
-async function startSession(sessionId) {
+async function startSession(instanceKey) {
     // Check if session already exists and is already OPEN
-    if (sessions.has(sessionId)) {
-        const session = sessions.get(sessionId);
+    if (sessions.has(instanceKey)) {
+        const session = sessions.get(instanceKey);
         if (session.connectionStatus === 'connected') {
-            console.log(`Session ${sessionId} is already connected. Skipping start.`);
+            console.log(`Instance ${instanceKey} is already connected.`);
             return session.sock;
         }
     }
 
-    const sessionDir = getSessionPath(sessionId);
+    const sessionDir = getSessionPath(instanceKey);
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
     const sock = makeWASocket({
         auth: state,
+        logger: pino({ level: 'silent' }),
         browser: Browsers.windows('Chrome'),
         printQRInTerminal: false,
         syncFullHistory: false,
@@ -33,7 +38,7 @@ async function startSession(sessionId) {
     });
 
     // Initialize session data
-    sessions.set(sessionId, {
+    sessions.set(instanceKey, {
         sock,
         qrCodeData: null,
         connectionStatus: 'connecting',
@@ -44,46 +49,63 @@ async function startSession(sessionId) {
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
-        const sessionData = sessions.get(sessionId);
+        const sessionData = sessions.get(instanceKey);
         if (!sessionData) return;
 
         if (qr) {
-            sessionData.qrCodeData = qr;
-            sessionData.connectionStatus = 'qr';
-            getIO().emit('qr', { sessionId, qr });
+            try {
+                const qrDataURL = await QRCode.toDataURL(qr);
+                sessionData.qrCodeData = qrDataURL;
+                sessionData.connectionStatus = 'qr_ready';
+                await WhatsAppInstance.update({ status: 'qr_ready' }, { where: { instanceKey } });
+                getIO().emit('qr', { instanceKey, qr: qrDataURL });
+            } catch (err) {
+                console.error('Failed to generate QR Data URL:', err);
+                sessionData.qrCodeData = qr; // Fallback to raw string
+            }
         }
 
         if (connection === 'open') {
-            console.log(`[SESSION] ${sessionId} connected successfully!`);
+            console.log(`[INSTANCE] ${instanceKey} connected!`);
             sessionData.qrCodeData = null;
             sessionData.connectionStatus = 'connected';
             sessionData.userPhone = sock.user.id.split(':')[0];
-            getIO().emit('connected', { sessionId, phone: sessionData.userPhone });
+            
+            await WhatsAppInstance.update({ 
+                status: 'connected', 
+                phone: sessionData.userPhone,
+                lastConnected: new Date()
+            }, { where: { instanceKey } });
+
+            getIO().emit('connected', { instanceKey, phone: sessionData.userPhone });
         }
 
         if (connection === 'connecting') {
-            console.log(`[SESSION] ${sessionId} is authenticating/syncing...`);
             sessionData.connectionStatus = 'connecting';
+            await WhatsAppInstance.update({ status: 'connecting' }, { where: { instanceKey } });
         }
 
         if (connection === 'close') {
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-            console.log(`[SESSION] ${sessionId} closed. Reason: ${statusCode}`);
+            console.log(`[INSTANCE] ${instanceKey} closed. Reason: ${statusCode}`);
             
             if (statusCode !== DisconnectReason.loggedOut) {
                 sessionData.connectionStatus = 'connecting';
-                getIO().emit('loading', { sessionId, message: 'Reconnecting...' });
-                setTimeout(() => startSession(sessionId), 5000);
+                getIO().emit('loading', { instanceKey, message: 'Reconnecting...' });
+                setTimeout(() => startSession(instanceKey), 5000);
             } else {
                 sessionData.connectionStatus = 'disconnected';
                 sessionData.sock = null;
                 sessionData.qrCodeData = null;
                 sessionData.userPhone = null;
-                sessions.delete(sessionId);
+                sessions.delete(instanceKey);
+                
+                await WhatsAppInstance.update({ status: 'disconnected', phone: null }, { where: { instanceKey } });
+
                 if (fs.existsSync(sessionDir)) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
                 }
-                getIO().emit('disconnected', { sessionId });
+                getIO().emit('disconnected', { instanceKey });
             }
         }
     });
@@ -91,11 +113,10 @@ async function startSession(sessionId) {
     return sock;
 }
 
-function getStatus(sessionId) {
-    const sessionData = sessions.get(sessionId);
+function getStatus(instanceKey) {
+    const sessionData = sessions.get(instanceKey);
     if (!sessionData) {
-        // If not in memory, check if directory exists
-        const exists = fs.existsSync(getSessionPath(sessionId));
+        const exists = fs.existsSync(getSessionPath(instanceKey));
         return {
             connected: false,
             status: exists ? 'connecting' : 'disconnected',
@@ -111,22 +132,26 @@ function getStatus(sessionId) {
     };
 }
 
-async function disconnect(sessionId) {
-    const sessionData = sessions.get(sessionId);
+async function disconnect(instanceKey) {
+    const sessionData = sessions.get(instanceKey);
     if (sessionData && sessionData.sock) {
-        sessionData.sock.logout();
+        try {
+            await sessionData.sock.logout();
+        } catch (e) {}
     }
-    sessions.delete(sessionId);
+    sessions.delete(instanceKey);
     
-    const sessionDir = getSessionPath(sessionId);
+    const sessionDir = getSessionPath(instanceKey);
     if (fs.existsSync(sessionDir)) {
         fs.rmSync(sessionDir, { recursive: true, force: true });
     }
-    getIO().emit('disconnected', { sessionId });
+
+    await WhatsAppInstance.update({ status: 'disconnected', phone: null }, { where: { instanceKey } });
+    getIO().emit('disconnected', { instanceKey });
 }
 
-function getSock(sessionId) {
-    const sessionData = sessions.get(sessionId);
+function getSock(instanceKey) {
+    const sessionData = sessions.get(instanceKey);
     return sessionData ? sessionData.sock : null;
 }
 
