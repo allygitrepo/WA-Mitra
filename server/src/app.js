@@ -35,14 +35,15 @@ app.use((req, res, next) => {
   next();
 });
 
+const prefix = '/wa-mitra'
 // Portal Internal Routes (Require JWT Auth)
-app.use('/api/auth', authRoutes);
-app.use('/api/tokens', tokenRoutes);
-app.use('/api/instances', instanceRoutes);
-app.use('/api/messages', messageRoutes); // This now uses instanceKey too
-app.use('/api/whatsapp', whatsappRoutes); // Legacy/Portal session management
+app.use(`${prefix}/api/auth`, authRoutes);
+app.use(`${prefix}/api/tokens`, tokenRoutes);
+app.use(`${prefix}/api/instances`, instanceRoutes);
+app.use(`${prefix}/api/messages`, messageRoutes); // This now uses instanceKey too
+app.use(`${prefix}/api/whatsapp`, whatsappRoutes); // Legacy/Portal session management
 
 // External API Routes (Require Master API Token)
-app.use('/api/v1', apiRoutes);
+app.use(`${prefix}/api/v1`, apiRoutes);
 
 module.exports = app;
