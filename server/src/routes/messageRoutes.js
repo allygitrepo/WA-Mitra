@@ -8,5 +8,7 @@ router.use(authMiddleware);
 
 router.post('/send', upload.single('file'), messageController.sendMessage);
 router.post('/bulk', messageController.sendBulkMessage);
+router.get('/logs', messageController.getMessageLogs);
+router.get('/reports', messageController.getReports);
 
 module.exports = router;

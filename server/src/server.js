@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 const sequelize = require('./config/db');
-require('./models/userModel'); // Ensure models are loaded
+// Ensure all models are loaded for sync
+require('./models/associations');
 
 const server = http.createServer(app);
 
@@ -25,21 +26,25 @@ server.listen(PORT, async () => {
         console.error('Database sync failed:', error);
     }
 
-    // Auto-reconnect all existing sessions
-    const sessionsDir = path.join(__dirname, '../sessions');
-    if (fs.existsSync(sessionsDir)) {
-        const sessionFolders = fs.readdirSync(sessionsDir).filter(f => fs.statSync(path.join(sessionsDir, f)).isDirectory());
+    // Auto-reconnect all existing instances from DB
+    try {
+        const WhatsAppInstance = require('./models/instanceModel');
+        const activeInstances = await WhatsAppInstance.findAll({
+            where: { status: ['connected', 'connecting', 'qr_ready'] }
+        });
 
-        if (sessionFolders.length > 0) {
-            console.log(`Found ${sessionFolders.length} existing session(s), attempting auto-reconnect...`);
-            for (const sessionId of sessionFolders) {
-                console.log(`Reconnecting session: ${sessionId}`);
+        if (activeInstances.length > 0) {
+            // console.log(`Found ${activeInstances.length} active instance(s), attempting auto-reconnect...`);
+            for (const instance of activeInstances) {
+                // console.log(`Reconnecting instance: ${instance.instanceKey} (${instance.name})`);
                 try {
-                    await startSession(sessionId);
+                    await startSession(instance.instanceKey);
                 } catch (error) {
-                    console.error(`Failed to reconnect session ${sessionId}:`, error.message);
+                    console.error(`Failed to reconnect instance ${instance.instanceKey}:`, error.message);
                 }
             }
         }
+    } catch (error) {
+        console.error('Error during auto-reconnect:', error);
     }
 });

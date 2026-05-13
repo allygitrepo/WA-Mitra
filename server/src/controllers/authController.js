@@ -86,6 +86,8 @@ const authController = {
           id: user.id,
           username: user.username,
           email: user.email,
+          phone: user.phone,
+          orgName: user.orgName
         },
       });
     } catch (error) {
@@ -125,6 +127,8 @@ const authController = {
           id: user.id,
           username: user.username,
           email: user.email,
+          phone: user.phone,
+          orgName: user.orgName
         },
       });
     } catch (error) {
@@ -135,8 +139,14 @@ const authController = {
 
   googleLogin: async (req, res) => {
     try {
-      const { idToken } = req.body;
-      const googleData = await oauthService.verifyGoogleToken(idToken);
+      const { idToken, accessToken } = req.body;
+      let googleData;
+
+      if (idToken) {
+        googleData = await oauthService.verifyGoogleToken(idToken);
+      } else if (accessToken) {
+        googleData = await oauthService.verifyGoogleAccessToken(accessToken);
+      }
 
       if (!googleData) {
         return res.status(400).json({ message: "Invalid Google Token" });
@@ -172,10 +182,62 @@ const authController = {
           id: user.id,
           username: user.username,
           email: user.email,
+          phone: user.phone,
+          orgName: user.orgName
         },
       });
     } catch (error) {
       console.error("Google Login Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  forgotPassword: async (req, res) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ where: { email } });
+
+      if (!user) {
+        return res.status(404).json({ message: "User does not exist. Please register to continue." });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+
+      await emailService.sendEmail(email, emailTemplates.otpEmail(otp));
+      res.status(200).json({ message: "Password reset OTP sent to your email" });
+    } catch (error) {
+      console.error("Forgot Password Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  resetPassword: async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+      const user = await User.findOne({ where: { email, otp } });
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid OTP or Email" });
+      }
+
+      if (new Date() > user.otpExpiry) {
+        return res.status(400).json({ message: "OTP has expired" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      user.password = hashedPassword;
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save();
+
+      res.status(200).json({ message: "Password reset successful. You can now login." });
+    } catch (error) {
+      console.error("Reset Password Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
