@@ -5,7 +5,7 @@ import API from '../api/axiosConfig';
 import useAuthStore from '../store/useAuthStore';
 import './Packages.css';
 
-const Packages = ({ hideHeader = false }) => {
+const Packages = ({ hideHeader = false, showButtons = true }) => {
   const [packages, setPackages] = useState([]);
   const [purchasedIds, setPurchasedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,21 +168,23 @@ const Packages = ({ hideHeader = false }) => {
                 </div>
               </div>
 
-              <button
-                className={`pkg-btn ${index === 1 ? 'btn-primary' : 'btn-outline'} ${processingId === pkg.id ? 'loading' : ''}`}
-                onClick={() => handleActivate(pkg)}
-                disabled={processingId === pkg.id || user?.packageId === pkg.id || (pkg.isOneTime && purchasedIds.includes(pkg.id))}
-              >
-                {processingId === pkg.id ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : user?.packageId === pkg.id ? (
-                  'Active'
-                ) : (pkg.isOneTime && purchasedIds.includes(pkg.id)) ? (
-                  'Already Used'
-                ) : (
-                  pkg.price === 0 ? 'Activate Free' : 'Get Started'
-                )}
-              </button>
+              {showButtons && (
+                <button
+                  className={`pkg-btn ${index === 1 ? 'btn-primary' : 'btn-outline'} ${processingId === pkg.id ? 'loading' : ''}`}
+                  onClick={() => handleActivate(pkg)}
+                  disabled={processingId === pkg.id || user?.packageId === pkg.id || (pkg.isOneTime && purchasedIds.includes(pkg.id))}
+                >
+                  {processingId === pkg.id ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : user?.packageId === pkg.id ? (
+                    'Active'
+                  ) : (pkg.isOneTime && purchasedIds.includes(pkg.id)) ? (
+                    'Already Used'
+                  ) : (
+                    pkg.price === 0 ? 'Activate Free' : 'Get Started'
+                  )}
+                </button>
+              )}
             </div>
           ))}
         </div>

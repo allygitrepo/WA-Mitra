@@ -51,7 +51,7 @@ const Settings = () => {
       ]);
 
       setPackages(pkgsRes.data.packages || []);
-      
+
       // Update store with latest user data (including expiresAt)
       if (profileRes.data.user) {
         useAuthStore.getState().updateUser(profileRes.data.user);
@@ -274,9 +274,9 @@ const Settings = () => {
                     </div>
                     <br />
                     <br />
-                    <button className="btn-primary w-full mt-8" onClick={() => navigate('/dashboard/plans')}>
+                    {/* <button className="btn-primary w-full mt-8" onClick={() => navigate('/dashboard/plans')}>
                       Upgrade My Plan
-                    </button>
+                    </button> */}
                   </div>
                 ) : (
                   <div className="no-plan-card glass p-8 text-center">

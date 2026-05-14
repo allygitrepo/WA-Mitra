@@ -13,7 +13,7 @@ const UserPlans = () => {
       </div>
 
       <div className="mt-8">
-        <Packages />
+        <Packages showButtons={false} />
       </div>
 
       <div className="plan-support-card glass mt-12 p-8 text-center">

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, ArrowRight } from 'lucide-react';
+import useAuthStore from '../store/useAuthStore';
 import useThemeStore from '../store/useThemeStore';
 import ThemeToggle from './ThemeToggle';
 import './Navbar.css';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const { isAuthenticated } = useAuthStore();
   const { theme } = useThemeStore();
 
   return (
@@ -27,8 +29,14 @@ const Navbar = () => {
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
           <Link to="/docs">Docs</Link>
-          <Link to="/login" className="nav-btn-outline">Login</Link>
-          <Link to="/register" className="nav-btn-primary">Get Started</Link>
+          {!isAuthenticated ? (
+            <>
+              <Link to="/login" className="nav-btn-outline">Login</Link>
+              <Link to="/register" className="nav-btn-primary">Get Started</Link>
+            </>
+          ) : (
+            <Link to="/dashboard" className="nav-btn-primary">Dashboard</Link>
+          )}
         </div>
 
         <button className="nav-mobile-toggle" onClick={() => setIsOpen(!isOpen)}>

@@ -18,9 +18,12 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Packages from '../components/Packages';
+import useAuthStore from '../store/useAuthStore';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const { isAuthenticated } = useAuthStore();
+  
   return (
     <div className="landing-container">
       <Navbar />
@@ -41,9 +44,15 @@ const LandingPage = () => {
               Built for reliability, speed, and production-scale automation.
             </p>
             <div className="hero-actions">
-              <Link to="/register" className="btn-hero-primary">
-                Get Started Free <ArrowRight size={20} />
-              </Link>
+              {!isAuthenticated ? (
+                <Link to="/register" className="btn-hero-primary">
+                  Get Started Free <ArrowRight size={20} />
+                </Link>
+              ) : (
+                <Link to="/dashboard" className="btn-hero-primary">
+                  Go to Dashboard <ArrowRight size={20} />
+                </Link>
+              )}
               <Link to="/docs" className="btn-hero-secondary">
                 View Documentation
               </Link>
