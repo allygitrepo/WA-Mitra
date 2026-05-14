@@ -142,9 +142,12 @@
 .preview-dots span {
   width: 8px;
   height: 8px;
-  background: #eee;
   border-radius: 50%;
 }
+
+.preview-dots span:nth-child(1) { background: #ff5f56; } /* Red */
+.preview-dots span:nth-child(2) { background: #3b82f6; } /* Blue */
+.preview-dots span:nth-child(3) { background: #27c93f; } /* Green */
 
 .preview-title {
   margin-left: 20px;
