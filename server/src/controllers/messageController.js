@@ -35,7 +35,7 @@ const checkMessageQuota = async (user, count = 1) => {
             status: 'sent'
         }
     });
-
+    if (pkg.messageLimit === -1) return true; // Unlimited
     if (totalSent + count > pkg.messageLimit) {
         return false;
     }
@@ -46,7 +46,7 @@ const messageController = {
     sendBulkMessage: async (req, res) => {
         try {
             const { messages, instanceKey } = req.body;
-            
+
             if (!instanceKey) return res.status(400).json({ success: false, message: 'instanceKey is required' });
             if (!messages || !Array.isArray(messages)) return res.status(400).json({ success: false, message: 'messages array is required' });
 
@@ -68,12 +68,12 @@ const messageController = {
                 failed: 0,
                 errors: []
             };
-            
+
             for (const msg of messages) {
                 const { number, message } = msg;
                 let status = 'failed';
                 let errorMsg = null;
-                
+
                 try {
                     const cleanNumber = number.replace(/\D/g, '');
                     const [result] = await sock.onWhatsApp(cleanNumber);
@@ -99,10 +99,10 @@ const messageController = {
                 }
             }
 
-            res.json({ 
-                success: true, 
-                message: 'Bulk processing completed', 
-                results 
+            res.json({
+                success: true,
+                message: 'Bulk processing completed',
+                results
             });
 
         } catch (error) {
@@ -156,11 +156,11 @@ const messageController = {
                 if (isImage) {
                     await sock.sendMessage(result.jid, { image: { url: file.path }, caption: message || '' });
                 } else {
-                    await sock.sendMessage(result.jid, { 
-                        document: { url: file.path }, 
-                        mimetype: file.mimetype, 
-                        fileName: file.originalname, 
-                        caption: message || '' 
+                    await sock.sendMessage(result.jid, {
+                        document: { url: file.path },
+                        mimetype: file.mimetype,
+                        fileName: file.originalname,
+                        caption: message || ''
                     });
                 }
                 fs.unlinkSync(file.path);
@@ -180,7 +180,7 @@ const messageController = {
         try {
             const instances = await WhatsAppInstance.findAll({ where: { userId: req.user.id } });
             const instanceIds = instances.map(i => i.id);
-            
+
             const logs = await MessageLog.findAll({
                 where: { instanceId: instanceIds },
                 order: [['createdAt', 'DESC']],
@@ -205,7 +205,7 @@ const messageController = {
             const sequelize = require('../config/db');
 
             const reportsRaw = await MessageLog.findAll({
-                where: { 
+                where: {
                     instanceId: instanceIds
                 },
                 attributes: [
@@ -215,7 +215,7 @@ const messageController = {
                     [sequelize.fn('COUNT', sequelize.col('MessageLog.id')), 'count']
                 ],
                 group: [
-                    sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')), 
+                    sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')),
                     'instanceId',
                     'status'
                 ],
