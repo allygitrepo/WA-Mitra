@@ -1,10 +1,13 @@
-import React from 'react';
-import { Book, Code, Terminal, Zap, ShieldCheck, Copy, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import { Book, Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft } from 'lucide-react';
 import './Docs.css';
 
 const Docs = () => {
+  const location = useLocation();
+  const isExternal = location.pathname === '/docs';
   const baseUrl = "https://silverapi.allysoftsolutions.com/wa-mitra";
-  const [copied, setCopied] = React.useState(null);
+  const [copied, setCopied] = useState(null);
 
   const copyToClipboard = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -13,12 +16,18 @@ const Docs = () => {
   };
 
   return (
-    <div className="docs-container">
-      <div className="page-header">
+    <div className={`docs-container ${isExternal ? 'external-docs' : ''}`} style={isExternal ? { padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' } : {}}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Documentation</h1>
           <p className="page-subtitle">Learn how to integrate and use the WA-Mitra API effectively.</p>
         </div>
+        {isExternal && (
+          <Link to="/" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+            <ArrowLeft size={18} />
+            <span>Back to Site</span>
+          </Link>
+        )}
       </div>
 
       <div className="docs-layout">
