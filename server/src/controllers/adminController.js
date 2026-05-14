@@ -81,7 +81,7 @@ const adminController = {
       await Payment.create({
         userId: user.id,
         packageId: pkg.id,
-        amount: pkg.price,
+        amount: 0, // Manual assignment should not count towards revenue
         currency: 'INR',
         status: 'completed',
         paymentMethod: 'manual_admin',
