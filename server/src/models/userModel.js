@@ -39,6 +39,22 @@ const User = sequelize.define("User", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  role: {
+    type: DataTypes.ENUM("user", "admin"),
+    defaultValue: "user",
+  },
+  status: {
+    type: DataTypes.ENUM("active", "suspended"),
+    defaultValue: "active",
+  },
+  packageId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  expiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   otp: {
     type: DataTypes.STRING,
     allowNull: true,

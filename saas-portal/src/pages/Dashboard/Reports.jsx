@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Calendar, Smartphone, MessageSquare, Download, Filter } from 'lucide-react';
+import { BarChart3, Calendar, Smartphone, MessageSquare, Download, Filter, AlertCircle } from 'lucide-react';
 import { messageService } from '../../api/services';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -7,9 +7,11 @@ import './Reports.css';
 
 const Reports = () => {
   const [reports, setReports] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [expandedInstance, setExpandedInstance] = useState(null); // { date, instanceId }
 
   useEffect(() => {
     fetchReports();
@@ -17,8 +19,12 @@ const Reports = () => {
 
   const fetchReports = async () => {
     try {
-      const res = await messageService.getReports();
-      setReports(res.data.reports || []);
+      const [repRes, logsRes] = await Promise.all([
+        messageService.getReports(),
+        messageService.getLogs()
+      ]);
+      setReports(repRes.data.reports || []);
+      setLogs(logsRes.data.logs || []);
     } catch (err) {
       console.error("Fetch Reports Error:", err);
     } finally {
@@ -26,33 +32,39 @@ const Reports = () => {
     }
   };
 
-  // Filtered reports based on dates (Local filtering as requested)
+  // Filtered reports based on dates
   const filteredReports = reports.filter(item => {
     if (!fromDate && !toDate) return true;
-    
-    // Normalize date from report (it's often just YYYY-MM-DD from the DB)
     const reportDate = new Date(item.date);
-    
     if (fromDate) {
       const from = new Date(fromDate);
       from.setHours(0, 0, 0, 0);
       if (reportDate < from) return false;
     }
-    
     if (toDate) {
       const to = new Date(toDate);
       to.setHours(23, 59, 59, 999);
       if (reportDate > to) return false;
     }
-    
     return true;
   });
 
-  // Group by date for rendering
+  // Group by date AND instanceId for rendering
   const groupedReports = filteredReports.reduce((acc, curr) => {
     const date = curr.date;
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(curr);
+    const instId = curr.instanceId;
+    if (!acc[date]) acc[date] = {};
+    if (!acc[date][instId]) {
+      acc[date][instId] = {
+        instance: curr.instance,
+        instanceId: instId,
+        date: date,
+        sent: 0,
+        failed: 0
+      };
+    }
+    if (curr.status === 'sent') acc[date][instId].sent += parseInt(curr.count);
+    if (curr.status === 'failed') acc[date][instId].failed += parseInt(curr.count);
     return acc;
   }, {});
 
@@ -153,21 +165,60 @@ const Reports = () => {
                 <h3>{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
               </div>
               <div className="instance-stats-grid">
-                {groupedReports[date].map((stat, i) => (
-                  <div key={i} className="stat-item glass">
-                    <div className="stat-left">
-                      <Smartphone size={20} className="text-primary" />
-                      <div>
-                        <h4>{stat.instance?.name || 'Unknown Instance'}</h4>
-                        <p>ID: {stat.instanceId}</p>
+                {Object.values(groupedReports[date]).map((stat, i) => {
+                  const isExpanded = expandedInstance?.date === date && expandedInstance?.instanceId === stat.instanceId;
+                  const instanceFailures = logs.filter(l => 
+                    l.status === 'failed' && 
+                    l.instanceId === stat.instanceId && 
+                    new Date(l.createdAt).toISOString().split('T')[0] === date
+                  );
+
+                  return (
+                    <div key={i} className="stat-card-wrap">
+                      <div 
+                        className={`stat-item glass ${stat.failed > 0 ? 'has-failures' : ''} ${isExpanded ? 'expanded' : ''}`}
+                        onClick={() => stat.failed > 0 && setExpandedInstance(isExpanded ? null : { date, instanceId: stat.instanceId })}
+                      >
+                        <div className="stat-left">
+                          <Smartphone size={20} className="text-primary" />
+                          <div>
+                            <h4>{stat.instance?.name || 'Unknown Instance'}</h4>
+                            <p>ID: {stat.instanceId}</p>
+                          </div>
+                        </div>
+                        <div className="stat-right">
+                          <div className="stat-count">
+                            <span className="count-badge sent">{stat.sent}</span>
+                            <span className="count-label">Sent</span>
+                          </div>
+                          {stat.failed > 0 && (
+                            <div className="stat-count">
+                              <span className="count-badge failed">{stat.failed}</span>
+                              <span className="count-label">Failed</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      
+                      {isExpanded && instanceFailures.length > 0 && (
+                        <div className="failure-details animate-slide-down">
+                          <div className="failure-header">
+                            <AlertCircle size={14} className="text-error" />
+                            <span>Failure Reasons</span>
+                          </div>
+                          <div className="failure-list">
+                            {instanceFailures.map((f, idx) => (
+                              <div key={idx} className="failure-row">
+                                <span className="fail-num">{f.recipient}</span>
+                                <span className="fail-reason">{f.errorMessage || 'Unknown error'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="stat-right">
-                      <span className="count-badge">{stat.count}</span>
-                      <span className="count-label">Messages Sent</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))

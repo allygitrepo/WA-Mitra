@@ -7,6 +7,7 @@ export const authService = {
   googleLogin: (data) => API.post('/auth/google-login', data),
   forgotPassword: (data) => API.post('/auth/forgot-password', data),
   resetPassword: (data) => API.post('/auth/reset-password', data),
+  getProfile: () => API.get('/auth/me'),
 };
 
 export const instanceService = {

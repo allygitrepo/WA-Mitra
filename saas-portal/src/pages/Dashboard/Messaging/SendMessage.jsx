@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
+import { useOutletContext, Link } from 'react-router-dom';
 import { instanceService, messageService } from '../../../api/services';
+import toast from 'react-hot-toast';
 import './Messaging.css';
 
 const SendMessage = () => {
@@ -19,14 +20,48 @@ const SendMessage = () => {
   });
 
   const [bulkData, setBulkData] = useState({
-    numbers: '',
+    numbers: [''],
     message: '',
     file: null
   });
 
+  const [numberCount, setNumberCount] = useState(1);
+
   useEffect(() => {
     fetchInstances();
   }, []);
+
+  const handleNumberCountChange = (count) => {
+    const val = parseInt(count) || 0;
+    setNumberCount(val);
+    if (val > 0) {
+      const newNumbers = [...bulkData.numbers];
+      if (val > newNumbers.length) {
+        for (let i = newNumbers.length; i < val; i++) newNumbers.push('');
+      } else {
+        newNumbers.length = val;
+      }
+      setBulkData({ ...bulkData, numbers: newNumbers });
+    }
+  };
+
+  const addNumberField = () => {
+    setBulkData({ ...bulkData, numbers: [...bulkData.numbers, ''] });
+    setNumberCount(bulkData.numbers.length + 1);
+  };
+
+  const removeNumberField = (index) => {
+    if (bulkData.numbers.length <= 1) return;
+    const newNumbers = bulkData.numbers.filter((_, i) => i !== index);
+    setBulkData({ ...bulkData, numbers: newNumbers });
+    setNumberCount(newNumbers.length);
+  };
+
+  const updateNumber = (index, value) => {
+    const newNumbers = [...bulkData.numbers];
+    newNumbers[index] = value;
+    setBulkData({ ...bulkData, numbers: newNumbers });
+  };
 
   const fetchInstances = async () => {
     try {
@@ -60,18 +95,19 @@ const SendMessage = () => {
 
   const handleSendSingle = async (e) => {
     e.preventDefault();
-    if (!selectedInstance) return setStatus({ type: 'error', message: 'Please select an instance' });
+    if (!selectedInstance) return toast.error('Please select an instance');
     
+    const loadingToast = toast.loading('Sending message...');
     setLoading(true);
     try {
       await messageService.sendMessage({
         ...singleData,
         instanceKey: selectedInstance
       });
-      setStatus({ type: 'success', message: 'Message sent successfully!' });
+      toast.success('Message sent successfully!', { id: loadingToast });
       setSingleData({ number: '', message: '', file: null });
     } catch (err) {
-      setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to send message' });
+      toast.error(err.response?.data?.message || 'Failed to send message', { id: loadingToast });
     } finally {
       setLoading(false);
     }
@@ -79,21 +115,47 @@ const SendMessage = () => {
 
   const handleSendBulk = async (e) => {
     e.preventDefault();
-    if (!selectedInstance) return setStatus({ type: 'error', message: 'Please select an instance' });
+    if (!selectedInstance) return toast.error('Please select an instance');
 
     setLoading(true);
+    const loadingToast = toast.loading(`Sending bulk messages (0/${bulkData.numbers.length})...`, {
+      style: { minWidth: '250px' }
+    });
+
     try {
-      const numbersArray = bulkData.numbers.split(',').map(n => n.trim()).filter(n => n);
-      await messageService.sendBulk({
+      // Prepare the messages array as required by the backend
+      const messagesArray = bulkData.numbers
+        .map(n => n.trim())
+        .filter(n => n)
+        .map(n => ({
+          number: n,
+          message: bulkData.message
+        }));
+
+      if (messagesArray.length === 0) {
+        toast.error('Please enter at least one recipient number', { id: loadingToast });
+        setLoading(false);
+        return;
+      }
+
+      const res = await messageService.sendBulk({
         instanceKey: selectedInstance,
-        numbers: numbersArray,
-        message: bulkData.message,
+        messages: messagesArray,
         file: bulkData.file
       });
-      setStatus({ type: 'success', message: 'Bulk messages queued!' });
-      setBulkData({ numbers: '', message: '', file: null });
+
+      const { results } = res.data;
+      
+      if (results.failed === 0) {
+        toast.success(`Sent all ${results.sent} messages successfully!`, { id: loadingToast, duration: 5000 });
+      } else {
+        toast.success(`Process complete: ${results.sent} sent, ${results.failed} failed.`, { id: loadingToast, duration: 6000 });
+      }
+
+      setBulkData({ numbers: [''], message: '', file: null });
+      setNumberCount(1);
     } catch (err) {
-      setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to queue messages' });
+      toast.error(err.response?.data?.message || 'Failed to process bulk messages', { id: loadingToast });
     } finally {
       setLoading(false);
     }
@@ -149,17 +211,11 @@ const SendMessage = () => {
             </div>
           </div>
 
-          {status && (
-            <div className={`status-alert ${status.type}`}>
-              {status.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-              <span>{status.message}</span>
-              <button className="close-alert" onClick={() => setStatus(null)}><X size={14} /></button>
-            </div>
-          )}
+
 
           <form className="messaging-form" onSubmit={mode === 'single' ? handleSendSingle : handleSendBulk}>
             <div className="form-group">
-              <label>{mode === 'single' ? 'Recipient Number' : 'Recipient Numbers (Comma separated)'}</label>
+              <label>{mode === 'single' ? 'Recipient Number' : 'Recipient Numbers'}</label>
               {mode === 'single' ? (
                 <input 
                   type="text" 
@@ -171,14 +227,48 @@ const SendMessage = () => {
                   required
                 />
               ) : (
-                <textarea 
-                  className="auth-input" 
-                  style={{paddingLeft: '14px', height: '100px', resize: 'none'}} 
-                  placeholder="919876543210, 918877665544, ..."
-                  value={bulkData.numbers}
-                  onChange={(e) => setBulkData({...bulkData, numbers: e.target.value})}
-                  required
-                ></textarea>
+                <div className="bulk-numbers-section">
+                  <div className="form-group mb-4" style={{maxWidth: '250px'}}>
+                    <label style={{fontSize: '0.8rem', opacity: 0.8}}>How many numbers do you have? (Optional)</label>
+                    <input 
+                      type="number" 
+                      className="auth-input" 
+                      style={{paddingLeft: '14px'}} 
+                      placeholder="Enter count"
+                      value={numberCount}
+                      min="1"
+                      onChange={(e) => handleNumberCountChange(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="numbers-list-grid">
+                    {bulkData.numbers.map((num, idx) => (
+                      <div key={idx} className="number-input-row">
+                        <div className="input-with-count">
+                          <span className="idx-tag">{idx + 1}</span>
+                          <input 
+                            type="text" 
+                            className="auth-input" 
+                            style={{paddingLeft: '35px'}} 
+                            placeholder="919876543210"
+                            value={num}
+                            onChange={(e) => updateNumber(idx, e.target.value)}
+                            required
+                          />
+                        </div>
+                        {bulkData.numbers.length > 1 && (
+                          <button type="button" className="remove-num-btn" onClick={() => removeNumberField(idx)}>
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button type="button" className="add-number-btn mt-4" onClick={addNumberField}>
+                    <Plus size={16} /> Add Another Number
+                  </button>
+                </div>
               )}
             </div>
 

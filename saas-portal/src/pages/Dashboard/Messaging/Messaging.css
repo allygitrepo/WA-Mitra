@@ -158,3 +158,98 @@
     padding: 20px;
   }
 }
+
+/* Bulk Messaging Dynamic Fields */
+.bulk-numbers-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.numbers-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+}
+
+.number-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-with-count {
+  position: relative;
+  flex: 1;
+}
+
+.idx-tag {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 20px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  padding-right: 8px;
+}
+
+.remove-num-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--error);
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.remove-num-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--error);
+}
+
+.add-number-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px dashed var(--primary);
+  color: var(--primary);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: var(--transition);
+  width: fit-content;
+}
+
+.add-number-btn:hover {
+  background: rgba(0, 168, 132, 0.05);
+  transform: translateY(-2px);
+}
+
+.numbers-list-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.numbers-list-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.numbers-list-grid::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}

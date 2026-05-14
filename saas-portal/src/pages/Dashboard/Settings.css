@@ -172,3 +172,108 @@
   .theme-selection-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* Subscription Page Styles */
+.current-plan-card {
+  padding: 32px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.05) 0%, rgba(0, 168, 132, 0.1) 100%);
+  border: 1px solid rgba(0, 168, 132, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-badge {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: var(--primary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.current-plan-card h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.plan-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 40px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.plan-stat {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.plan-stat .label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.plan-stat .value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.usage-progress-bars {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.usage-item {
+  width: 100%;
+}
+
+.usage-item .flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.usage-item span {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.progress-bar-bg {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 10px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px var(--primary);
+}
+
+@media (max-width: 768px) {
+  .plan-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

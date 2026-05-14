@@ -39,6 +39,8 @@ const authController = {
         password: hashedPassword,
         otp,
         otpExpiry,
+        role: "user",
+        status: "active",
       });
 
       // Send OTP email
@@ -87,7 +89,11 @@ const authController = {
           username: user.username,
           email: user.email,
           phone: user.phone,
-          orgName: user.orgName
+          orgName: user.orgName,
+          role: user.role,
+          status: user.status,
+          packageId: user.packageId,
+          expiresAt: user.expiresAt
         },
       });
     } catch (error) {
@@ -128,7 +134,11 @@ const authController = {
           username: user.username,
           email: user.email,
           phone: user.phone,
-          orgName: user.orgName
+          orgName: user.orgName,
+          role: user.role,
+          status: user.status,
+          packageId: user.packageId,
+          expiresAt: user.expiresAt
         },
       });
     } catch (error) {
@@ -167,6 +177,8 @@ const authController = {
           email: googleData.email,
           googleId: googleData.googleId,
           isVerified: true, // Google emails are already verified
+          role: "user",
+          status: "active",
         });
 
         // Send welcome email for first time registration
@@ -183,7 +195,11 @@ const authController = {
           username: user.username,
           email: user.email,
           phone: user.phone,
-          orgName: user.orgName
+          orgName: user.orgName,
+          role: user.role,
+          status: user.status,
+          packageId: user.packageId,
+          expiresAt: user.expiresAt
         },
       });
     } catch (error) {
@@ -241,6 +257,17 @@ const authController = {
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
+  
+  getProfile: async (req, res) => {
+    try {
+      const user = await User.findByPk(req.user.id, {
+        attributes: { exclude: ['password', 'otp', 'otpExpiry'] }
+      });
+      res.status(200).json({ user });
+    } catch (error) {
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
 };
 
 module.exports = authController;

@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const WhatsAppInstance = require("../models/instanceModel");
+const { Package } = require("../models/associations");
 const { startSession, disconnect, getStatus } = require("../services/whatsappService");
 
 const instanceController = {
@@ -8,9 +9,21 @@ const instanceController = {
       const userId = req.user.id;
       const { name: customName } = req.body;
 
+      // Check package limits
+      const userWithPackage = await req.user.getPackage();
+      const currentInstances = await WhatsAppInstance.count({ where: { userId } });
+
+      if (userWithPackage && 
+          userWithPackage.instanceLimit !== -1 && 
+          currentInstances >= userWithPackage.instanceLimit) {
+        return res.status(403).json({
+          success: false,
+          message: `Limit reached. Your current package allows maximum ${userWithPackage.instanceLimit} instances.`
+        });
+      }
+
       // Use custom name or count existing instances to name it Session 1, 2, etc.
-      const count = await WhatsAppInstance.count({ where: { userId } });
-      const name = customName || `Session ${count + 1}`;
+      const name = customName || `Session ${currentInstances + 1}`;
       const instanceKey = `inst_${crypto.randomBytes(8).toString("hex")}`;
 
       const instance = await WhatsAppInstance.create({

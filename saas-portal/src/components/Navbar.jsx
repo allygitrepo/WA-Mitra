@@ -24,8 +24,9 @@ const Navbar = () => {
 
         <div className={`nav-links ${isOpen ? 'open' : ''}`}>
           <a href="#features">Features</a>
-          <Link to="/docs">Docs</Link>
           <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <Link to="/docs">Docs</Link>
           <Link to="/login" className="nav-btn-outline">Login</Link>
           <Link to="/register" className="nav-btn-primary">Get Started</Link>
         </div>

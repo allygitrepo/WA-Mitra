@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Packages from '../components/Packages';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -123,8 +124,11 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <Packages />
+
       {/* FAQ Section */}
-      <section className="faq">
+      <section id="faq" className="faq">
         <div className="container">
           <div className="section-head">
             <h2 className="section-title">Frequently Asked Questions</h2>

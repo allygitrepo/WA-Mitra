@@ -10,12 +10,15 @@ import {
   Users,
   MessageSquare
 } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import { instanceService, messageService } from '../../api/services';
+import useAuthStore from '../../store/useAuthStore';
 import './Overview.css';
+import '../Admin/Admin.css';
 
 const Overview = () => {
   const { searchQuery } = useOutletContext();
+  const { user } = useAuthStore();
   const [instances, setInstances] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,12 +72,25 @@ const Overview = () => {
 
   return (
     <div className="overview-container">
-      <div className="page-header">
+      {/* <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard Overview</h1>
           <p className="page-subtitle">Welcome back! Here's what's happening with your instances.</p>
         </div>
-      </div>
+      </div> */}
+
+      {!user?.packageId && (
+        <div className="package-reminder-banner glass animate-slide-down mb-6">
+          <div className="banner-content">
+            <AlertCircle className="text-primary" size={24} />
+            <div>
+              <h4>No Active Plan Detected</h4>
+              <p>Pick a plan to start connecting WhatsApp instances and sending messages.</p>
+            </div>
+          </div>
+          <Link to="/dashboard/plans" className="btn-primary">View Plans</Link>
+        </div>
+      )}
 
       <div className="stats-grid">
         {stats.map((stat, i) => (
@@ -104,7 +120,7 @@ const Overview = () => {
                 {searchQuery ? "No matching activity found." : "No recent activity found."}
               </p>
             ) : (
-              filteredLogs.map((log) => (
+              filteredLogs.slice(0, 3).map((log) => (
                 <ActivityItem
                   key={log.id}
                   icon={log.status === 'sent' ? <CheckCircle2 size={16} color="#10b981" /> : <AlertCircle size={16} color="#ef4444" />}

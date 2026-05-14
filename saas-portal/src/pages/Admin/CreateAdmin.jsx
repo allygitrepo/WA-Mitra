@@ -1,0 +1,121 @@
+import React, { useState } from 'react';
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  UserPlus,
+  ArrowLeft,
+  ShieldCheck
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import API from '../../api/axiosConfig';
+import '../Dashboard/Dashboard.css';
+import './Admin.css';
+
+const CreateAdmin = () => {
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      // Logic to create admin would go here
+      // For now, we assume it's a standard user creation with role: 'admin'
+      await API.post('/auth/register', { ...formData, role: 'admin' });
+      alert("Admin created successfully!");
+      navigate('/admin/users');
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to create admin");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="create-admin-container animate-fade-in">
+      <button className="back-btn mb-6" onClick={() => navigate('/admin/users')}>
+        <ArrowLeft size={18} /> Back to Users
+      </button>
+
+      <div className="page-header mb-8">
+        <div>
+          <h1 className="page-title">Create Administrator</h1>
+          <p className="page-subtitle text-muted">Add a new colleague with full platform access. Portal Admins can manage everything.</p>
+        </div>
+      </div>
+
+      <div className="create-admin-card glass mx-auto max-w-lg p-8">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="form-group-modern">
+            <label>Full Name</label>
+            <div className="input-with-icon">
+              <User size={18} className="icon" />
+              <input 
+                type="text" 
+                placeholder="Enter admin name"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group-modern">
+            <label>Email Address</label>
+            <div className="input-with-icon">
+              <Mail size={18} className="icon" />
+              <input 
+                type="email" 
+                placeholder="admin@wamitra.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group-modern">
+            <label>Login Password</label>
+            <div className="input-with-icon">
+              <Lock size={18} className="icon" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Minimum 6 characters"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                required
+              />
+              <button 
+                type="button" 
+                className="eye-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="btn-create-admin mt-4" disabled={loading}>
+            {loading ? "Creating..." : (
+              <>
+                <ShieldCheck size={20} />
+                <span>Create Administrator</span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CreateAdmin;

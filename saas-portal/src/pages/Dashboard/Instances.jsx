@@ -11,24 +11,46 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import { instanceService } from '../../api/services';
+import useAuthStore from '../../store/useAuthStore';
+import API from '../../api/axiosConfig';
 import './Instances.css';
 
 const Instances = () => {
   const { searchQuery } = useOutletContext();
+  const { user } = useAuthStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [currentPackage, setCurrentPackage] = useState(null);
 
   useEffect(() => {
-    fetchInstances();
+    fetchData();
     const interval = setInterval(fetchInstances, 5000); // Auto refresh status
     return () => clearInterval(interval);
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [instRes, pkgsRes] = await Promise.all([
+        instanceService.getInstances(),
+        API.get('/plans/all')
+      ]);
+      setInstances(instRes.data.instances || []);
+      const pkgs = pkgsRes.data.packages || [];
+      const pkg = pkgs.find(p => p.id === user?.packageId);
+      setCurrentPackage(pkg);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchInstances = async () => {
     try {
@@ -36,10 +58,12 @@ const Instances = () => {
       setInstances(res.data.instances || []);
     } catch (err) {
       console.error("Fetch Instances Error:", err);
-    } finally {
-      setLoading(false);
     }
   };
+
+  const isLimitReached = currentPackage && 
+                         currentPackage.instanceLimit !== -1 && 
+                         instances.length >= currentPackage.instanceLimit;
 
   const handleCreate = async (e) => {
     if (e) e.preventDefault();
@@ -112,11 +136,23 @@ const Instances = () => {
             <option>Connected</option>
             <option>Disconnected</option>
           </select>
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+          <button 
+            className={`btn-primary ${isLimitReached ? 'disabled' : ''}`} 
+            onClick={() => !isLimitReached && setShowAddModal(true)}
+            disabled={isLimitReached}
+            title={isLimitReached ? "Instance limit reached for your current plan" : ""}
+          >
             <Plus size={18} /> New Instance
           </button>
         </div>
       </div>
+
+      {isLimitReached && (
+        <div className="limit-reached-alert animate-slide-down">
+          <AlertCircle size={18} />
+          <p>You have reached your instance limit (<strong>{currentPackage.instanceLimit}</strong>). <Link to="/dashboard/plans" className="text-primary font-bold underline">Upgrade your plan</Link> to add more.</p>
+        </div>
+      )}
 
 
       <div className="instances-grid">

@@ -6,6 +6,11 @@ const whatsappRoutes = require('./routes/whatsappRoutes');
 const tokenRoutes = require('./routes/tokenRoutes');
 const instanceRoutes = require('./routes/instanceRoutes');
 const apiRoutes = require('./routes/apiRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const planRoutes = require('./routes/planRoutes');
+const checkStatusMiddleware = require('./middleware/checkStatusMiddleware');
+const authMiddleware = require('./middleware/authMiddleware');
 
 const app = express();
 
@@ -38,10 +43,17 @@ app.use((req, res, next) => {
 const prefix = '/wa-mitra'
 // Portal Internal Routes (Require JWT Auth)
 app.use(`${prefix}/api/auth`, authRoutes);
-app.use(`${prefix}/api/tokens`, tokenRoutes);
-app.use(`${prefix}/api/instances`, instanceRoutes);
-app.use(`${prefix}/api/messages`, messageRoutes); // This now uses instanceKey too
-app.use(`${prefix}/api/whatsapp`, whatsappRoutes); // Legacy/Portal session management
+
+// Apply status check to all other protected portal routes
+app.use(`${prefix}/api/tokens`, authMiddleware, checkStatusMiddleware, tokenRoutes);
+app.use(`${prefix}/api/instances`, authMiddleware, checkStatusMiddleware, instanceRoutes);
+app.use(`${prefix}/api/messages`, authMiddleware, checkStatusMiddleware, messageRoutes);
+app.use(`${prefix}/api/whatsapp`, authMiddleware, checkStatusMiddleware, whatsappRoutes);
+app.use(`${prefix}/api/payments`, paymentRoutes);
+app.use(`${prefix}/api/plans`, planRoutes);
+
+// Admin Routes (Require Admin Role)
+app.use(`${prefix}/api/admin`, adminRoutes);
 
 // External API Routes (Require Master API Token)
 app.use(`${prefix}/api/v1`, apiRoutes);

@@ -2,29 +2,25 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Smartphone,
+  Users,
+  Box,
   Settings,
   LogOut,
   Bell,
   Search,
-  User,
-  ChevronRight,
   Menu,
-  Send,
-  Key,
-  Book,
-  BarChart3,
-  Layers,
+  ChevronRight,
   X,
-  ShieldAlert
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
-import ThemeToggle from '../../components/ThemeToggle';
-import './Dashboard.css';
-
 import useThemeStore from '../../store/useThemeStore';
+import '../Dashboard/Dashboard.css';
+import './Admin.css';
+import '../Dashboard/Overview.css'; // Reuse common layout styles
 
-const DashboardLayout = () => {
+const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [searchQuery, setSearchQuery] = useState('');
   const { user, logout } = useAuthStore();
@@ -32,7 +28,6 @@ const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Handle responsive sidebar on resize
   React.useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 1024) {
@@ -45,7 +40,6 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close sidebar on mobile after navigation
   React.useEffect(() => {
     if (window.innerWidth <= 1024) {
       setIsSidebarOpen(false);
@@ -58,50 +52,26 @@ const DashboardLayout = () => {
   };
 
   const navItems = [
-    { name: 'Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'Instances', path: '/dashboard/instances', icon: <Smartphone size={20} /> },
-    { name: 'Send Message', path: '/dashboard/messaging', icon: <Send size={20} /> },
-    { name: 'API Tokens', path: '/dashboard/tokens', icon: <Key size={20} /> },
-    { name: 'Reports', path: '/dashboard/reports', icon: <BarChart3 size={20} /> },
-    { name: 'Plans', path: '/dashboard/plans', icon: <Layers size={20} /> },
-    { name: 'Docs', path: '/dashboard/docs', icon: <Book size={20} /> },
-    { name: 'Settings', path: '/dashboard/settings', icon: <Settings size={20} /> },
+    { name: 'Admin Overview', path: '/admin', icon: <LayoutDashboard size={20} /> },
+    { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
+    { name: 'Packages', path: '/admin/packages', icon: <Box size={20} /> },
+    { name: 'Payments', path: '/admin/payments', icon: <CreditCard size={20} /> },
+    { name: 'Settings', path: '/admin/settings', icon: <Settings size={20} /> },
   ];
 
   return (
     <div className="dashboard-root">
-      {/* Mobile Overlay */}
       {isSidebarOpen && window.innerWidth <= 1024 && (
         <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
       )}
 
-      {/* Account Suspension Overlay */}
-      {user?.status === 'suspended' && (
-        <div className="suspension-overlay glass animate-fade-in">
-          <div className="suspension-card glass animate-slide-up">
-            <div className="suspension-icon">
-              <ShieldAlert size={48} />
-            </div>
-            <h2>Account Suspended</h2>
-            <p>Your access to WA-Mitra has been temporarily suspended by the administrator.</p>
-            <div className="suspension-meta">
-              <span>Reason: Policy violation or pending payment</span>
-            </div>
-            <button className="btn-primary mt-6" onClick={handleLogout}>
-              <LogOut size={18} /> Logout
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <img
             src={(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
               ? '/Logo_Dark.png'
               : '/Logo_Light.png'}
-            alt="WA-Mitra"
+            alt="WA-Mitra Admin"
             style={{ height: '50px' }}
           />
           <button className="sidebar-toggle-mobile" onClick={() => setIsSidebarOpen(false)}>
@@ -110,6 +80,7 @@ const DashboardLayout = () => {
         </div>
 
         <nav className="sidebar-nav">
+          <div className="nav-label">System Administration</div>
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -121,11 +92,14 @@ const DashboardLayout = () => {
               {location.pathname === item.path && <ChevronRight size={16} className="active-arrow" />}
             </Link>
           ))}
-        </nav>
 
+          <button onClick={handleLogout} className="nav-item text-error mt-auto">
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="main-wrap">
         <header className="main-header glass">
           <div className="header-left">
@@ -136,7 +110,7 @@ const DashboardLayout = () => {
               <Search size={18} />
               <input
                 type="text"
-                placeholder="Search anything..."
+                placeholder="Search users or packages..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -145,8 +119,12 @@ const DashboardLayout = () => {
 
           <div className="header-right">
             <div className="user-profile">
-              <div className="user-info">
+              <div className="user-info text-right">
                 <span className="user-name">{user?.username}</span>
+                <span className="user-role text-accent" style={{ fontSize: '10px', display: 'block' }}>Administrator</span>
+              </div>
+              <div className="user-avatar glass">
+                <ShieldCheck size={20} />
               </div>
             </div>
           </div>
@@ -160,4 +138,4 @@ const DashboardLayout = () => {
   );
 };
 
-export default DashboardLayout;
+export default AdminLayout;

@@ -8,6 +8,7 @@ const path = require('path');
 const sequelize = require('./config/db');
 // Ensure all models are loaded for sync
 require('./models/associations');
+const { seedAdmin } = require('./services/seederService');
 
 const server = http.createServer(app);
 
@@ -22,6 +23,7 @@ server.listen(PORT, async () => {
     try {
         await sequelize.sync({ alter: true });
         console.log('Database synced successfully');
+        await seedAdmin();
     } catch (error) {
         console.error('Database sync failed:', error);
     }
