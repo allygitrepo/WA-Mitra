@@ -135,12 +135,23 @@ const instanceController = {
 
       const result = await checkQR();
 
+      if (result && result.connected) {
+        return res.status(200).json({
+          success: true,
+          message: "Instance already connected",
+          qr: "",
+          status: "connected",
+          instanceKey
+        });
+      }
+
       res.status(200).json({
         success: true,
-        message: "Session initialization started",
+        message: result ? (result.qr ? "QR generated successfully" : "Session initialization started") : "Session initialization started",
         status: result ? result.status : 'connecting',
         qr: result ? result.qr : null,
-        instanceKey // Always return the key so the user can use it for subsequent calls
+        validinsecond: 40,
+        instanceKey
       });
     } catch (error) {
       console.error("Initiate Session Error:", error);

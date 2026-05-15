@@ -29,12 +29,19 @@ function getSessionPath(instanceKey) {
 
 async function startSession(instanceKey) {
     await loadBaileys();
-    // Check if session already exists and is already OPEN
+    // Check if session already exists
     if (sessions.has(instanceKey)) {
         const session = sessions.get(instanceKey);
         if (session.connectionStatus === 'connected') {
             console.log(`Instance ${instanceKey} is already connected.`);
             return session.sock;
+        }
+        // If it's already connecting or has a QR, close the old socket before starting a new one
+        if (session.sock) {
+            try {
+                session.sock.ev.removeAllListeners();
+                session.sock.terminate();
+            } catch (e) { }
         }
     }
 
@@ -54,6 +61,7 @@ async function startSession(instanceKey) {
     sessions.set(instanceKey, {
         sock,
         qrCodeData: null,
+        qrTimestamp: null,
         connectionStatus: 'connecting',
         userPhone: null
     });
@@ -69,18 +77,21 @@ async function startSession(instanceKey) {
             try {
                 const qrDataURL = await QRCode.toDataURL(qr);
                 sessionData.qrCodeData = qrDataURL;
+                sessionData.qrTimestamp = Date.now();
                 sessionData.connectionStatus = 'qr_ready';
                 await WhatsAppInstance.update({ status: 'qr_ready' }, { where: { instanceKey } });
                 getIO().emit('qr', { instanceKey, qr: qrDataURL });
             } catch (err) {
                 console.error('Failed to generate QR Data URL:', err);
                 sessionData.qrCodeData = qr; // Fallback to raw string
+                sessionData.qrTimestamp = Date.now();
             }
         }
 
         if (connection === 'open') {
             console.log(`[INSTANCE] ${instanceKey} connected!`);
             sessionData.qrCodeData = null;
+            sessionData.qrTimestamp = null;
             sessionData.connectionStatus = 'connected';
             sessionData.userPhone = sock.user.id.split(':')[0];
 
@@ -137,10 +148,17 @@ function getStatus(instanceKey) {
             phone: null
         };
     }
+
+    // Check if QR is expired (40 seconds)
+    let currentQR = sessionData.qrCodeData;
+    if (sessionData.qrTimestamp && (Date.now() - sessionData.qrTimestamp > 40000)) {
+        currentQR = null; // QR expired
+    }
+
     return {
         connected: sessionData.connectionStatus === 'connected',
         status: sessionData.connectionStatus,
-        qr: sessionData.qrCodeData,
+        qr: currentQR,
         phone: sessionData.userPhone
     };
 }

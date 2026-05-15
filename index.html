@@ -129,9 +129,14 @@
             <label>Bearer Token</label>
             <input type="text" id="token" placeholder="mitra_xxxxxxxxx">
 
-            <button onclick="connectWhatsapp()">
+            <button onclick="connectWhatsapp()" id="connectBtn">
                 Generate QR Code
             </button>
+
+            <div id="timerBox"
+                style="display:none; margin-top: 15px; color: #fbbf24; font-weight: bold; text-align: center;">
+                QR expires in: <span id="countdown">40</span>s
+            </div>
 
             <div class="instance" id="instanceKeyBox" style="display:none;"></div>
 
@@ -172,9 +177,27 @@
         // =========================
         // API BASE URL
         // =========================
-        const BASE_URL = "https://silverapi.allysoftsolutions.com/wa-mitra";
+        // const BASE_URL = "https://silverapi.allysoftsolutions.com/wa-mitra";
 
-        let instanceKey = "";
+        const BASE_URL = "http://localhost:3000/wa-mitra";
+
+        let instanceKey = localStorage.getItem("lastInstanceKey") || "";
+        let timerInterval = null;
+
+        // Initialize UI with stored key if exists
+        window.onload = () => {
+            if (instanceKey) {
+                const instanceBox = document.getElementById("instanceKeyBox");
+                instanceBox.style.display = "block";
+                instanceBox.innerHTML = `<b>Instance Key:</b><br>${instanceKey} <button onclick="clearSession()" style="width: auto; padding: 4px 8px; margin: 0; font-size: 10px; background: #ef4444; margin-top: 5px;">Clear</button>`;
+            }
+        };
+
+        function clearSession() {
+            localStorage.removeItem("lastInstanceKey");
+            instanceKey = "";
+            location.reload();
+        }
 
         // =========================
         // CONNECT WHATSAPP
@@ -189,9 +212,10 @@
             }
 
             try {
-
-                document.getElementById("connectStatus").innerHTML =
-                    "Generating QR Code...";
+                clearInterval(timerInterval);
+                document.getElementById("timerBox").style.display = "none";
+                document.getElementById("qrImage").style.display = "none";
+                document.getElementById("connectStatus").innerHTML = "Initializing session...";
 
                 const response = await fetch(
                     `${BASE_URL}/api/v1/instance/initiate`,
@@ -201,73 +225,62 @@
                             "Authorization": `Bearer ${token}`,
                             "Content-Type": "application/json"
                         },
-                        body: JSON.stringify({})
+                        body: JSON.stringify({
+                            instanceKey: instanceKey || undefined
+                        })
                     }
                 );
 
-                const text = await response.text();
-
-                console.log("RAW RESPONSE:", text);
-
-                let data;
-
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-
-                    document.getElementById("connectStatus").innerHTML = `
-    <div class="error">
-      Invalid JSON Response <br><br>
-      ${text}
-    </div>
-  `;
-
-                    return;
-                }
-                console.log("QR Response:", data);
+                const data = await response.json();
+                console.log("Initiate Response:", data);
 
                 if (data.success) {
-
                     instanceKey = data.instanceKey;
-
-                    // SHOW QR
-                    const qrImage = document.getElementById("qrImage");
-
-                    qrImage.src = data.qr;
-                    qrImage.style.display = "block";
-
-                    // SHOW INSTANCE KEY
-                    const instanceBox =
-                        document.getElementById("instanceKeyBox");
-
+                    localStorage.setItem("lastInstanceKey", instanceKey);
+                    
+                    // Show Instance Key
+                    const instanceBox = document.getElementById("instanceKeyBox");
                     instanceBox.style.display = "block";
+                    instanceBox.innerHTML = `<b>Instance Key:</b><br>${instanceKey} <button onclick="clearSession()" style="width: auto; padding: 4px 8px; margin: 0; font-size: 10px; background: #ef4444; margin-top: 5px;">Clear</button>`;
 
-                    instanceBox.innerHTML = `
-          <b>Instance Key:</b><br>
-          ${instanceKey}
-        `;
+                    if (data.status === 'connected') {
+                        document.getElementById("connectStatus").innerHTML = `<div class="success">WhatsApp is already connected!</div>`;
+                        document.getElementById("qrImage").style.display = "none";
+                        document.getElementById("timerBox").style.display = "none";
+                    } else if (data.qr) {
+                        // SHOW QR
+                        const qrImage = document.getElementById("qrImage");
+                        qrImage.src = data.qr;
+                        qrImage.style.display = "block";
 
-                    document.getElementById("connectStatus").innerHTML =
-                        `<div class="success">
-            QR Generated Successfully
-          </div>`;
+                        document.getElementById("connectStatus").innerHTML = `<div class="success">QR Generated Successfully</div>`;
 
+                        // Start Timer
+                        let timeLeft = data.validinsecond || 40;
+                        document.getElementById("timerBox").style.display = "block";
+                        document.getElementById("countdown").innerText = timeLeft;
+
+                        timerInterval = setInterval(() => {
+                            timeLeft--;
+                            document.getElementById("countdown").innerText = timeLeft;
+                            if (timeLeft <= 0) {
+                                clearInterval(timerInterval);
+                                document.getElementById("qrImage").style.display = "none";
+                                document.getElementById("connectStatus").innerHTML = `<div class="error" style="color: #fbbf24;">QR Expired. Refreshing automatically...</div>`;
+                                // Auto refresh after a short delay
+                                setTimeout(connectWhatsapp, 1000);
+                            }
+                        }, 1000);
+                    } else {
+                        document.getElementById("connectStatus").innerHTML = `<div class="success">Session started, waiting for QR...</div>`;
+                    }
                 } else {
-
-                    document.getElementById("connectStatus").innerHTML =
-                        `<div class="error">
-            Failed to generate QR
-          </div>`;
+                    document.getElementById("connectStatus").innerHTML = `<div class="error">${data.message || "Failed to initiate session"}</div>`;
                 }
 
             } catch (err) {
-
                 console.error(err);
-
-                document.getElementById("connectStatus").innerHTML =
-                    `<div class="error">
-          ${err.message}
-        </div>`;
+                document.getElementById("connectStatus").innerHTML = `<div class="error">${err.message}</div>`;
             }
         }
 
