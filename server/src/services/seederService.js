@@ -1,15 +1,15 @@
-const { User, Package } = require("../models/associations");
+const { User } = require("../models/associations");
 const bcrypt = require("bcryptjs");
 
 const seedAdmin = async () => {
   try {
-    // 1. Create Default Package if not exists
-
-    // 2. Create Admin User if not exists
+    // Create Admin User if not exists
     const adminEmail = "admin@wamitra.com";
     const existingAdmin = await User.findOne({ where: { email: adminEmail } });
 
-    if (!existingAdmin) {
+    if (existingAdmin) {
+      console.log("Admin already exists.");
+    } else {
       const hashedPassword = await bcrypt.hash("@lly4792", 10);
       await User.create({
         username: "System Admin",
@@ -18,9 +18,8 @@ const seedAdmin = async () => {
         role: "admin",
         status: "active",
         isVerified: true,
-        packageId: packageId,
       });
-      console.log("System Admin user created.");
+      console.log("Admin created successfully.");
     }
   } catch (error) {
     console.error("Seeder Error:", error);
