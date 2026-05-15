@@ -27,6 +27,7 @@ const Instances = () => {
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [currentPackage, setCurrentPackage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -172,8 +173,28 @@ const Instances = () => {
             </div>
 
             <div className="card-middle">
-              <h3 className="inst-name">{inst.name}</h3>
-              <p className="inst-phone">{inst.phone || 'Scan QR to Link'}</p>
+              <h3 className="inst-name" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '12px' }}>{inst.name}</h3>
+              
+              {inst.liveStatus === 'connected' ? (
+                <div className="profile-section animate-fade-in">
+                  <div className={`profile-avatar ${inst.profilePic ? 'clickable' : ''}`} onClick={() => inst.profilePic && setPreviewImage(inst.profilePic)}>
+                    {inst.profilePic ? (
+                      <img src={inst.profilePic} alt={inst.pushName} />
+                    ) : (
+                      <div className="avatar-placeholder" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: 'var(--surface-hover)', color: 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{inst.pushName?.charAt(0) || '?'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="profile-info">
+                    <span className="push-name">{inst.pushName || 'WhatsApp User'}</span>
+                    <span className="inst-phone">+{inst.phone}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="inst-phone" style={{ marginBottom: '12px' }}>{inst.phone || 'Scan QR to Link'}</p>
+              )}
+
               <div className="inst-key-box">
                 <code>{inst.instanceKey}</code>
               </div>
@@ -198,7 +219,7 @@ const Instances = () => {
                   </button>
                 )}
                 {inst.liveStatus === 'connected' && (
-                  <button className="btn-action-icon text-error" title="Disconnect" onClick={() => handleInitiate(inst.instanceKey)}>
+                  <button className="btn-action-icon text-error" title="Disconnect & Remove" onClick={() => handleDelete(inst.instanceKey)}>
                     <Power size={18} />
                   </button>
                 )}
@@ -241,6 +262,19 @@ const Instances = () => {
           </form>
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="image-preview-overlay animate-fade-in" onClick={() => setPreviewImage(null)}>
+          <div className="preview-content" onClick={e => e.stopPropagation()}>
+            <button className="preview-close" onClick={() => setPreviewImage(null)}>
+              <X size={24} />
+            </button>
+            <img src={previewImage} alt="Profile Preview" className="animate-scale-up" />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

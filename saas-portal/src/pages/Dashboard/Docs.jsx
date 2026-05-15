@@ -214,6 +214,21 @@ const Docs = () => {
                       <td><span className="badge badge-type">number</span></td>
                       <td>The time in seconds for which the QR code is valid.</td>
                     </tr>
+                    <tr>
+                      <td><code style={{ color: '#61afef' }}>profileImage</code></td>
+                      <td><span className="badge badge-type">string</span></td>
+                      <td>The Base64 string of the WhatsApp profile picture.</td>
+                    </tr>
+                    <tr>
+                      <td><code style={{ color: '#61afef' }}>name</code></td>
+                      <td><span className="badge badge-type">string</span></td>
+                      <td>The WhatsApp profile name (Push Name).</td>
+                    </tr>
+                    <tr>
+                      <td><code style={{ color: '#61afef' }}>phone</code></td>
+                      <td><span className="badge badge-type">string</span></td>
+                      <td>The connected WhatsApp phone number.</td>
+                    </tr>
                   </tbody>
                 </table>
                 <div className="alert-box warning-alert" style={{ marginTop: '40px' }}>
@@ -264,7 +279,10 @@ const Docs = () => {
   "status": "connected",
   "qr": "",
   "instanceKey": "inst_123...",
-  "message": "Instance already connected"
+  "message": "Instance already connected",
+  "profileImage": "data:image/jpeg;base64,...",
+  "name": "Prashant Sarvaiya",
+  "phone": "919316..."
 }`}</code></pre>
                       </div>
                     </div>
@@ -277,6 +295,29 @@ const Docs = () => {
                   <div className="pm-header">
                     <span className="pm-method" style={{ color: '#61afef' }}>GET</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/instance/status?instanceKey=inst_123`}</span>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '60px' }}>Disconnect & Delete Instance</h3>
+                <p>Permanently remove an instance from the database and clean up all session files. This is recommended for cleaning up unused keys to prevent server load.</p>
+                <div className="postman-req">
+                  <div className="pm-header">
+                    <span className="pm-method" style={{ color: '#f44336' }}>DELETE</span>
+                    <span className="pm-url">{`${baseUrl}/api/v1/instance/delete?instanceKey=inst_123`}</span>
+                  </div>
+                  <div className="pm-section">
+                    <span className="pm-section-title">Query Parameters</span>
+                    <div className="pm-row">
+                      <span className="pm-key">instanceKey</span>
+                      <span className="pm-val">The ID of the instance to delete.</span>
+                    </div>
+                  </div>
+                  <div className="pm-section">
+                    <span className="pm-section-title">Success Response</span>
+                    <pre><code>{`{
+  "success": true,
+  "message": "Instance deleted successfully"
+}`}</code></pre>
                   </div>
                 </div>
               </div>

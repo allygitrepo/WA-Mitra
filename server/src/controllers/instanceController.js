@@ -60,7 +60,9 @@ const instanceController = {
         return {
           ...inst.toJSON(),
           liveStatus: liveStatus.status,
-          qr: liveStatus.qr
+          qr: liveStatus.qr,
+          pushName: liveStatus.pushName || inst.pushName,
+          profilePic: liveStatus.profilePic || inst.profilePic
         };
       });
 
@@ -73,7 +75,7 @@ const instanceController = {
 
   deleteInstance: async (req, res) => {
     try {
-      const { instanceKey } = req.params;
+      const instanceKey = req.params.instanceKey || req.query.instanceKey || req.body.instanceKey;
       const userId = req.user.id;
 
       const instance = await WhatsAppInstance.findOne({ where: { instanceKey, userId } });
@@ -82,11 +84,8 @@ const instanceController = {
         return res.status(404).json({ success: false, message: "Instance not found" });
       }
 
-      // Disconnect if active
+      // Disconnect if active (this now also deletes from DB and cleans folder)
       await disconnect(instanceKey);
-
-      // Delete from DB
-      await instance.destroy();
 
       res.status(200).json({ success: true, message: "Instance deleted successfully" });
     } catch (error) {
@@ -136,12 +135,24 @@ const instanceController = {
       const result = await checkQR();
 
       if (result && result.connected) {
+        let profileImage = null;
+        if (result.profilePic) {
+          try {
+            const axios = require('axios');
+            const response = await axios.get(result.profilePic, { responseType: 'arraybuffer' });
+            const base64 = Buffer.from(response.data, 'binary').toString('base64');
+            profileImage = `data:image/jpeg;base64,${base64}`;
+          } catch (e) { }
+        }
+
         return res.status(200).json({
           success: true,
           message: "Instance already connected",
-          qr: "",
           status: "connected",
-          instanceKey
+          instanceKey,
+          profileImage,
+          name: result.pushName || "",
+          phone: result.phone || ""
         });
       }
 
@@ -172,13 +183,27 @@ const instanceController = {
       }
 
       const liveStatus = getStatus(instanceKey);
+      
+      let profileImage = null;
+      const picUrl = liveStatus.profilePic || instance.profilePic;
+      if (picUrl) {
+        try {
+          const axios = require('axios');
+          const response = await axios.get(picUrl, { responseType: 'arraybuffer' });
+          const base64 = Buffer.from(response.data, 'binary').toString('base64');
+          profileImage = `data:image/jpeg;base64,${base64}`;
+        } catch (e) { }
+      }
+
       res.status(200).json({
         success: true,
         status: liveStatus.status,
         qr: liveStatus.qr,
         connected: liveStatus.connected,
-        phone: liveStatus.phone,
-        instanceKey
+        instanceKey,
+        profileImage,
+        name: liveStatus.pushName || instance.pushName || "",
+        phone: liveStatus.phone || instance.phone || ""
       });
     } catch (error) {
       console.error("Fetch Status Error:", error);

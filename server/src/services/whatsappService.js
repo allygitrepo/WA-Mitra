@@ -66,7 +66,25 @@ async function startSession(instanceKey) {
         userPhone: null
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async (update) => {
+        await saveCreds();
+        // Capture name if it arrives late in creds
+        if (update.me && update.me.name) {
+            const sessionData = sessions.get(instanceKey);
+            if (sessionData && (!sessionData.pushName || sessionData.pushName === 'WhatsApp User')) {
+                sessionData.pushName = update.me.name;
+                try {
+                    await WhatsAppInstance.update({ pushName: update.me.name }, { where: { instanceKey } });
+                    getIO().emit('connected', { 
+                        instanceKey, 
+                        pushName: update.me.name,
+                        phone: sessionData.userPhone,
+                        profilePic: sessionData.profilePic
+                    });
+                } catch (e) { }
+            }
+        }
+    });
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -94,14 +112,30 @@ async function startSession(instanceKey) {
             sessionData.qrTimestamp = null;
             sessionData.connectionStatus = 'connected';
             sessionData.userPhone = sock.user.id.split(':')[0];
+            sessionData.pushName = sock.user.name || sock.user.notify || (state.creds.me && state.creds.me.name) || 'WhatsApp User';
+
+            // Fetch profile picture if possible
+            let profilePic = null;
+            try {
+                profilePic = await sock.profilePictureUrl(sock.user.id, 'image');
+            } catch (e) {
+                console.log("Could not fetch profile picture:", e.message);
+            }
 
             await WhatsAppInstance.update({
                 status: 'connected',
                 phone: sessionData.userPhone,
+                pushName: sessionData.pushName,
+                profilePic: profilePic,
                 lastConnected: new Date()
             }, { where: { instanceKey } });
 
-            getIO().emit('connected', { instanceKey, phone: sessionData.userPhone });
+            getIO().emit('connected', { 
+                instanceKey, 
+                phone: sessionData.userPhone,
+                pushName: sessionData.pushName,
+                profilePic: profilePic
+            });
         }
 
         if (connection === 'connecting') {
@@ -122,9 +156,12 @@ async function startSession(instanceKey) {
                 sessionData.sock = null;
                 sessionData.qrCodeData = null;
                 sessionData.userPhone = null;
+                sessionData.pushName = null;
+                sessionData.profilePic = null;
                 sessions.delete(instanceKey);
 
-                await WhatsAppInstance.update({ status: 'disconnected', phone: null }, { where: { instanceKey } });
+                // Remove from DB entirely per user request
+                await WhatsAppInstance.destroy({ where: { instanceKey } });
 
                 if (fs.existsSync(sessionDir)) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
@@ -159,7 +196,9 @@ function getStatus(instanceKey) {
         connected: sessionData.connectionStatus === 'connected',
         status: sessionData.connectionStatus,
         qr: currentQR,
-        phone: sessionData.userPhone
+        phone: sessionData.userPhone,
+        pushName: sessionData.pushName,
+        profilePic: sessionData.profilePic
     };
 }
 
@@ -177,7 +216,8 @@ async function disconnect(instanceKey) {
         fs.rmSync(sessionDir, { recursive: true, force: true });
     }
 
-    await WhatsAppInstance.update({ status: 'disconnected', phone: null }, { where: { instanceKey } });
+    // Remove from DB entirely per user request
+    await WhatsAppInstance.destroy({ where: { instanceKey } });
     getIO().emit('disconnected', { instanceKey });
 }
 

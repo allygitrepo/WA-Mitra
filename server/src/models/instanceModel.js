@@ -28,6 +28,14 @@ const WhatsAppInstance = sequelize.define("WhatsAppInstance", {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  pushName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  profilePic: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   messageCount: {
     type: DataTypes.INTEGER,
     defaultValue: 0,

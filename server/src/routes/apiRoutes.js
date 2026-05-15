@@ -14,6 +14,8 @@ router.post("/instance/create", instanceController.createInstance);
 router.get("/instance/list", instanceController.listInstances);
 router.post("/instance/initiate", instanceController.initiateSession);
 router.get("/instance/status", instanceController.fetchStatus);
+router.delete("/instance/delete", instanceController.deleteInstance); // Added delete route
+router.delete("/instance/:instanceKey", instanceController.deleteInstance); // Support both query and param if needed
 
 // Messaging (External)
 router.post("/messages/send", upload.single('file'), messageController.sendMessage);
