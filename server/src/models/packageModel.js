@@ -44,6 +44,10 @@ const Package = sequelize.define("Package", {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true, // If false, hidden from landing/select-plan; admin-assign only
+  },
 }, {
   timestamps: true,
 });

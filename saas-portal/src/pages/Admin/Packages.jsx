@@ -46,7 +46,8 @@ const AdminPackages = () => {
     messageLimit: 1000,
     dailyMessageLimit: 100,
     canSendMedia: true,
-    isActive: true
+    isActive: true,
+    isPublic: true
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -181,10 +182,11 @@ const AdminPackages = () => {
                       type="number"
                       placeholder="30"
                       value={formData.duration}
-                      onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, duration: e.target.value === '' ? '' : parseInt(e.target.value) })}
                     />
                     <span className="right-label">Days</span>
                   </div>
+                  <span className="field-hint">-1 for Lifetime</span>
                 </div>
               </div>
             </div>
@@ -252,13 +254,24 @@ const AdminPackages = () => {
                 </div>
 
                 <div
+                  className={`feature-toggle-card-small ${formData.isPublic ? 'active' : ''}`}
+                  onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                >
+                  <div className={`custom-switch-small ${formData.isPublic ? 'on' : ''}`}></div>
+                  <div className="feature-info">
+                    <div className="feature-name-small">Public Plan</div>
+                    <div className="feature-desc-small">Visible on landing</div>
+                  </div>
+                </div>
+
+                <div
                   className={`feature-toggle-card-small ${formData.isActive ? 'active' : ''}`}
                   onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
                 >
                   <div className={`custom-switch-small ${formData.isActive ? 'on' : ''}`}></div>
                   <div className="feature-info">
                     <div className="feature-name-small">Active Plan</div>
-                    <div className="feature-desc-small">Public</div>
+                    <div className="feature-desc-small">Published</div>
                   </div>
                 </div>
 
@@ -321,7 +334,7 @@ const AdminPackages = () => {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted">
                       <Calendar size={14} />
-                      <span>{pkg.isOneTime ? 'One-Time' : `${pkg.duration} Days`}</span>
+                      <span>{pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`}</span>
                     </div>
                   </div>
                 </td>
@@ -355,9 +368,14 @@ const AdminPackages = () => {
                   </div>
                 </td>
                 <td>
-                  <span className={`status-pill ${pkg.isActive ? 'enabled' : 'disabled'}`}>
-                    {pkg.isActive ? 'Enabled' : 'Disabled'}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span className={`status-pill ${pkg.isActive ? 'enabled' : 'disabled'}`}>
+                      {pkg.isActive ? 'Enabled' : 'Disabled'}
+                    </span>
+                    <span className={`status-pill ${pkg.isPublic ? 'enabled' : 'disabled'}`} style={{ fontSize: '0.7rem' }}>
+                      {pkg.isPublic ? '🌐 Public' : '🔒 Private'}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>

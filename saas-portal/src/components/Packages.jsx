@@ -141,7 +141,7 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
                 <div className="package-price">
                   <span className="currency">₹</span>
                   <span className="amount">{pkg.price}</span>
-                  <span className="period">/ {pkg.duration} Days</span>
+                  <span className="period">{pkg.duration === -1 ? '/ Lifetime' : `/ ${pkg.duration} Days`}</span>
                 </div>
               </div>
 

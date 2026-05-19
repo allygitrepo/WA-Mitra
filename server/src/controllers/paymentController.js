@@ -24,8 +24,11 @@ const paymentController = {
 
       // Path A: Free Package
       if (parseFloat(pkg.price) === 0) {
-        let expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+        let expiryDate = null;
+        if (pkg.duration !== -1) {
+          expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+        }
 
         // Update User
         user.packageId = pkg.id;
@@ -114,8 +117,11 @@ const paymentController = {
       await paymentRecord.save();
 
       // Update User
-      let expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+      let expiryDate = null;
+      if (pkg.duration !== -1) {
+        expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+      }
 
       user.packageId = pkg.id;
       user.expiresAt = expiryDate;

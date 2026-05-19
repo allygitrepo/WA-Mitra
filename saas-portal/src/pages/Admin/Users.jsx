@@ -169,7 +169,7 @@ const AdminUsers = () => {
                   <option value="">None / Remove Package</option>
                   {packages.map(pkg => (
                     <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} - ₹{pkg.price} ({pkg.isOneTime ? 'One-Time' : `${pkg.duration} Days`})
+                      {pkg.name} - ₹{pkg.price} ({pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`})
                     </option>
                   ))}
                 </select>

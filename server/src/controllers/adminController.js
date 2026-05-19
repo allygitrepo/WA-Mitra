@@ -70,8 +70,11 @@ const adminController = {
       const pkg = await Package.findByPk(packageId);
       if (!pkg) return res.status(404).json({ message: "Package not found" });
 
-      let expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+      let expiryDate = null;
+      if (pkg.duration !== -1) {
+        expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
+      }
 
       user.packageId = packageId;
       user.expiresAt = expiryDate;

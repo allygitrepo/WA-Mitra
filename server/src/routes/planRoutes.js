@@ -6,7 +6,7 @@ const router = express.Router();
 router.get("/all", async (req, res) => {
   try {
     const packages = await Package.findAll({
-      where: { isActive: true },
+      where: { isActive: true, isPublic: true },
       order: [['price', 'ASC']]
     });
     res.status(200).json({ packages });
