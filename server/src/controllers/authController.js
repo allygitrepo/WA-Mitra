@@ -267,8 +267,10 @@ const authController = {
   },
   getProfile: async (req, res) => {
     try {
-      const user = await User.findByPk(req.user.id, {
-        attributes: { exclude: ['password', 'otp', 'otpExpiry'] }
+      const { User: AssocUser, Package } = require("../models/associations");
+      const user = await AssocUser.findByPk(req.user.id, {
+        attributes: { exclude: ['password', 'otp', 'otpExpiry'] },
+        include: [{ model: Package, as: 'package' }]
       });
       
       const clientTimezone = req.headers['x-user-timezone'];

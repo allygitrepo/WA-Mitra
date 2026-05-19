@@ -20,6 +20,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import { authService } from '../../api/services';
 import ThemeToggle from '../../components/ThemeToggle';
 import { authService } from '../../api/services';
 import './Dashboard.css';
@@ -54,20 +55,21 @@ const DashboardLayout = () => {
     }
   }, [location.pathname]);
 
-  // Sync profile and timezone on dashboard mount
+  // Fetch latest user profile on mount to sync subscription details
   React.useEffect(() => {
-    const syncProfileTimezone = async () => {
+    const fetchProfile = async () => {
       try {
-        const res = await authService.getProfile();
-        if (res.data?.user) {
-          useAuthStore.getState().updateUser(res.data.user);
+        const profileRes = await authService.getProfile();
+        if (profileRes.data.user) {
+          useAuthStore.getState().updateUser(profileRes.data.user);
         }
       } catch (err) {
-        console.error('Failed to sync profile/timezone:', err);
+        console.error("Failed to load user profile:", err);
       }
     };
-    syncProfileTimezone();
+    fetchProfile();
   }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
