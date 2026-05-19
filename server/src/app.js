@@ -61,4 +61,20 @@ app.get(`${prefix}/test`, (req, res) => {
   res.json({ message: 'WA Mitra API is running' });
 })
 
+// Global Error Handler (to catch multer file size exceptions and return clean JSON)
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'File size exceeds the maximum 20MB limit.' 
+    });
+  }
+  
+  console.error("Unhandled Server Error:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
+});
+
 module.exports = app;

@@ -253,3 +253,343 @@
   background: var(--border);
   border-radius: 10px;
 }
+
+/* CSV Uploading Styling System */
+.input-method-selector {
+  display: inline-flex;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.method-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.method-btn:hover {
+  background: var(--surface);
+  color: var(--text-main);
+}
+
+.method-btn.active {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.csv-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.csv-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  transition: var(--transition);
+}
+
+.csv-dropzone:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.csv-dropzone-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 35px 20px;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.upload-icon {
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.csv-dropzone:hover .upload-icon {
+  color: var(--primary);
+  transform: translateY(-4px);
+}
+
+.upload-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.upload-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.csv-success-card {
+  background: rgba(0, 168, 132, 0.06);
+  border: 1px solid rgba(0, 168, 132, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.csv-success-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.csv-file-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.csv-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 168, 132, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.csv-filename {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  display: block;
+}
+
+.csv-details {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.csv-clear-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.csv-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--error);
+  color: var(--error);
+  transform: scale(1.05);
+}
+
+.csv-template-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.download-template-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.download-template-link:hover {
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.csv-preview-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 8px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preview-header h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.phone-indicator {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.csv-preview-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.csv-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.csv-preview-table th, .csv-preview-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.csv-preview-table th {
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.csv-preview-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.preview-footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+.message-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.placeholder-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.placeholder-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.placeholder-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.placeholder-tag {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.placeholder-tag:hover {
+  background: rgba(0, 168, 132, 0.08);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Premium Dark Custom Scrollbars for Tables & Textareas */
+.csv-preview-table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px; /* Horizontal scrollbar thickness */
+}
+
+.csv-preview-table-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 10px;
+}
+
+.csv-preview-table-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+  border: 2px solid var(--bg); /* Creates an elegant spacing effect */
+  transition: var(--transition);
+}
+
+.csv-preview-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+textarea.auth-input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+textarea.auth-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+textarea.auth-input::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+  border: 2px solid var(--surface); /* Matching parent background */
+  transition: var(--transition);
+}
+
+textarea.auth-input::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+
