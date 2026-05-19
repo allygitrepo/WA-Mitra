@@ -96,13 +96,13 @@ const instanceController = {
 
   initiateSession: async (req, res) => {
     try {
-      let { instanceKey } = req.body;
+      let { instanceKey, name: customName } = req.body;
       const userId = req.user.id;
 
       // If no instanceKey provided (External API flow), create a new one automatically
       if (!instanceKey) {
         const count = await WhatsAppInstance.count({ where: { userId } });
-        const name = `Session ${count + 1}`;
+        const name = customName || `Session ${count + 1}`;
         instanceKey = `inst_${crypto.randomBytes(8).toString("hex")}`;
 
         await WhatsAppInstance.create({

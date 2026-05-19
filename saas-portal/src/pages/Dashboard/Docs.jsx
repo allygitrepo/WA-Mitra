@@ -152,7 +152,7 @@ const Docs = () => {
                     </div>
                     <div className="pm-section">
                       <span className="pm-section-title">Request Body (First Time)</span>
-                      <div className="pm-val">{`{ }`}</div>
+                      <div className="pm-val">{`{ "name" : "WA-Mitra Instance" // Optional custom name}`}</div>
                     </div>
                   </div>
 
@@ -173,7 +173,6 @@ const Docs = () => {
                       <span className="pm-section-title">Request Body (Refresh)</span>
                       <div className="pm-val">{`{ 
   "instanceKey": "inst_8b108035af24b734",
-  "name": "Support WhatsApp" // Optional custom name
 }`}</div>
                     </div>
                   </div>

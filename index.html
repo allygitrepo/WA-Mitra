@@ -129,6 +129,9 @@
             <label>Bearer Token</label>
             <input type="text" id="token" placeholder="mitra_xxxxxxxxx">
 
+            <label>Instance Name (Optional)</label>
+            <input type="text" id="instanceName" placeholder="e.g. Bulk test">
+
             <button onclick="connectWhatsapp()" id="connectBtn">
                 Generate QR Code
             </button>
@@ -217,6 +220,8 @@
                 document.getElementById("qrImage").style.display = "none";
                 document.getElementById("connectStatus").innerHTML = "Initializing session...";
 
+                const instanceName = document.getElementById("instanceName").value;
+
                 const response = await fetch(
                     `${BASE_URL}/api/v1/instance/initiate`,
                     {
@@ -226,7 +231,8 @@
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            instanceKey: instanceKey || undefined
+                            instanceKey: instanceKey || undefined,
+                            name: instanceName || undefined
                         })
                     }
                 );
