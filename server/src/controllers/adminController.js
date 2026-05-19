@@ -1,5 +1,7 @@
 const { User, Package, WhatsAppInstance, MessageLog, Payment } = require("../models/associations");
 const whatsappService = require("../services/whatsappService");
+const emailService = require("../services/emailService");
+const emailTemplates = require("../services/emailTemplate");
 
 const adminController = {
   // User Management
@@ -91,6 +93,20 @@ const adminController = {
         transactionId: `ADMIN_ASSIGN_${Date.now()}`,
         razorpayOrderId: 'MANUALLY_ASSIGNED'
       });
+
+      // Send plan update email to user asynchronously
+      emailService.sendEmail(
+        user.email,
+        emailTemplates.planChangeEmail(
+          user.username,
+          pkg.name,
+          pkg.price,
+          pkg.duration,
+          pkg.instanceLimit,
+          pkg.messageLimit,
+          expiryDate
+        )
+      ).catch(err => console.error("Error sending plan assignment email:", err));
 
       res.status(200).json({ message: "Package assigned successfully", expiresAt: expiryDate });
     } catch (error) {

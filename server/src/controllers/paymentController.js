@@ -1,5 +1,7 @@
 const { User, Package, Payment } = require("../models/associations");
 const razorpayService = require("../services/razorpayService");
+const emailService = require("../services/emailService");
+const emailTemplates = require("../services/emailTemplate");
 
 const paymentController = {
   createOrder: async (req, res) => {
@@ -46,6 +48,20 @@ const paymentController = {
           transactionId: `FREE_${Date.now()}`,
           razorpayOrderId: 'FREE_PLAN'
         });
+
+        // Send plan update email to user asynchronously
+        emailService.sendEmail(
+          user.email,
+          emailTemplates.planChangeEmail(
+            user.username,
+            pkg.name,
+            pkg.price,
+            pkg.duration,
+            pkg.instanceLimit,
+            pkg.messageLimit,
+            expiryDate
+          )
+        ).catch(err => console.error("Error sending free plan activation email:", err));
 
         return res.status(200).json({ 
           message: "Package activated successfully", 
@@ -126,6 +142,20 @@ const paymentController = {
       user.packageId = pkg.id;
       user.expiresAt = expiryDate;
       await user.save();
+
+      // Send plan update email to user asynchronously
+      emailService.sendEmail(
+        user.email,
+        emailTemplates.planChangeEmail(
+          user.username,
+          pkg.name,
+          pkg.price,
+          pkg.duration,
+          pkg.instanceLimit,
+          pkg.messageLimit,
+          expiryDate
+        )
+      ).catch(err => console.error("Error sending paid plan activation email:", err));
 
       res.status(200).json({ 
         message: "Payment verified and package activated", 
