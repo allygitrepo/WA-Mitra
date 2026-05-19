@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import API from '../../api/axiosConfig';
+import toast from 'react-hot-toast';
 import '../Dashboard/Dashboard.css';
 import '../Dashboard/Overview.css';
 import './Admin.css';
@@ -55,13 +56,15 @@ const AdminUsers = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    const loadingToast = toast.loading("Creating admin account...");
     try {
       await API.post('/admin/users', formData);
       setShowForm(false);
       setFormData({ username: '', email: '', password: '', role: 'admin', packageId: '' });
       fetchUsers();
+      toast.success("Admin created successfully!", { id: loadingToast });
     } catch (err) {
-      alert("Failed to create admin");
+      toast.error("Failed to create admin account", { id: loadingToast });
     }
   };
 
@@ -87,21 +90,25 @@ const AdminUsers = () => {
 
   const handleStatusChange = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    const loadingToast = toast.loading("Updating user status...");
     try {
       await API.post('/admin/users/status', { userId, status: newStatus });
       setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      toast.success(`User status updated to ${newStatus}!`, { id: loadingToast });
     } catch (err) {
-      alert("Failed to update user status");
+      toast.error("Failed to update user status", { id: loadingToast });
     }
   };
 
   const handleAssignPackage = async (userId, packageId) => {
+    const loadingToast = toast.loading("Assigning package...");
     try {
       await API.post('/admin/users/assign-package', { userId, packageId });
       setAssigningUser(null);
       fetchUsers();
+      toast.success("Package assigned successfully!", { id: loadingToast });
     } catch (err) {
-      alert("Failed to assign package");
+      toast.error("Failed to assign package", { id: loadingToast });
     }
   };
 

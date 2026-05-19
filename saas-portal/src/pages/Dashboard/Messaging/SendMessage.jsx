@@ -5,6 +5,7 @@ import { instanceService, messageService, templateService } from '../../../api/s
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
+import CustomModal from '../../../components/CustomModal';
 
 const SendMessage = () => {
   const { searchQuery } = useOutletContext();
@@ -43,6 +44,16 @@ const SendMessage = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    placeholder: '',
+    defaultValue: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   // Load templates from database on mount (with localStorage fallback)
   useEffect(() => {
@@ -443,51 +454,7 @@ const SendMessage = () => {
     }
   };
 
-  const checkAndPromptSaveTemplate = async () => {
-    const currentMessage = mode === 'single' ? singleData.message : bulkData.message;
-    if (!currentMessage || !currentMessage.trim()) return;
-
-    // Check if the exact content is already saved as a template
-    const hasMatchingTemplate = savedTemplates.some(t => t.content.trim() === currentMessage.trim());
-    if (hasMatchingTemplate) return;
-
-    // Ask user if they want to save it as a template
-    const confirmSave = window.confirm("Would you like to save this custom message as a template before sending?");
-    if (confirmSave) {
-      const tplName = window.prompt("Enter a name for this template:");
-      if (tplName && tplName.trim()) {
-        // Validate unique name
-        if (savedTemplates.some(t => t.name.toLowerCase() === tplName.trim().toLowerCase())) {
-          toast.error('A template with this name already exists. Proceeding to send message without saving.');
-          return;
-        }
-        try {
-          const response = await templateService.createTemplate({
-            name: tplName.trim(),
-            content: currentMessage
-          });
-          if (response.data) {
-            const newTpl = response.data.template || response.data;
-            const updated = [newTpl, ...savedTemplates];
-            setSavedTemplates(updated);
-            localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
-            toast.success(`Template "${newTpl.name}" saved to database!`);
-          }
-        } catch (err) {
-          console.error('Error auto-saving template:', err);
-          toast.error('Failed to save template to database, but proceeding to send.');
-        }
-      }
-    }
-  };
-
-  const handleSendSingle = async (e) => {
-    e.preventDefault();
-    if (!selectedInstance) return toast.error('Please select an instance');
-    
-    // Check and ask to save as template if manually typed
-    await checkAndPromptSaveTemplate();
-    
+  const executeSendSingle = async () => {
     const loadingToast = toast.loading('Sending message...');
     setLoading(true);
     try {
@@ -504,15 +471,8 @@ const SendMessage = () => {
     }
   };
 
-  const handleSendBulk = async (e) => {
-    e.preventDefault();
-    if (!selectedInstance) return toast.error('Please select an instance');
-
-    // Check and ask to save as template if manually typed
-    await checkAndPromptSaveTemplate();
-
+  const executeSendBulk = async () => {
     setLoading(true);
-    
     const totalCount = bulkInputMethod === 'csv' ? csvData.rows.length : bulkData.numbers.length;
     const loadingToast = toast.loading(`Sending bulk messages (0/${totalCount})...`, {
       style: { minWidth: '250px' }
@@ -585,6 +545,141 @@ const SendMessage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const autoSaveTemplate = async (tplName, content) => {
+    if (savedTemplates.some(t => t.name.toLowerCase() === tplName.toLowerCase())) {
+      toast.error('A template with this name already exists. Sending message without saving.');
+      return;
+    }
+    try {
+      const response = await templateService.createTemplate({
+        name: tplName,
+        content: content
+      });
+      if (response.data) {
+        const newTpl = response.data.template || response.data;
+        const updated = [newTpl, ...savedTemplates];
+        setSavedTemplates(updated);
+        localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+        toast.success(`Template "${newTpl.name}" saved to database!`);
+      }
+    } catch (err) {
+      console.error('Error auto-saving template:', err);
+      toast.error('Failed to save template to database.');
+    }
+  };
+
+  const handleSendSingle = (e) => {
+    e.preventDefault();
+    if (!selectedInstance) return toast.error('Please select an instance');
+    
+    // Check if prompt is needed
+    const currentMessage = singleData.message;
+    if (!currentMessage || !currentMessage.trim()) {
+      executeSendSingle();
+      return;
+    }
+
+    const hasMatchingTemplate = savedTemplates.some(t => t.content.trim() === currentMessage.trim());
+    if (hasMatchingTemplate) {
+      executeSendSingle();
+      return;
+    }
+
+    // Open custom confirmation modal
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Save Template?',
+      message: 'Would you like to save this custom message as a template before sending?',
+      okText: 'Yes, Save',
+      cancelText: 'No, Just Send',
+      onConfirm: () => {
+        // Switch to naming prompt
+        setModalConfig({
+          isOpen: true,
+          type: 'prompt',
+          title: 'Name Template',
+          message: 'Enter a name for this WhatsApp message template:',
+          placeholder: 'e.g. Appointment Reminder',
+          defaultValue: '',
+          okText: 'Save & Send',
+          cancelText: 'Cancel & Send',
+          onConfirm: async (tplName) => {
+            setModalConfig(prev => ({ ...prev, isOpen: false }));
+            if (tplName && tplName.trim()) {
+              await autoSaveTemplate(tplName.trim(), currentMessage);
+            }
+            executeSendSingle();
+          },
+          onCancel: () => {
+            setModalConfig(prev => ({ ...prev, isOpen: false }));
+            executeSendSingle();
+          }
+        });
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeSendSingle();
+      }
+    });
+  };
+
+  const handleSendBulk = (e) => {
+    e.preventDefault();
+    if (!selectedInstance) return toast.error('Please select an instance');
+
+    // Check if prompt is needed
+    const currentMessage = bulkData.message;
+    if (!currentMessage || !currentMessage.trim()) {
+      executeSendBulk();
+      return;
+    }
+
+    const hasMatchingTemplate = savedTemplates.some(t => t.content.trim() === currentMessage.trim());
+    if (hasMatchingTemplate) {
+      executeSendBulk();
+      return;
+    }
+
+    // Open custom confirmation modal
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Save Template?',
+      message: 'Would you like to save this custom message as a template before sending?',
+      okText: 'Yes, Save',
+      cancelText: 'No, Just Send',
+      onConfirm: () => {
+        // Switch to naming prompt
+        setModalConfig({
+          isOpen: true,
+          type: 'prompt',
+          title: 'Name Template',
+          message: 'Enter a name for this WhatsApp message template:',
+          placeholder: 'e.g. Bulk Promo',
+          defaultValue: '',
+          okText: 'Save & Send',
+          cancelText: 'Cancel & Send',
+          onConfirm: async (tplName) => {
+            setModalConfig(prev => ({ ...prev, isOpen: false }));
+            if (tplName && tplName.trim()) {
+              await autoSaveTemplate(tplName.trim(), currentMessage);
+            }
+            executeSendBulk();
+          },
+          onCancel: () => {
+            setModalConfig(prev => ({ ...prev, isOpen: false }));
+            executeSendBulk();
+          }
+        });
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeSendBulk();
+      }
+    });
   };
 
   const currentFile = mode === 'single' ? singleData.file : bulkData.file;
@@ -973,6 +1068,18 @@ const SendMessage = () => {
           </form>
         </div>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        placeholder={modalConfig.placeholder}
+        defaultValue={modalConfig.defaultValue}
+        okText={modalConfig.okText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+      />
     </div>
   );
 };

@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import API from '../../api/axiosConfig';
+import toast from 'react-hot-toast';
+import CustomModal from '../../components/CustomModal';
 import '../Dashboard/Dashboard.css';
 import '../Dashboard/Overview.css';
 import './Admin.css';
@@ -27,6 +29,13 @@ const AdminPackages = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   const initialFormState = {
     name: '',
@@ -59,18 +68,21 @@ const AdminPackages = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const loadingToast = toast.loading("Saving plan details...");
     try {
       if (editingId) {
         await API.put(`/admin/packages/${editingId}`, formData);
+        toast.success("Package updated successfully!", { id: loadingToast });
       } else {
         await API.post('/admin/packages', formData);
+        toast.success("New package published successfully!", { id: loadingToast });
       }
       setShowForm(false);
       setEditingId(null);
       setFormData(initialFormState);
       fetchPackages();
     } catch (err) {
-      alert("Failed to save package");
+      toast.error("Failed to save package details", { id: loadingToast });
     }
   };
 
@@ -81,14 +93,30 @@ const AdminPackages = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure? Users on this package might be affected.")) return;
+  const executeDelete = async (id) => {
+    const loadingToast = toast.loading("Deleting service package...");
     try {
       await API.delete(`/admin/packages/${id}`);
       fetchPackages();
+      toast.success("Package deleted successfully.", { id: loadingToast });
     } catch (err) {
-      alert("Failed to delete package");
+      toast.error("Failed to delete package", { id: loadingToast });
     }
+  };
+
+  const handleDelete = (id) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Service Package?',
+      message: 'Are you sure you want to delete this subscription plan? Users currently enrolled under this package may be affected or lose access to specific boundaries. This action is irreversible.',
+      onConfirm: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeDelete(id);
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const filteredPackages = packages.filter(p =>
@@ -349,6 +377,15 @@ const AdminPackages = () => {
           </tbody>
         </table>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+        okText="Delete Package"
+        cancelText="Keep Package"
+      />
     </div>
   );
 };

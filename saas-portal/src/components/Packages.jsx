@@ -3,6 +3,7 @@ import { Check, Zap, Smartphone, MessageSquare, Shield, Layers, Loader2 } from '
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import useAuthStore from '../store/useAuthStore';
+import toast from 'react-hot-toast';
 import './Packages.css';
 
 const Packages = ({ hideHeader = false, showButtons = true }) => {
@@ -47,13 +48,14 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
       return;
     }
 
+    const loadingToast = toast.loading(`Initiating order for ${pkg.name}...`);
     try {
       setProcessingId(pkg.id);
       const res = await API.post('/payments/create-order', { packageId: pkg.id });
 
       if (res.data.isFree) {
         updateUser({ packageId: res.data.packageId });
-        alert("Free package activated successfully!");
+        toast.success("Free package activated successfully!", { id: loadingToast });
         navigate('/dashboard');
         return;
       }
@@ -67,6 +69,7 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
         description: `Activation of ${pkg.name} plan`,
         order_id: res.data.orderId,
         handler: async (response) => {
+          const verificationToast = toast.loading("Verifying payment transaction...");
           try {
             const verifyRes = await API.post('/payments/verify-payment', {
               razorpay_order_id: response.razorpay_order_id,
@@ -75,10 +78,10 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
               paymentRecordId: res.data.paymentRecordId
             });
             updateUser({ packageId: verifyRes.data.packageId });
-            alert("Payment successful! Your package is now active.");
+            toast.success("Payment successful! Your package is now active.", { id: verificationToast });
             navigate('/dashboard');
           } catch (err) {
-            alert("Payment verification failed. Please contact support.");
+            toast.error("Payment verification failed. Please contact support.", { id: verificationToast });
           }
         },
         prefill: {
@@ -90,11 +93,12 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
         },
       };
 
+      toast.dismiss(loadingToast);
       const rzp = new window.Razorpay(options);
       rzp.open();
 
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to initiate activation");
+      toast.error(err.response?.data?.message || "Failed to initiate activation", { id: loadingToast });
     } finally {
       setProcessingId(null);
     }

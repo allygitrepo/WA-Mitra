@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { tokenService } from '../../../api/services';
+import toast from 'react-hot-toast';
+import CustomModal from '../../../components/CustomModal';
 import './Tokens.css';
 
 const Tokens = () => {
@@ -9,6 +11,13 @@ const Tokens = () => {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   useEffect(() => {
     fetchTokens();
@@ -26,22 +35,40 @@ const Tokens = () => {
   };
 
   const handleCreate = async () => {
+    const loadingToast = toast.loading("Generating token...");
     try {
       await tokenService.createToken();
       fetchTokens();
+      toast.success("Token generated successfully!", { id: loadingToast });
     } catch (err) {
-      alert("Failed to generate token");
+      toast.error("Failed to generate token", { id: loadingToast });
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Deleting this token will break any apps using it. Continue?")) return;
+  const executeDelete = async (id) => {
+    const loadingToast = toast.loading("Revoking token...");
     try {
       await tokenService.deleteToken(id);
       fetchTokens();
+      toast.success("Token revoked successfully!", { id: loadingToast });
     } catch (err) {
-      alert("Failed to delete token");
+      toast.error("Failed to delete token", { id: loadingToast });
     }
+  };
+
+  const handleDelete = (id) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Revoke API Token?',
+      message: 'Deleting this token will instantly break any applications or API integrations using it. This action cannot be undone. Continue?',
+      onConfirm: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeDelete(id);
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const copyToClipboard = (text, id) => {
@@ -111,6 +138,15 @@ const Tokens = () => {
           </div>
         ))}
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+        okText="Yes, Revoke"
+        cancelText="Keep Token"
+      />
     </div>
   );
 };

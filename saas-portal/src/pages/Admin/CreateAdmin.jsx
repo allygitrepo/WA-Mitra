@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import API from '../../api/axiosConfig';
+import toast from 'react-hot-toast';
 import '../Dashboard/Dashboard.css';
 import './Admin.css';
 
@@ -27,14 +28,15 @@ const CreateAdmin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const loadingToast = toast.loading("Creating administrator...");
     try {
       // Logic to create admin would go here
       // For now, we assume it's a standard user creation with role: 'admin'
       await API.post('/auth/register', { ...formData, role: 'admin' });
-      alert("Admin created successfully!");
+      toast.success("Admin created successfully!", { id: loadingToast });
       navigate('/admin/users');
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to create admin");
+      toast.error(err.response?.data?.message || "Failed to create admin", { id: loadingToast });
     } finally {
       setLoading(false);
     }

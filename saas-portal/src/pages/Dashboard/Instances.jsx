@@ -15,6 +15,8 @@ import { useOutletContext, Link } from 'react-router-dom';
 import { instanceService } from '../../api/services';
 import useAuthStore from '../../store/useAuthStore';
 import API from '../../api/axiosConfig';
+import toast from 'react-hot-toast';
+import CustomModal from '../../components/CustomModal';
 import './Instances.css';
 
 const Instances = () => {
@@ -28,6 +30,13 @@ const Instances = () => {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [currentPackage, setCurrentPackage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   useEffect(() => {
     fetchData();
@@ -69,6 +78,7 @@ const Instances = () => {
   const handleCreate = async (e) => {
     if (e) e.preventDefault();
     setCreating(true);
+    const loadingToast = toast.loading("Creating instance...");
     try {
       const res = await instanceService.createInstance({ name: newName });
       const newKey = res.data.instance.instanceKey;
@@ -80,30 +90,49 @@ const Instances = () => {
       setStatusFilter('All Status'); // Ensure the new instance is visible
       setNewName('');
       setShowAddModal(false);
+      toast.success("Instance created and initialized!", { id: loadingToast });
     } catch (err) {
       console.error("Create & Link Error:", err);
-      alert("Failed to create and initiate instance");
+      toast.error("Failed to create and initiate instance", { id: loadingToast });
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = async (key) => {
-    if (!window.confirm("Are you sure you want to delete this instance? All session data will be lost.")) return;
+  const executeDelete = async (key) => {
+    const loadingToast = toast.loading("Deleting WhatsApp instance...");
     try {
       await instanceService.deleteInstance(key);
       fetchInstances();
+      toast.success("Instance deleted successfully.", { id: loadingToast });
     } catch (err) {
-      alert("Failed to delete instance");
+      toast.error("Failed to delete instance", { id: loadingToast });
     }
   };
 
+  const handleDelete = (key) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete WhatsApp Instance?',
+      message: 'Are you sure you want to delete this WhatsApp instance? All active sessions, linked chats, and logs will be permanently removed. This action is irreversible.',
+      onConfirm: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeDelete(key);
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const handleInitiate = async (key) => {
+    const loadingToast = toast.loading("Initializing session...");
     try {
       await instanceService.initiateSession(key);
       fetchInstances();
+      toast.success("Session initiated! Ready to link.", { id: loadingToast });
     } catch (err) {
-      alert("Failed to initiate session");
+      toast.error("Failed to initiate session", { id: loadingToast });
     }
   };
 
@@ -275,6 +304,15 @@ const Instances = () => {
         </div>
       )}
 
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+        okText="Delete Instance"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
