@@ -38,3 +38,9 @@ export const messageService = {
   getLogs: () => API.get('/messages/logs'),
   getReports: () => API.get('/messages/reports'),
 };
+
+export const templateService = {
+  getTemplates: () => API.get('/templates'),
+  createTemplate: (data) => API.post('/templates', data),
+  deleteTemplate: (id) => API.delete(`/templates/${id}`),
+};

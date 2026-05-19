@@ -9,6 +9,7 @@ const apiRoutes = require('./routes/apiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const planRoutes = require('./routes/planRoutes');
+const templateRoutes = require('./routes/templateRoutes');
 const checkStatusMiddleware = require('./middleware/checkStatusMiddleware');
 const authMiddleware = require('./middleware/authMiddleware');
 
@@ -49,6 +50,7 @@ app.use(`${prefix}/api/tokens`, authMiddleware, checkStatusMiddleware, tokenRout
 app.use(`${prefix}/api/instances`, authMiddleware, checkStatusMiddleware, instanceRoutes);
 app.use(`${prefix}/api/messages`, authMiddleware, checkStatusMiddleware, messageRoutes);
 app.use(`${prefix}/api/whatsapp`, authMiddleware, checkStatusMiddleware, whatsappRoutes);
+app.use(`${prefix}/api/templates`, authMiddleware, checkStatusMiddleware, templateRoutes);
 app.use(`${prefix}/api/payments`, paymentRoutes);
 app.use(`${prefix}/api/plans`, planRoutes);
 

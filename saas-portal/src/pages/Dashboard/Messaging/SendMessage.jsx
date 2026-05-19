@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { instanceService, messageService } from '../../../api/services';
+import { instanceService, messageService, templateService } from '../../../api/services';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
@@ -37,6 +37,112 @@ const SendMessage = () => {
     fileName: '',
     phoneHeader: ''
   });
+
+  // Template Management States
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+  // Load templates from database on mount (with localStorage fallback)
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const response = await templateService.getTemplates();
+        setSavedTemplates(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch templates from DB:', err);
+        const local = localStorage.getItem('wa_mitra_message_templates');
+        if (local) {
+          try {
+            setSavedTemplates(JSON.parse(local));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  const handleSaveTemplate = async () => {
+    const currentMessage = mode === 'single' ? singleData.message : bulkData.message;
+    if (!currentMessage.trim()) {
+      toast.error('Message content is empty. Type a template message first.');
+      return;
+    }
+    if (!newTemplateName.trim()) {
+      toast.error('Please enter a name for your template.');
+      return;
+    }
+
+    // Check if name already exists
+    if (savedTemplates.some(t => t.name.toLowerCase() === newTemplateName.trim().toLowerCase())) {
+      toast.error('A template with this name already exists.');
+      return;
+    }
+
+    try {
+      const response = await templateService.createTemplate({
+        name: newTemplateName.trim(),
+        content: currentMessage
+      });
+
+      if (response.data) {
+        // API returns { success: true, template: {...} }
+        const newTpl = response.data.template || response.data;
+        const updated = [newTpl, ...savedTemplates];
+        setSavedTemplates(updated);
+        localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+        setNewTemplateName('');
+        setShowSaveDialog(false);
+        toast.success(`Template "${newTpl.name}" saved to database!`);
+      }
+    } catch (err) {
+      console.error('Error saving template:', err);
+      toast.error(err.response?.data?.message || 'Failed to save template.');
+    }
+  };
+
+  const handleSelectTemplate = (content) => {
+    if (mode === 'single') {
+      setSingleData({ ...singleData, message: content });
+    } else {
+      setBulkData({ ...bulkData, message: content });
+    }
+    toast.success('Template loaded into editor.');
+  };
+
+  const handleDeleteTemplate = async (id, e) => {
+    e.stopPropagation();
+    try {
+      // If it is a numeric ID from the database, delete it from the backend
+      if (id && (typeof id === 'number' || !id.toString().startsWith('tpl_'))) {
+        const response = await templateService.deleteTemplate(id);
+        if (response.data?.success) {
+          const updated = savedTemplates.filter(t => t.id !== id);
+          setSavedTemplates(updated);
+          localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+          toast.success('Template deleted from database.');
+        } else {
+          // If delete was successful but returned standard response
+          const updated = savedTemplates.filter(t => t.id !== id);
+          setSavedTemplates(updated);
+          localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+          toast.success('Template deleted.');
+        }
+      } else {
+        // Purely local temporary template delete
+        const updated = savedTemplates.filter(t => t.id !== id);
+        setSavedTemplates(updated);
+        localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+        toast.success('Template deleted.');
+      }
+    } catch (err) {
+      console.error('Error deleting template:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete template from database.');
+    }
+  };
 
   useEffect(() => {
     fetchInstances();
@@ -337,9 +443,50 @@ const SendMessage = () => {
     }
   };
 
+  const checkAndPromptSaveTemplate = async () => {
+    const currentMessage = mode === 'single' ? singleData.message : bulkData.message;
+    if (!currentMessage || !currentMessage.trim()) return;
+
+    // Check if the exact content is already saved as a template
+    const hasMatchingTemplate = savedTemplates.some(t => t.content.trim() === currentMessage.trim());
+    if (hasMatchingTemplate) return;
+
+    // Ask user if they want to save it as a template
+    const confirmSave = window.confirm("Would you like to save this custom message as a template before sending?");
+    if (confirmSave) {
+      const tplName = window.prompt("Enter a name for this template:");
+      if (tplName && tplName.trim()) {
+        // Validate unique name
+        if (savedTemplates.some(t => t.name.toLowerCase() === tplName.trim().toLowerCase())) {
+          toast.error('A template with this name already exists. Proceeding to send message without saving.');
+          return;
+        }
+        try {
+          const response = await templateService.createTemplate({
+            name: tplName.trim(),
+            content: currentMessage
+          });
+          if (response.data) {
+            const newTpl = response.data.template || response.data;
+            const updated = [newTpl, ...savedTemplates];
+            setSavedTemplates(updated);
+            localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+            toast.success(`Template "${newTpl.name}" saved to database!`);
+          }
+        } catch (err) {
+          console.error('Error auto-saving template:', err);
+          toast.error('Failed to save template to database, but proceeding to send.');
+        }
+      }
+    }
+  };
+
   const handleSendSingle = async (e) => {
     e.preventDefault();
     if (!selectedInstance) return toast.error('Please select an instance');
+    
+    // Check and ask to save as template if manually typed
+    await checkAndPromptSaveTemplate();
     
     const loadingToast = toast.loading('Sending message...');
     setLoading(true);
@@ -360,6 +507,9 @@ const SendMessage = () => {
   const handleSendBulk = async (e) => {
     e.preventDefault();
     if (!selectedInstance) return toast.error('Please select an instance');
+
+    // Check and ask to save as template if manually typed
+    await checkAndPromptSaveTemplate();
 
     setLoading(true);
     
@@ -671,11 +821,107 @@ const SendMessage = () => {
                   </div>
                 )}
               </div>
+
+              {/* Template Controls Bar */}
+              <div className="template-controls-bar">
+                 <div className="template-selector-wrapper">
+                  {savedTemplates.length > 0 ? (
+                    <>
+                      <span className="template-label">Load Template:</span>
+                      <div className="template-dropdown-container">
+                        <select
+                          className="template-select"
+                          value={selectedTemplateId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedTemplateId(val);
+                            if (val) {
+                              const t = savedTemplates.find(tpl => tpl.id.toString() === val.toString());
+                              if (t) handleSelectTemplate(t.content);
+                            }
+                          }}
+                          data-lenis-prevent
+                        >
+                          <option value="">-- Choose Template --</option>
+                          {savedTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedTemplateId && (
+                          <button
+                            type="button"
+                            className="delete-template-btn-icon"
+                            onClick={async (e) => {
+                              await handleDeleteTemplate(selectedTemplateId, e);
+                              setSelectedTemplateId('');
+                            }}
+                            title="Delete this template"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="template-label" style={{ opacity: 0.6 }}>No saved templates yet. Create one on the right!</span>
+                  )}
+                </div>
+                
+                <div className="save-template-trigger-wrapper">
+                  {!showSaveDialog ? (
+                    <button
+                      type="button"
+                      className="save-template-trigger-btn"
+                      onClick={() => setShowSaveDialog(true)}
+                      title="Save current message as a reusable template"
+                    >
+                      Save as Template
+                    </button>
+                  ) : (
+                    <div className="save-template-inline-form">
+                      <input
+                        type="text"
+                        placeholder="Template Name"
+                        value={newTemplateName}
+                        onChange={(e) => setNewTemplateName(e.target.value)}
+                        className="template-name-input"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="btn-save-confirm"
+                        onClick={handleSaveTemplate}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-save-cancel"
+                        onClick={() => {
+                          setShowSaveDialog(false);
+                          setNewTemplateName('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <textarea 
                 id="bulk-message-textarea"
                 data-lenis-prevent
                 className="auth-input" 
-                style={{paddingLeft: '14px', height: mode === 'single' ? '120px' : '150px', resize: 'none'}} 
+                style={{
+                  paddingLeft: '14px', 
+                  height: mode === 'single' ? '120px' : '150px', 
+                  resize: 'none',
+                  borderRadius: '0 0 8px 8px',
+                  borderTop: 'none'
+                }} 
                 placeholder={
                   mode === 'single' 
                     ? "Type your message here..." 
