@@ -180,9 +180,9 @@
         // =========================
         // API BASE URL
         // =========================
-        // const BASE_URL = "https://silverapi.allysoftsolutions.com/wa-mitra";
+        const BASE_URL = "https://silverapi.allysoftsolutions.com/wa-mitra";
 
-        const BASE_URL = "http://localhost:3005/wa-mitra";
+        // const BASE_URL = "http://localhost:3005/wa-mitra";
 
         let instanceKey = localStorage.getItem("lastInstanceKey") || "";
         let timerInterval = null;
@@ -243,7 +243,7 @@
                 if (data.success) {
                     instanceKey = data.instanceKey;
                     localStorage.setItem("lastInstanceKey", instanceKey);
-                    
+
                     // Show Instance Key
                     const instanceBox = document.getElementById("instanceKeyBox");
                     instanceBox.style.display = "block";

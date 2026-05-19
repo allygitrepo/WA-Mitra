@@ -53,7 +53,7 @@ const Instances = () => {
       ]);
       setInstances(instRes.data.instances || []);
       const pkgs = pkgsRes.data.packages || [];
-      const pkg = pkgs.find(p => p.id === user?.packageId);
+      const pkg = pkgs.find(p => p.id === user?.packageId) || user?.package;
       setCurrentPackage(pkg);
     } catch (err) {
       console.error(err);

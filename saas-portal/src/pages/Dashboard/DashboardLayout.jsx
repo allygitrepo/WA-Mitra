@@ -19,6 +19,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import { authService } from '../../api/services';
 import ThemeToggle from '../../components/ThemeToggle';
 import './Dashboard.css';
 
@@ -51,6 +52,21 @@ const DashboardLayout = () => {
       setIsSidebarOpen(false);
     }
   }, [location.pathname]);
+
+  // Fetch latest user profile on mount to sync subscription details
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileRes = await authService.getProfile();
+        if (profileRes.data.user) {
+          useAuthStore.getState().updateUser(profileRes.data.user);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     logout();

@@ -71,7 +71,7 @@ const Settings = () => {
     }
   };
 
-  const currentPackage = packages.find(p => p.id === user?.packageId);
+  const currentPackage = packages.find(p => p.id === user?.packageId) || user?.package;
 
   const handleLogout = () => {
     logout();
@@ -215,7 +215,7 @@ const Settings = () => {
                   <div className="current-plan-card glass animate-pulse-slow">
                     <div className="plan-badge">CURRENT PLAN</div>
                     <h2>{currentPackage.name}</h2>
-                    <p className="opacity-60">{`Subscription valid until ${formatDate(user?.expiresAt)}`}</p>
+                    <p className="opacity-60">{`Subscription valid until ${currentPackage.duration === -1 ? 'Lifetime' : formatDate(user?.expiresAt)}`}</p>
 
                     <div className="plan-stats-grid mt-6">
                       <div className="plan-stat">
