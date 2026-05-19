@@ -294,9 +294,9 @@ const SendMessage = () => {
         return;
       }
 
-      // Detect phone number column case-insensitively
-      const phoneHeader = headers.find(h => /phone|number|mobile|contact/i.test(h)) || headers[0];
-      const placeholders = headers.filter(h => h !== phoneHeader);
+      // Enforce first column must be the phone number column
+      const phoneHeader = headers[0];
+      const placeholders = headers.slice(1);
 
       // Deduplicate by clean phone number
       const uniqueRows = [];
@@ -454,6 +454,23 @@ const SendMessage = () => {
     }
   };
 
+  const getMismatchedPlaceholders = () => {
+    if (mode !== 'bulk' || bulkInputMethod !== 'csv' || !csvData.fileName) return [];
+    const message = bulkData.message;
+    if (!message) return [];
+    
+    const placeholderRegex = /\{([^{}]+)\}/g;
+    const matches = [];
+    let match;
+    while ((match = placeholderRegex.exec(message)) !== null) {
+      matches.push(match[1]);
+    }
+    
+    const uniqueMsgPlaceholders = [...new Set(matches)];
+    const csvHeadersLower = csvData.headers.map(h => h.toLowerCase());
+    return uniqueMsgPlaceholders.filter(p => !csvHeadersLower.includes(p.toLowerCase()));
+  };
+
   const executeSendSingle = async () => {
     const loadingToast = toast.loading('Sending message...');
     setLoading(true);
@@ -484,6 +501,39 @@ const SendMessage = () => {
       if (bulkInputMethod === 'csv') {
         if (csvData.rows.length === 0) {
           toast.error('Please upload a valid CSV file first', { id: loadingToast });
+          setLoading(false);
+          return;
+        }
+
+        // Validate that headers exactly match message placeholders
+        const placeholderRegex = /\{([^{}]+)\}/g;
+        const matches = [];
+        let match;
+        while ((match = placeholderRegex.exec(bulkData.message)) !== null) {
+          matches.push(match[1]);
+        }
+        const msgPlaceholders = [...new Set(matches)];
+        
+        const sortedMsgPlaceholders = [...msgPlaceholders].sort();
+        const sortedCsvPlaceholders = [...csvData.placeholders].sort();
+        
+        const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
+          sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
+          
+        if (!isExactlySame) {
+          const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
+          const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
+          
+          let errorMsg = 'Header mismatch! ';
+          if (missingInCsv.length > 0) {
+            errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
+          }
+          if (extraInCsv.length > 0) {
+            errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
+          }
+          errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
+          
+          toast.error(errorMsg, { id: loadingToast });
           setLoading(false);
           return;
         }
@@ -629,6 +679,45 @@ const SendMessage = () => {
   const handleSendBulk = (e) => {
     e.preventDefault();
     if (!selectedInstance) return toast.error('Please select an instance');
+
+    if (bulkInputMethod === 'csv') {
+      if (csvData.rows.length === 0) {
+        toast.error('Please upload a valid CSV/Excel file first');
+        return;
+      }
+
+      // Extract placeholders from message
+      const placeholderRegex = /\{([^{}]+)\}/g;
+      const matches = [];
+      let match;
+      while ((match = placeholderRegex.exec(bulkData.message)) !== null) {
+        matches.push(match[1]);
+      }
+      const msgPlaceholders = [...new Set(matches)];
+      
+      const sortedMsgPlaceholders = [...msgPlaceholders].sort();
+      const sortedCsvPlaceholders = [...csvData.placeholders].sort();
+      
+      const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
+        sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
+        
+      if (!isExactlySame) {
+        const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
+        const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
+        
+        let errorMsg = 'Header mismatch! ';
+        if (missingInCsv.length > 0) {
+          errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
+        }
+        if (extraInCsv.length > 0) {
+          errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
+        }
+        errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
+        
+        toast.error(errorMsg);
+        return;
+      }
+    }
 
     // Check if prompt is needed
     const currentMessage = bulkData.message;
@@ -847,10 +936,25 @@ const SendMessage = () => {
                         </div>
                       )}
 
-                      <div className="csv-template-action">
+                      <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
                         <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
                           <FileText size={14} /> Download Sample CSV Template
                         </button>
+                        <div style={{
+                          fontSize: '0.8rem',
+                          color: '#eab308',
+                          background: 'rgba(234, 179, 8, 0.1)',
+                          border: '1px solid rgba(234, 179, 8, 0.2)',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          marginTop: '8px'
+                        }}>
+                          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                          <span><strong>Note:</strong> The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
+                        </div>
                       </div>
 
                       {csvData.rows.length > 0 && (
