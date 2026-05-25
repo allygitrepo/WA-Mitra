@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useSearchParams } from 'react-router-dom';
 import { instanceService, messageService, templateService } from '../../../api/services';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -9,7 +9,30 @@ import CustomModal from '../../../components/CustomModal';
 
 const SendMessage = () => {
   const { searchQuery } = useOutletContext();
+  const [searchParams] = useSearchParams();
+  const typeParam = searchParams.get('type') || 'contact';
   const [mode, setMode] = useState('single'); // 'single' or 'bulk'
+
+  useEffect(() => {
+    if (typeParam === 'contact') {
+      setMode('single');
+      setRecipientType('number');
+    } else if (typeParam === 'bulk') {
+      setMode('bulk');
+    } else if (typeParam === 'group') {
+      setMode('single');
+      setRecipientType('group');
+    }
+
+    const titles = {
+      contact: 'Direct Messaging',
+      bulk: 'Bulk Campaigns',
+      group: 'Group Broadcasting',
+      schedule: 'Message Scheduling',
+      cycling: 'Message Cycling'
+    };
+    document.title = `${titles[typeParam] || 'Direct Messaging'} | WA-Mitra`;
+  }, [typeParam]);
   const [instances, setInstances] = useState([]);
   const [selectedInstance, setSelectedInstance] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,9 +81,11 @@ const SendMessage = () => {
     message: '',
     placeholder: '',
     defaultValue: '',
-    onConfirm: () => {},
-    onCancel: () => {}
+    onConfirm: () => { },
+    onCancel: () => { }
   });
+
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState('');
 
   // Load templates from database on mount (with localStorage fallback)
   useEffect(() => {
@@ -286,7 +311,7 @@ const SendMessage = () => {
   const parseCSV = (text) => {
     const lines = text.split(/\r?\n/);
     if (lines.length === 0) return { headers: [], rows: [] };
-    
+
     const parseLine = (line) => {
       const result = [];
       let curVal = '';
@@ -311,7 +336,7 @@ const SendMessage = () => {
     const headers = rawHeaders
       .map(h => h.replace(/^["']|["']$/g, '').trim())
       .filter(h => h);
-    
+
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
@@ -387,7 +412,7 @@ const SendMessage = () => {
       });
 
       toast.success(
-        `Parsed ${uniqueRows.length} unique contacts successfully.` + 
+        `Parsed ${uniqueRows.length} unique contacts successfully.` +
         (duplicateCount > 0 ? ` (${duplicateCount} duplicate numbers ignored)` : '')
       );
     };
@@ -407,7 +432,7 @@ const SendMessage = () => {
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          
+
           // Convert sheet to json array of arrays
           const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
           if (sheetData.length === 0) {
@@ -417,7 +442,7 @@ const SendMessage = () => {
 
           const rawHeaders = sheetData[0];
           const headers = rawHeaders.map(h => (h ? h.toString().trim() : '')).filter(h => h);
-          
+
           const rows = [];
           for (let i = 1; i < sheetData.length; i++) {
             const rowData = sheetData[i];
@@ -464,7 +489,7 @@ const SendMessage = () => {
       ['919876543210', 'Rahul Sharma', 'Monday', '10:00 AM'],
       ['918765432109', 'Priya Patel', 'Tuesday', '02:30 PM']
     ];
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
@@ -493,7 +518,7 @@ const SendMessage = () => {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       const insertText = `{${placeholderName}}`;
-      
+
       const newText = currentMessage.substring(0, start) + insertText + currentMessage.substring(end);
       setMessage(newText);
 
@@ -511,14 +536,14 @@ const SendMessage = () => {
     if (mode !== 'bulk' || bulkInputMethod !== 'csv' || !csvData.fileName) return [];
     const message = bulkData.message;
     if (!message) return [];
-    
+
     const placeholderRegex = /\{([^{}]+)\}/g;
     const matches = [];
     let match;
     while ((match = placeholderRegex.exec(message)) !== null) {
       matches.push(match[1]);
     }
-    
+
     const uniqueMsgPlaceholders = [...new Set(matches)];
     const csvHeadersLower = csvData.headers.map(h => h.toLowerCase());
     return uniqueMsgPlaceholders.filter(p => !csvHeadersLower.includes(p.toLowerCase()));
@@ -539,7 +564,7 @@ const SendMessage = () => {
         for (let i = 0; i < selectedGroups.length; i++) {
           const group = selectedGroups[i];
           toast.loading(`Sending message to group (${i + 1}/${selectedGroups.length}): ${group.subject}...`, { id: loadingToast });
-          
+
           await messageService.sendMessage({
             ...singleData,
             number: group.id,
@@ -551,7 +576,7 @@ const SendMessage = () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-        
+
         toast.success(`Message sent to all ${selectedGroups.length} groups successfully!`, { id: loadingToast });
         setSelectedGroups([]);
         setGroupSearchQuery('');
@@ -596,17 +621,17 @@ const SendMessage = () => {
           matches.push(match[1]);
         }
         const msgPlaceholders = [...new Set(matches)];
-        
+
         const sortedMsgPlaceholders = [...msgPlaceholders].sort();
         const sortedCsvPlaceholders = [...csvData.placeholders].sort();
-        
+
         const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
           sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
-          
+
         if (!isExactlySame) {
           const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
           const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
-          
+
           let errorMsg = 'Header mismatch! ';
           if (missingInCsv.length > 0) {
             errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
@@ -615,7 +640,7 @@ const SendMessage = () => {
             errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
           }
           errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
-          
+
           toast.error(errorMsg, { id: loadingToast });
           setLoading(false);
           return;
@@ -660,7 +685,7 @@ const SendMessage = () => {
       });
 
       const { results } = res.data;
-      
+
       if (results.failed === 0) {
         toast.success(`Sent all ${results.sent} messages successfully!`, { id: loadingToast, duration: 5000 });
       } else {
@@ -706,7 +731,7 @@ const SendMessage = () => {
   const handleSendSingle = (e) => {
     e.preventDefault();
     if (!selectedInstance) return toast.error('Please select an instance');
-    
+
     // Check if prompt is needed
     const currentMessage = singleData.message;
     if (!currentMessage || !currentMessage.trim()) {
@@ -777,17 +802,17 @@ const SendMessage = () => {
         matches.push(match[1]);
       }
       const msgPlaceholders = [...new Set(matches)];
-      
+
       const sortedMsgPlaceholders = [...msgPlaceholders].sort();
       const sortedCsvPlaceholders = [...csvData.placeholders].sort();
-      
+
       const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
         sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
-        
+
       if (!isExactlySame) {
         const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
         const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
-        
+
         let errorMsg = 'Header mismatch! ';
         if (missingInCsv.length > 0) {
           errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
@@ -796,7 +821,7 @@ const SendMessage = () => {
           errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
         }
         errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
-        
+
         toast.error(errorMsg);
         return;
       }
@@ -856,581 +881,1005 @@ const SendMessage = () => {
 
   const currentFile = mode === 'single' ? singleData.file : bulkData.file;
 
+  useEffect(() => {
+    if (!currentFile) {
+      setMediaPreviewUrl('');
+      return;
+    }
+
+    const isImage = currentFile.type?.startsWith('image/') ||
+      ['.jpg', '.jpeg', '.png', '.gif'].some(ext => currentFile.name?.toLowerCase().endsWith(ext));
+
+    if (isImage) {
+      const objectUrl = URL.createObjectURL(currentFile);
+      setMediaPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setMediaPreviewUrl('');
+    }
+  }, [currentFile]);
+
+  const activeInstanceObj = instances.find(i => i.instanceKey === selectedInstance);
+  const instanceNameForHeader = activeInstanceObj ? activeInstanceObj.name : 'WA-Mitra Gateway';
+  const instanceAvatarForHeader = activeInstanceObj ? activeInstanceObj.profilePic : null;
+
+  const formatPreviewText = (text) => {
+    if (!text) return '';
+
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    // Underline formatting: __text__ -> <u>text</u>
+    escaped = escaped.replace(/__(.*?)__/g, '<u>$1</u>');
+
+    // Bold formatting: *text* -> <strong>text</strong>
+    escaped = escaped.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+
+    // Italic formatting: _text_ -> <em>text</em>
+    escaped = escaped.replace(/_(.*?)_/g, '<em>$1</em>');
+
+    // Strikethrough formatting: ~text~ -> <del>text</del>
+    escaped = escaped.replace(/~(.*?)~/g, '<del>$1</del>');
+
+    // Monospace code formatting: `code` -> <code>code</code>
+    escaped = escaped.replace(/`(.*?)`/g, '<code>$1</code>');
+
+    // Placeholders: {PlaceholderName} -> <span class="preview-placeholder-badge">{PlaceholderName}</span>
+    escaped = escaped.replace(/\{([^{}]+)\}/g, '<span class="preview-placeholder-badge">{$1}</span>');
+
+    // Line breaks: \n -> <br />
+    escaped = escaped.replace(/\n/g, '<br />');
+
+    return escaped;
+  };
+
+  const handleFormatText = (formatType) => {
+    const textarea = document.getElementById('bulk-message-textarea');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = mode === 'single' ? singleData.message : bulkData.message;
+    const selectedText = text.substring(start, end);
+
+    let prefix = '';
+    let suffix = '';
+
+    switch (formatType) {
+      case 'bold':
+        prefix = '*';
+        suffix = '*';
+        break;
+      case 'italic':
+        prefix = '_';
+        suffix = '_';
+        break;
+      case 'underline':
+        prefix = '__';
+        suffix = '__';
+        break;
+      case 'strikethrough':
+        prefix = '~';
+        suffix = '~';
+        break;
+      case 'code':
+        prefix = '`';
+        suffix = '`';
+        break;
+      default:
+        break;
+    }
+
+    const formattedText = prefix + selectedText + suffix;
+    const newText = text.substring(0, start) + formattedText + text.substring(end);
+
+    const setMessage = mode === 'single'
+      ? (msg) => setSingleData({ ...singleData, message: msg })
+      : (msg) => setBulkData({ ...bulkData, message: msg });
+
+    setMessage(newText);
+
+    // Refocus and select the formatted text
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+    }, 0);
+  };
+
   // Filter groups alphabetically-sorted list by search query. Show all if empty.
   const filteredGroupsList = groups.filter(g => {
     if (!groupSearchQuery.trim()) return true;
     return (g.subject || '').toLowerCase().includes(groupSearchQuery.toLowerCase());
   });
 
+  const getHeaderDetails = () => {
+    switch (typeParam) {
+      case 'bulk':
+        return {
+          title: "Bulk Campaigns",
+          subtitle: "Broadcast customized messages to a list of contacts manually or via CSV/Excel."
+        };
+      case 'group':
+        return {
+          title: "Group Broadcasting",
+          subtitle: "Dispatch messages to multiple WhatsApp participating groups."
+        };
+      case 'schedule':
+        return {
+          title: "Message Scheduling",
+          subtitle: "Schedule automated campaigns to run at specific dates and times."
+        };
+      case 'cycling':
+        return {
+          title: "Message Cycling",
+          subtitle: "Rotate messaging across multiple linked instances to distribute traffic."
+        };
+      case 'contact':
+      default:
+        return {
+          title: "Direct Messaging",
+          subtitle: "Send single WhatsApp messages to specific contact numbers."
+        };
+    }
+  };
+
+  const headerDetails = getHeaderDetails();
+
+  const renderSchedulingUI = () => {
+    return (
+      <div className="messaging-body animate-fade-in">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          <div className="scheduling-form-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--text-main)' }}>Create New Scheduled Campaign</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div className="form-group">
+                <label>Select Instance</label>
+                <select className="auth-input" style={{ paddingLeft: '14px' }} value={selectedInstance} onChange={e => setSelectedInstance(e.target.value)}>
+                  {instances.map(inst => (
+                    <option key={inst.instanceKey} value={inst.instanceKey}>{inst.name} ({inst.phone})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Campaign Name</label>
+                <input type="text" className="auth-input" style={{ paddingLeft: '14px' }} placeholder="e.g. June Promotional Offer" />
+              </div>
+              <div className="form-group">
+                <label>Target Date & Time</label>
+                <input type="datetime-local" className="auth-input" style={{ paddingLeft: '14px' }} />
+              </div>
+              <div className="form-group">
+                <label>Recurrence</label>
+                <select className="auth-input" style={{ paddingLeft: '14px' }}>
+                  <option value="once">One-Time</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label>Message Template</label>
+              <textarea className="auth-input" style={{ paddingLeft: '14px', height: '100px', resize: 'none' }} placeholder="Type scheduled message content..."></textarea>
+            </div>
+
+            <button type="button" className="btn-primary" onClick={() => toast.success('Campaign scheduled successfully! (Mock Action)')}>
+              Schedule Campaign <Send size={16} />
+            </button>
+          </div>
+
+          <div className="schedules-list-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '16px', color: 'var(--text-main)' }}>Active Schedules</h3>
+            <div className="csv-preview-table-container" style={{ maxHeight: 'none' }}>
+              <table className="csv-preview-table">
+                <thead>
+                  <tr>
+                    <th>Campaign Name</th>
+                    <th>Instance</th>
+                    <th>Scheduled Date/Time</th>
+                    <th>Recurrence</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ fontWeight: '600' }}>Welcome Follow-up</td>
+                    <td>Customer Support Line</td>
+                    <td>2026-06-01 10:00 AM</td>
+                    <td>Daily</td>
+                    <td><span className="status-badge" data-status="connected" style={{ display: 'inline-flex' }}>Active</span></td>
+                    <td><button className="remove-num-btn" style={{ width: '28px', height: '28px' }} onClick={() => toast.success('Schedule canceled')}><X size={14} /></button></td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: '600' }}>Weekend Promo Broadcast</td>
+                    <td>Marketing Account</td>
+                    <td>2026-06-05 06:00 PM</td>
+                    <td>Once</td>
+                    <td><span className="status-badge" data-status="connected" style={{ display: 'inline-flex' }}>Active</span></td>
+                    <td><button className="remove-num-btn" style={{ width: '28px', height: '28px' }} onClick={() => toast.success('Schedule canceled')}><X size={14} /></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCyclingUI = () => {
+    return (
+      <div className="messaging-body animate-fade-in">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          <div className="cycling-form-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '14px', color: 'var(--text-main)' }}>Message Cycling & Account Rotation</h3>
+            <p className="page-subtitle" style={{ marginBottom: '24px', fontSize: '0.85rem' }}>Distribute campaigns across multiple linked accounts automatically to balance traffic and lower account restriction risks.</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div className="form-group">
+                <label>Select Rotation Pool (Accounts)</label>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  background: 'var(--surface-hover)',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)'
+                }}>
+                  {instances.length === 0 ? (
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No connected instances available</span>
+                  ) : (
+                    instances.map(inst => (
+                      <label key={inst.instanceKey} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input type="checkbox" defaultChecked />
+                        <span>{inst.name} (+{inst.phone})</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label>Rotation Interval (Messages count)</label>
+                  <input type="number" className="auth-input" style={{ paddingLeft: '14px' }} defaultValue="5" min="1" placeholder="e.g. Switch account every X messages" />
+                </div>
+                <div>
+                  <label>Delay between messages (Seconds)</label>
+                  <input type="number" className="auth-input" style={{ paddingLeft: '14px' }} defaultValue="30" min="1" placeholder="e.g. 10" />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label>Campaign Message Content</label>
+              <textarea className="auth-input" style={{ paddingLeft: '14px', height: '100px', resize: 'none' }} placeholder="Type cycling campaign content..."></textarea>
+            </div>
+
+            <button type="button" className="btn-primary" onClick={() => toast.success('Rotation campaign initiated! (Mock Action)')}>
+              Launch Rotating Campaign <Send size={16} />
+            </button>
+          </div>
+
+          <div className="schedules-list-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '16px', color: 'var(--text-main)' }}>Live Pool Logs & Health</h3>
+            <div className="csv-preview-table-container" style={{ maxHeight: 'none' }}>
+              <table className="csv-preview-table">
+                <thead>
+                  <tr>
+                    <th>Rotation Account</th>
+                    <th>Cycle Status</th>
+                    <th>Dispatched today</th>
+                    <th>Current Queue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {instances.map((inst, index) => (
+                    <tr key={index}>
+                      <td style={{ fontWeight: '600' }}>{inst.name} (+{inst.phone})</td>
+                      <td><span className="status-badge" data-status={index === 0 ? "connected" : "disconnected"} style={{ display: 'inline-flex' }}>{index === 0 ? "Active Thread" : "Idle"}</span></td>
+                      <td>{Math.floor(Math.random() * 20) + 5} sent</td>
+                      <td>{index === 0 ? "4 pending" : "0 pending"}</td>
+                    </tr>
+                  ))}
+                  {instances.length === 0 && (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '12px', color: 'var(--text-muted)' }}>No instances in pool. Connect accounts in Instances.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="messaging-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Messaging Portal</h1>
-          <p className="page-subtitle">Send single or bulk messages via your linked instances.</p>
+          <h1 className="page-title">{headerDetails.title}</h1>
+          <p className="page-subtitle">{headerDetails.subtitle}</p>
         </div>
       </div>
 
       <div className="messaging-card glass">
-        <div className="messaging-tabs">
-          <button 
-            type="button"
-            className={`tab-item ${mode === 'single' ? 'active' : ''}`}
-            onClick={() => setMode('single')}
-          >
-            <Send size={18} /> <span>Single Message</span>
-          </button>
-          <button 
-            type="button"
-            className={`tab-item ${mode === 'bulk' ? 'active' : ''}`}
-            onClick={() => setMode('bulk')}
-          >
-            <Users size={18} /> <span>Bulk Messaging</span>
-          </button>
-        </div>
-
-        <div className="messaging-body">
-          <div className="form-row" style={{marginBottom: '24px'}}>
-            <div className="form-group" style={{maxWidth: '400px'}}>
-              <label>Select WhatsApp Instance</label>
-              <select 
-                className="auth-input" 
-                style={{paddingLeft: '14px'}}
-                value={selectedInstance}
-                onChange={(e) => setSelectedInstance(e.target.value)}
-              >
-                {instances.length === 0 && <option value="">No connected instances found</option>}
-                {instances
-                  .filter(i => (i.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()))
-                  .map(inst => (
-                    <option key={inst.instanceKey} value={inst.instanceKey}>
-                      {inst.name} ({inst.phone})
-                    </option>
-                  ))
-                }
-              </select>
+        {typeParam === 'schedule' ? (
+          renderSchedulingUI()
+        ) : typeParam === 'cycling' ? (
+          renderCyclingUI()
+        ) : (
+          <div className="messaging-body">
+            <div className="form-row" style={{ marginBottom: '24px' }}>
+              <div className="form-group" style={{ maxWidth: '400px' }}>
+                <label>Select WhatsApp Instance</label>
+                <select
+                  className="auth-input"
+                  style={{ paddingLeft: '14px' }}
+                  value={selectedInstance}
+                  onChange={(e) => setSelectedInstance(e.target.value)}
+                >
+                  {instances.length === 0 && <option value="">No connected instances found</option>}
+                  {instances
+                    .filter(i => (i.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()))
+                    .map(inst => (
+                      <option key={inst.instanceKey} value={inst.instanceKey}>
+                        {inst.name} ({inst.phone})
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
             </div>
-          </div>
 
-          <form className="messaging-form" onSubmit={mode === 'single' ? handleSendSingle : handleSendBulk}>
-            <div className="form-group">
-              <label>
-                {mode === 'single' 
-                  ? (recipientType === 'number' ? 'Recipient Number' : 'Select WhatsApp Group') 
-                  : 'Recipient Numbers'}
-              </label>
-              
-              {mode === 'single' && (
-                <div className="input-method-selector" style={{ marginBottom: '14px', maxWidth: '350px' }}>
-                  <button
-                    type="button"
-                    className={`method-btn ${recipientType === 'number' ? 'active' : ''}`}
-                    onClick={() => {
-                      setRecipientType('number');
-                      setSingleData(prev => ({ ...prev, number: '' }));
-                    }}
-                  >
-                    Contact Number
-                  </button>
-                  <button
-                    type="button"
-                    className={`method-btn ${recipientType === 'group' ? 'active' : ''}`}
-                    onClick={() => {
-                      setRecipientType('group');
-                      if (groups.length > 0 && selectedGroups.length === 0) {
-                        setSelectedGroups([groups[0]]);
-                      }
-                      setGroupSearchQuery('');
-                    }}
-                  >
-                    WhatsApp Group
-                  </button>
-                </div>
-              )}
+            <div className="messaging-layout">
+              <div className="messaging-form-col">
+                <form className="messaging-form" onSubmit={mode === 'single' ? handleSendSingle : handleSendBulk}>
+                  <div className="form-group">
+                    <label>
+                      {mode === 'single'
+                        ? (recipientType === 'number' ? 'Recipient Number' : 'Select WhatsApp Group')
+                        : 'Recipient Numbers'}
+                    </label>
 
-              {mode === 'single' ? (
-                recipientType === 'number' ? (
-                  <input 
-                    type="text" 
-                    className="auth-input" 
-                    style={{paddingLeft: '14px'}} 
-                    placeholder="e.g. 919876543210"
-                    value={singleData.number}
-                    onChange={(e) => setSingleData({...singleData, number: e.target.value})}
-                    required
-                  />
-                ) : (
-                  <div className="searchable-dropdown-container" style={{ position: 'relative' }}>
-                    {/* Render Selected Groups Tags */}
-                    {selectedGroups.length > 0 && (
-                      <div className="selected-groups-tags" style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '6px',
-                        marginBottom: '10px'
-                      }}>
-                        {selectedGroups.map(group => (
-                          <div 
-                            key={group.id} 
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              background: 'rgba(255, 255, 255, 0.08)',
-                              border: '1px solid rgba(255, 255, 255, 0.1)',
-                              borderRadius: '6px',
-                              padding: '4px 10px',
-                              fontSize: '0.85rem',
-                              color: 'var(--text)'
-                            }}
-                          >
-                            <span>{group.subject}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                              }}
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                padding: 0,
-                                cursor: 'pointer',
-                                color: 'rgba(255, 255, 255, 0.5)',
-                                display: 'flex',
-                                alignItems: 'center'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <input 
-                      type="text"
-                      className="auth-input"
-                      style={{ paddingLeft: '14px', width: '100%' }}
-                      placeholder={loadingGroups ? "Loading groups..." : "Search and select groups..."}
-                      value={groupSearchQuery}
-                      onChange={(e) => {
-                        setGroupSearchQuery(e.target.value);
-                        setIsOpenGroupDropdown(true);
-                      }}
-                      onFocus={() => setIsOpenGroupDropdown(true)}
-                      disabled={loadingGroups}
-                      required={selectedGroups.length === 0}
-                    />
-                    
-                    {isOpenGroupDropdown && !loadingGroups && (
-                      <div 
-                        className="dropdown-list-portal glass" 
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          zIndex: 1000,
-                          maxHeight: '220px',
-                          overflowY: 'auto',
-                          marginTop: '6px',
-                          borderRadius: '8px',
-                          background: 'rgba(20, 20, 25, 0.95)',
-                          backdropFilter: 'blur(10px)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
-                        }}
-                        data-lenis-prevent
-                      >
-                        {groups.length === 0 ? (
-                          <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                            No participating groups found for this instance
-                          </div>
-                        ) : filteredGroupsList.length === 0 ? (
-                          <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                            No groups found matching search query
-                          </div>
-                        ) : (
-                          filteredGroupsList.map(group => {
-                            const isSelected = selectedGroups.some(g => g.id === group.id);
-                            return (
-                              <div
-                                key={group.id}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                  } else {
-                                    setSelectedGroups(prev => [...prev, group]);
-                                  }
-                                  setGroupSearchQuery('');
-                                }}
-                                style={{
-                                  padding: '10px 14px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                  color: isSelected ? 'var(--primary)' : 'var(--text)',
-                                  background: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  fontSize: '0.9rem',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent'}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontWeight: '500' }}>{group.subject}</span>
-                                  {isSelected && <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>(Selected)</span>}
-                                </div>
-                                <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{group.participantsCount} members</span>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              ) : (
-                <div className="bulk-numbers-section">
-                  <div className="input-method-selector">
-                    <button
-                      type="button"
-                      className={`method-btn ${bulkInputMethod === 'manual' ? 'active' : ''}`}
-                      onClick={() => setBulkInputMethod('manual')}
-                    >
-                      <Users size={16} /> Manual Input
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-btn ${bulkInputMethod === 'csv' ? 'active' : ''}`}
-                      onClick={() => setBulkInputMethod('csv')}
-                    >
-                      <FileUp size={16} /> CSV Upload
-                    </button>
-                  </div>
-
-                  {bulkInputMethod === 'manual' ? (
-                    <>
-                      <div className="form-group mb-4" style={{maxWidth: '250px'}}>
-                        <label style={{fontSize: '0.8rem', opacity: 0.8}}>How many numbers do you have? (Optional)</label>
-                        <input 
-                          type="number" 
-                          className="auth-input" 
-                          style={{paddingLeft: '14px'}} 
-                          placeholder="Enter count"
-                          value={numberCount}
-                          min="1"
-                          onChange={(e) => handleNumberCountChange(e.target.value)}
+                    {mode === 'single' ? (
+                      recipientType === 'number' ? (
+                        <input
+                          type="text"
+                          className="auth-input"
+                          style={{ paddingLeft: '14px' }}
+                          placeholder="e.g. 919876543210"
+                          value={singleData.number}
+                          onChange={(e) => setSingleData({ ...singleData, number: e.target.value })}
+                          required
                         />
-                      </div>
-
-                      <div className="numbers-list-grid" data-lenis-prevent>
-                        {bulkData.numbers.map((num, idx) => (
-                          <div key={idx} className="number-input-row">
-                            <div className="input-with-count">
-                              <span className="idx-tag">{idx + 1}</span>
-                              <input 
-                                type="text" 
-                                className="auth-input" 
-                                style={{paddingLeft: '35px'}} 
-                                placeholder="919876543210"
-                                value={num}
-                                onChange={(e) => updateNumber(idx, e.target.value)}
-                                required={bulkInputMethod === 'manual'}
-                              />
-                            </div>
-                            {bulkData.numbers.length > 1 && (
-                              <button type="button" className="remove-num-btn" onClick={() => removeNumberField(idx)}>
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <button type="button" className="add-number-btn mt-4" onClick={addNumberField}>
-                        <Plus size={16} /> Add Another Number
-                      </button>
-                    </>
-                  ) : (
-                    <div className="csv-upload-container animate-fade-in">
-                      {!csvData.fileName ? (
-                        <div className="csv-dropzone">
-                          <input 
-                            type="file" 
-                            id="csv-file-input" 
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleFileUpload}
-                            hidden 
-                          />
-                          <label htmlFor="csv-file-input" className="csv-dropzone-label">
-                            <FileUp size={32} className="upload-icon" />
-                            <span className="upload-title">Choose CSV/Excel File</span>
-                            <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
-                          </label>
-                        </div>
                       ) : (
-                        <div className="csv-success-card">
-                          <div className="csv-success-header">
-                            <div className="csv-file-info">
-                              <div className="csv-icon-wrapper">
-                                <FileText size={24} className="csv-icon" />
-                              </div>
-                              <div>
-                                <span className="csv-filename">{csvData.fileName}</span>
-                                <span className="csv-details">
-                                  {csvData.rows.length} unique contacts parsed successfully
-                                </span>
-                              </div>
+                        <div className="searchable-dropdown-container" style={{ position: 'relative' }}>
+                          {/* Render Selected Groups Tags */}
+                          {selectedGroups.length > 0 && (
+                            <div className="selected-groups-tags" style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '6px',
+                              marginBottom: '10px'
+                            }}>
+                              {selectedGroups.map(group => (
+                                <div
+                                  key={group.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '6px',
+                                    padding: '4px 10px',
+                                    fontSize: '0.85rem',
+                                    color: 'var(--text)'
+                                  }}
+                                >
+                                  <span>{group.subject}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                    }}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      padding: 0,
+                                      cursor: 'pointer',
+                                      color: 'rgba(255, 255, 255, 0.5)',
+                                      display: 'flex',
+                                      alignItems: 'center'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                            <button type="button" className="csv-clear-btn" onClick={clearCSV} title="Clear uploaded CSV">
-                              <X size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                          )}
 
-                      <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                        <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
-                          <FileText size={14} /> Download Sample CSV Template
-                        </button>
-                        <div style={{
-                          fontSize: '0.8rem',
-                          color: '#eab308',
-                          background: 'rgba(234, 179, 8, 0.1)',
-                          border: '1px solid rgba(234, 179, 8, 0.2)',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginTop: '8px'
-                        }}>
-                          <AlertCircle size={16} style={{ flexShrink: 0 }} />
-                          <span><strong>Note:</strong> The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
-                        </div>
-                      </div>
+                          <input
+                            type="text"
+                            className="auth-input"
+                            style={{ paddingLeft: '14px', width: '100%' }}
+                            placeholder={loadingGroups ? "Loading groups..." : "Search and select groups..."}
+                            value={groupSearchQuery}
+                            onChange={(e) => {
+                              setGroupSearchQuery(e.target.value);
+                              setIsOpenGroupDropdown(true);
+                            }}
+                            onFocus={() => setIsOpenGroupDropdown(true)}
+                            disabled={loadingGroups}
+                            required={selectedGroups.length === 0}
+                          />
 
-                      {csvData.rows.length > 0 && (
-                        <div className="csv-preview-section">
-                          <div className="preview-header">
-                            <h3>CSV Data Preview ({csvData.rows.length} Contacts)</h3>
-                            <span className="phone-indicator">Phone number column detected: <strong>{csvData.phoneHeader}</strong></span>
-                          </div>
-                          <div className="csv-preview-table-container" data-lenis-prevent>
-                            <table className="csv-preview-table">
-                              <thead>
-                                <tr>
-                                  <th>#</th>
-                                  {csvData.headers.map((h, idx) => (
-                                    <th key={idx}>{h}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {csvData.rows.slice(0, 10).map((row, rIdx) => (
-                                  <tr key={rIdx}>
-                                    <td>{rIdx + 1}</td>
-                                    {csvData.headers.map((h, cIdx) => (
-                                      <td key={cIdx}>{row[h]}</td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          {csvData.rows.length > 10 && (
-                            <div className="preview-footer">
-                              Showing first 10 rows of {csvData.rows.length} total unique rows.
+                          {isOpenGroupDropdown && !loadingGroups && (
+                            <div
+                              className="dropdown-list-portal glass"
+                              style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                right: 0,
+                                zIndex: 1000,
+                                maxHeight: '220px',
+                                overflowY: 'auto',
+                                marginTop: '6px',
+                                borderRadius: '8px',
+                                background: 'rgba(20, 20, 25, 0.95)',
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
+                              }}
+                              data-lenis-prevent
+                            >
+                              {groups.length === 0 ? (
+                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                  No participating groups found for this instance
+                                </div>
+                              ) : filteredGroupsList.length === 0 ? (
+                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                  No groups found matching search query
+                                </div>
+                              ) : (
+                                filteredGroupsList.map(group => {
+                                  const isSelected = selectedGroups.some(g => g.id === group.id);
+                                  return (
+                                    <div
+                                      key={group.id}
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                        } else {
+                                          setSelectedGroups(prev => [...prev, group]);
+                                        }
+                                        setGroupSearchQuery('');
+                                      }}
+                                      style={{
+                                        padding: '10px 14px',
+                                        cursor: 'pointer',
+                                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                        color: isSelected ? 'var(--primary)' : 'var(--text)',
+                                        background: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        fontSize: '0.9rem',
+                                        transition: 'background 0.2s'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent'}
+                                    >
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontWeight: '500' }}>{group.subject}</span>
+                                        {isSelected && <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>(Selected)</span>}
+                                      </div>
+                                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{group.participantsCount} members</span>
+                                    </div>
+                                  );
+                                })
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <div className="message-header-row">
-                <label style={{margin: 0}}>Message Content</label>
-                {mode === 'bulk' && bulkInputMethod === 'csv' && csvData.placeholders.length > 0 && (
-                  <div className="placeholder-container">
-                    <span className="placeholder-label">Placeholders (Tap to insert):</span>
-                    <div className="placeholder-tags">
-                      {csvData.placeholders.map((placeholder) => (
-                        <button
-                          key={placeholder}
-                          type="button"
-                          className="placeholder-tag"
-                          onClick={() => handleInsertPlaceholder(placeholder)}
-                          title={`Click to insert {${placeholder}}`}
-                        >
-                          +{placeholder}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Template Controls Bar */}
-              <div className="template-controls-bar">
-                 <div className="template-selector-wrapper">
-                  {savedTemplates.length > 0 ? (
-                    <>
-                      <span className="template-label">Load Template:</span>
-                      <div className="template-dropdown-container">
-                        <select
-                          className="template-select"
-                          value={selectedTemplateId}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSelectedTemplateId(val);
-                            if (val) {
-                              const t = savedTemplates.find(tpl => tpl.id.toString() === val.toString());
-                              if (t) handleSelectTemplate(t.content);
-                            }
-                          }}
-                          data-lenis-prevent
-                        >
-                          <option value="">-- Choose Template --</option>
-                          {savedTemplates.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedTemplateId && (
+                      )
+                    ) : (
+                      <div className="bulk-numbers-section">
+                        <div className="input-method-selector">
                           <button
                             type="button"
-                            className="delete-template-btn-icon"
-                            onClick={async (e) => {
-                              await handleDeleteTemplate(selectedTemplateId, e);
-                              setSelectedTemplateId('');
-                            }}
-                            title="Delete this template"
+                            className={`method-btn ${bulkInputMethod === 'manual' ? 'active' : ''}`}
+                            onClick={() => setBulkInputMethod('manual')}
                           >
-                            <Trash2 size={14} />
+                            <Users size={16} /> Manual Input
                           </button>
+                          <button
+                            type="button"
+                            className={`method-btn ${bulkInputMethod === 'csv' ? 'active' : ''}`}
+                            onClick={() => setBulkInputMethod('csv')}
+                          >
+                            <FileUp size={16} /> CSV Upload
+                          </button>
+                        </div>
+
+                        {bulkInputMethod === 'manual' ? (
+                          <>
+                            <div className="form-group mb-4" style={{ maxWidth: '250px' }}>
+                              <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>How many numbers do you have? (Optional)</label>
+                              <input
+                                type="number"
+                                className="auth-input"
+                                style={{ paddingLeft: '14px' }}
+                                placeholder="Enter count"
+                                value={numberCount}
+                                min="1"
+                                onChange={(e) => handleNumberCountChange(e.target.value)}
+                              />
+                            </div>
+
+                            <div className="numbers-list-grid" data-lenis-prevent>
+                              {bulkData.numbers.map((num, idx) => (
+                                <div key={idx} className="number-input-row">
+                                  <div className="input-with-count">
+                                    <span className="idx-tag">{idx + 1}</span>
+                                    <input
+                                      type="text"
+                                      className="auth-input"
+                                      style={{ paddingLeft: '35px' }}
+                                      placeholder="919876543210"
+                                      value={num}
+                                      onChange={(e) => updateNumber(idx, e.target.value)}
+                                      required={bulkInputMethod === 'manual'}
+                                    />
+                                  </div>
+                                  {bulkData.numbers.length > 1 && (
+                                    <button type="button" className="remove-num-btn" onClick={() => removeNumberField(idx)}>
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <button type="button" className="add-number-btn mt-4" onClick={addNumberField}>
+                              <Plus size={16} /> Add Another Number
+                            </button>
+                          </>
+                        ) : (
+                          <div className="csv-upload-container animate-fade-in">
+                            {!csvData.fileName ? (
+                              <div className="csv-dropzone">
+                                <input
+                                  type="file"
+                                  id="csv-file-input"
+                                  accept=".csv,.xlsx,.xls"
+                                  onChange={handleFileUpload}
+                                  hidden
+                                />
+                                <label htmlFor="csv-file-input" className="csv-dropzone-label">
+                                  <FileUp size={32} className="upload-icon" />
+                                  <span className="upload-title">Choose CSV/Excel File</span>
+                                  <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
+                                </label>
+                              </div>
+                            ) : (
+                              <div className="csv-success-card">
+                                <div className="csv-success-header">
+                                  <div className="csv-file-info">
+                                    <div className="csv-icon-wrapper">
+                                      <FileText size={24} className="csv-icon" />
+                                    </div>
+                                    <div>
+                                      <span className="csv-filename">{csvData.fileName}</span>
+                                      <span className="csv-details">
+                                        {csvData.rows.length} unique contacts parsed successfully
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button type="button" className="csv-clear-btn" onClick={clearCSV} title="Clear uploaded CSV">
+                                    <X size={18} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                              <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
+                                <FileText size={14} /> Download Sample CSV Template
+                              </button>
+                              <div style={{
+                                fontSize: '0.8rem',
+                                color: '#eab308',
+                                background: 'rgba(234, 179, 8, 0.1)',
+                                border: '1px solid rgba(234, 179, 8, 0.2)',
+                                padding: '10px 14px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginTop: '8px'
+                              }}>
+                                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                                <span><strong>Note:</strong> The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
+                              </div>
+                            </div>
+
+                            {csvData.rows.length > 0 && (
+                              <div className="csv-preview-section">
+                                <div className="preview-header">
+                                  <h3>CSV Data Preview ({csvData.rows.length} Contacts)</h3>
+                                  <span className="phone-indicator">Phone number column detected: <strong>{csvData.phoneHeader}</strong></span>
+                                </div>
+                                <div className="csv-preview-table-container" data-lenis-prevent>
+                                  <table className="csv-preview-table">
+                                    <thead>
+                                      <tr>
+                                        <th>#</th>
+                                        {csvData.headers.map((h, idx) => (
+                                          <th key={idx}>{h}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {csvData.rows.slice(0, 10).map((row, rIdx) => (
+                                        <tr key={rIdx}>
+                                          <td>{rIdx + 1}</td>
+                                          {csvData.headers.map((h, cIdx) => (
+                                            <td key={cIdx}>{row[h]}</td>
+                                          ))}
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {csvData.rows.length > 10 && (
+                                  <div className="preview-footer">
+                                    Showing first 10 rows of {csvData.rows.length} total unique rows.
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </>
-                  ) : (
-                    <span className="template-label" style={{ opacity: 0.6 }}>No saved templates yet. Create one on the right!</span>
-                  )}
-                </div>
-                
-                <div className="save-template-trigger-wrapper">
-                  {!showSaveDialog ? (
-                    <button
-                      type="button"
-                      className="save-template-trigger-btn"
-                      onClick={() => setShowSaveDialog(true)}
-                      title="Save current message as a reusable template"
-                    >
-                      Save as Template
-                    </button>
-                  ) : (
-                    <div className="save-template-inline-form">
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <div className="message-header-row">
+                      <label style={{ margin: 0 }}>Message Content</label>
+                      {mode === 'bulk' && bulkInputMethod === 'csv' && csvData.placeholders.length > 0 && (
+                        <div className="placeholder-container">
+                          <span className="placeholder-label">Placeholders (Tap to insert):</span>
+                          <div className="placeholder-tags">
+                            {csvData.placeholders.map((placeholder) => (
+                              <button
+                                key={placeholder}
+                                type="button"
+                                className="placeholder-tag"
+                                onClick={() => handleInsertPlaceholder(placeholder)}
+                                title={`Click to insert {${placeholder}}`}
+                              >
+                                +{placeholder}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Template Controls Bar */}
+                    <div className="template-controls-bar">
+                      <div className="template-selector-wrapper">
+                        {savedTemplates.length > 0 ? (
+                          <>
+                            <span className="template-label">Load Template:</span>
+                            <div className="template-dropdown-container">
+                              <select
+                                className="template-select"
+                                value={selectedTemplateId}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSelectedTemplateId(val);
+                                  if (val) {
+                                    const t = savedTemplates.find(tpl => tpl.id.toString() === val.toString());
+                                    if (t) handleSelectTemplate(t.content);
+                                  }
+                                }}
+                                data-lenis-prevent
+                              >
+                                <option value="">-- Choose Template --</option>
+                                {savedTemplates.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {t.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedTemplateId && (
+                                <button
+                                  type="button"
+                                  className="delete-template-btn-icon"
+                                  onClick={async (e) => {
+                                    await handleDeleteTemplate(selectedTemplateId, e);
+                                    setSelectedTemplateId('');
+                                  }}
+                                  title="Delete this template"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="template-label" style={{ opacity: 0.6 }}>No saved templates yet. Create one on the right!</span>
+                        )}
+                      </div>
+
+                      <div className="save-template-trigger-wrapper">
+                        {!showSaveDialog ? (
+                          <button
+                            type="button"
+                            className="save-template-trigger-btn"
+                            onClick={() => setShowSaveDialog(true)}
+                            title="Save current message as a reusable template"
+                          >
+                            Save as Template
+                          </button>
+                        ) : (
+                          <div className="save-template-inline-form">
+                            <input
+                              type="text"
+                              placeholder="Template Name"
+                              value={newTemplateName}
+                              onChange={(e) => setNewTemplateName(e.target.value)}
+                              className="template-name-input"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              className="btn-save-confirm"
+                              onClick={handleSaveTemplate}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-save-cancel"
+                              onClick={() => {
+                                setShowSaveDialog(false);
+                                setNewTemplateName('');
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="formatting-toolbar">
+                      <button
+                        type="button"
+                        className="format-btn"
+                        onClick={() => handleFormatText('bold')}
+                        title="Make Text Bold (*bold*)"
+                      >
+                        <strong>B</strong>
+                      </button>
+                      <button
+                        type="button"
+                        className="format-btn"
+                        onClick={() => handleFormatText('italic')}
+                        title="Make Text Italic (_italic_)"
+                      >
+                        <em>I</em>
+                      </button>
+                      <button
+                        type="button"
+                        className="format-btn"
+                        onClick={() => handleFormatText('underline')}
+                        title="Underline Text (__underline__)"
+                      >
+                        <u>U</u>
+                      </button>
+                      <button
+                        type="button"
+                        className="format-btn"
+                        onClick={() => handleFormatText('strikethrough')}
+                        title="Strikethrough Text (~strikethrough~)"
+                      >
+                        <del>S</del>
+                      </button>
+                      <button
+                        type="button"
+                        className="format-btn"
+                        onClick={() => handleFormatText('code')}
+                        title="Monospace / Code Font (`code`)"
+                      >
+                        <code>&lt;/&gt;</code>
+                      </button>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                        Formatting Toolbar
+                      </span>
+                    </div>
+
+                    <textarea
+                      id="bulk-message-textarea"
+                      data-lenis-prevent
+                      className="auth-input"
+                      style={{
+                        paddingLeft: '14px',
+                        height: mode === 'single' ? '120px' : '150px',
+                        resize: 'none',
+                        borderRadius: '0 0 8px 8px',
+                        borderTop: 'none'
+                      }}
+                      placeholder={
+                        mode === 'single'
+                          ? "Type your message here..."
+                          : "Type your message here... E.g. Hello {name}, your appointment for {day} and {time} has been booked."
+                      }
+                      value={mode === 'single' ? singleData.message : bulkData.message}
+                      onChange={(e) => mode === 'single' ? setSingleData({ ...singleData, message: e.target.value }) : setBulkData({ ...bulkData, message: e.target.value })}
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Attachment (Optional)</label>
+                    <div className="file-upload-zone">
                       <input
-                        type="text"
-                        placeholder="Template Name"
-                        value={newTemplateName}
-                        onChange={(e) => setNewTemplateName(e.target.value)}
-                        className="template-name-input"
-                        autoFocus
+                        type="file"
+                        id="file-input-single"
+                        onChange={(e) => handleFileChange(e, mode)}
+                        hidden
                       />
-                      <button
-                        type="button"
-                        className="btn-save-confirm"
-                        onClick={handleSaveTemplate}
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-save-cancel"
-                        onClick={() => {
-                          setShowSaveDialog(false);
-                          setNewTemplateName('');
-                        }}
-                      >
-                        Cancel
-                      </button>
+                      <label htmlFor="file-input-single" className="file-label">
+                        {!currentFile ? (
+                          <span className="file-placeholder">
+                            <FileUp size={24} />
+                            <span>Click to upload image or document <strong style={{ color: 'var(--primary)' }}>(Max 20MB)</strong></span>
+                          </span>
+                        ) : (
+                          <div className="file-info" style={{ flexDirection: 'column', padding: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <FileText size={24} />
+                              <span className="file-name">{currentFile.name}</span>
+                              <button type="button" className="remove-file" onClick={() => removeFile(mode)}>
+                                <X size={18} />
+                              </button>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>File ready for sending</span>
+                          </div>
+                        )}
+                      </label>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="form-actions" style={{ justifyContent: 'flex-start', borderTop: 'none', padding: 0 }}>
+                    <button type="submit" className="btn-primary" disabled={loading || !selectedInstance} style={{ minWidth: '200px' }}>
+                      {loading ? 'Processing...' : (mode === 'single' ? 'Send Message' : 'Send Bulk Messages')}
+                      {mode === 'single' ? <Send size={18} /> : <Users size={18} />}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="messaging-preview-col animate-fade-in">
+                <div className="wa-preview-wrapper">
+                  <div className="wa-preview-header-main">
+                    <span>Message Preview</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'normal', opacity: 0.7 }}>Live Mockup</span>
+                  </div>
+                  <div className="wa-phone-container">
+                    {/* Phone Header */}
+                    <div className="wa-phone-header">
+                      <div className="wa-avatar">
+                        {instanceAvatarForHeader ? (
+                          <img src={instanceAvatarForHeader} alt="Avatar" />
+                        ) : (
+                          <span>{instanceNameForHeader.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="wa-header-info">
+                        <span className="wa-header-name">{instanceNameForHeader}</span>
+                        <span className="wa-header-status">online</span>
+                      </div>
+                      <div className="wa-header-actions">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '14px', height: '14px', opacity: 0.9 }}>
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '14px', height: '14px', opacity: 0.9 }}>
+                          <path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"></path>
+                          <path d="M23 7l-9.5 6.5L1 7"></path>
+                        </svg>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold', lineHeight: 1, cursor: 'default' }}>⋮</span>
+                      </div>
+                    </div>
+
+                    {/* Chat Area */}
+                    <div className="wa-chat-area" data-lenis-prevent>
+                      <div className="wa-chat-spacer"></div>
+                      {/* Date Tag */}
+                      <div style={{
+                        alignSelf: 'center',
+                        background: 'rgba(255, 255, 255, 0.75)',
+                        color: '#54656f',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.68rem',
+                        fontWeight: '600',
+                        boxShadow: '0 1px 0.5px rgba(0,0,0,0.06)',
+                        marginBottom: '14px',
+                        textTransform: 'uppercase'
+                      }} className="wa-date-tag">
+                        Today
+                      </div>
+
+                      {/* Chat Bubble */}
+                      <div className="wa-chat-bubble outgoing">
+                        {/* Media Render */}
+                        {currentFile && (
+                          mediaPreviewUrl ? (
+                            <div className="wa-preview-media">
+                              <img src={mediaPreviewUrl} alt="Upload Preview" />
+                            </div>
+                          ) : (
+                            <div className="wa-doc-preview">
+                              <span className="wa-doc-icon" style={{ fontSize: '1.1rem' }}>📁</span>
+                              <div className="wa-doc-details">
+                                <span className="wa-doc-name">{currentFile.name}</span>
+                                <span className="wa-doc-size">
+                                  {(currentFile.size / (1024 * 1024)).toFixed(2)} MB
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        )}
+
+                        {/* Text Render */}
+                        <div
+                          className="wa-bubble-text"
+                          dangerouslySetInnerHTML={{
+                            __html: formatPreviewText(mode === 'single' ? singleData.message : bulkData.message) || '<span style="color: var(--text-muted); font-style: italic;">No message content</span>'
+                          }}
+                        />
+
+                        {/* Meta Information (Time & Double Checkticks) */}
+                        <div className="wa-bubble-meta">
+                          <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="wa-checkmark">
+                            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '13px', height: '9px' }}>
+                              <path d="M4.5 8L1.5 5L0.5 6L4.5 10L12.5 2L11.5 1L4.5 8Z" fill="currentColor" />
+                              <path d="M8.5 8L7.5 7L6.5 8L8.5 10L15.5 3L14.5 2L8.5 8Z" fill="currentColor" />
+                            </svg>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <textarea 
-                id="bulk-message-textarea"
-                data-lenis-prevent
-                className="auth-input" 
-                style={{
-                  paddingLeft: '14px', 
-                  height: mode === 'single' ? '120px' : '150px', 
-                  resize: 'none',
-                  borderRadius: '0 0 8px 8px',
-                  borderTop: 'none'
-                }} 
-                placeholder={
-                  mode === 'single' 
-                    ? "Type your message here..." 
-                    : "Type your message here... E.g. Hello {name}, your appointment for {day} and {time} has been booked."
-                }
-                value={mode === 'single' ? singleData.message : bulkData.message}
-                onChange={(e) => mode === 'single' ? setSingleData({...singleData, message: e.target.value}) : setBulkData({...bulkData, message: e.target.value})}
-                required
-              ></textarea>
             </div>
-
-            <div className="form-group">
-              <label>Attachment (Optional)</label>
-              <div className="file-upload-zone">
-                <input 
-                  type="file" 
-                  id="file-input-single" 
-                  onChange={(e) => handleFileChange(e, mode)}
-                  hidden 
-                />
-                <label htmlFor="file-input-single" className="file-label">
-                  {!currentFile ? (
-                    <span className="file-placeholder">
-                      <FileUp size={24} /> 
-                      <span>Click to upload image or document <strong style={{ color: 'var(--primary)' }}>(Max 20MB)</strong></span>
-                    </span>
-                  ) : (
-                    <div className="file-info" style={{flexDirection: 'column', padding: '10px'}}>
-                       <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <FileText size={24} />
-                        <span className="file-name">{currentFile.name}</span>
-                        <button type="button" className="remove-file" onClick={() => removeFile(mode)}>
-                          <X size={18} />
-                        </button>
-                       </div>
-                       <span style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px'}}>File ready for sending</span>
-                    </div>
-                  )}
-                </label>
-              </div>
-            </div>
-
-            <div className="form-actions" style={{justifyContent: 'flex-start', borderTop: 'none', padding: 0}}>
-              <button type="submit" className="btn-primary" disabled={loading || !selectedInstance} style={{minWidth: '200px'}}>
-                {loading ? 'Processing...' : (mode === 'single' ? 'Send Message' : 'Send Bulk Messages')} 
-                {mode === 'single' ? <Send size={18} /> : <Users size={18} />}
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+        )}
       </div>
+
       <CustomModal
         isOpen={modalConfig.isOpen}
         type={modalConfig.type}
