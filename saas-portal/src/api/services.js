@@ -48,7 +48,19 @@ export const templateService = {
 
 export const scheduleService = {
   getSchedules: () => API.get('/schedules'),
-  createSchedule: (data) => API.post('/schedules', data),
+  createSchedule: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (key === 'recipients') {
+        formData.append(key, JSON.stringify(data[key]));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    return API.post('/schedules', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   deleteSchedule: (id) => API.delete(`/schedules/${id}`),
 };
 

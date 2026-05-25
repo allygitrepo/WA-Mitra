@@ -39,6 +39,10 @@ const Schedule = sequelize.define("Schedule", {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  mediaPath: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   status: {
     type: DataTypes.STRING, // 'scheduled', 'completed', 'failed', 'canceled'
     allowNull: false,

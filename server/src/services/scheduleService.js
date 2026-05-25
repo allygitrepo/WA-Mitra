@@ -77,21 +77,47 @@ const processSchedules = async () => {
               targetJid = result.jid;
             } else {
               failedCount++;
-              await logMessage(instance.id, number, 'text', 'failed', 'Number is not on WhatsApp');
+              await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'failed', 'Number is not on WhatsApp');
               continue;
             }
           }
 
-          await sock.sendMessage(targetJid, { text: message });
+          if (campaign.mediaPath && fs.existsSync(campaign.mediaPath)) {
+            const ext = path.extname(campaign.mediaPath).toLowerCase();
+            const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
+            const mimetype = isImage ? `image/${ext.substring(1)}` : 'application/octet-stream';
+
+            if (isImage) {
+              await sock.sendMessage(targetJid, { image: { url: campaign.mediaPath }, caption: message || '' });
+            } else {
+              await sock.sendMessage(targetJid, {
+                document: { url: campaign.mediaPath },
+                mimetype: mimetype,
+                fileName: path.basename(campaign.mediaPath),
+                caption: message || ''
+              });
+            }
+          } else {
+            await sock.sendMessage(targetJid, { text: message });
+          }
           sentCount++;
-          await logMessage(instance.id, number, 'text', 'sent');
+          await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'sent');
         } catch (err) {
           failedCount++;
-          await logMessage(instance.id, number, 'text', 'failed', err.message);
+          await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'failed', err.message);
         }
 
         // Delay between dispatches (e.g. 1 second)
         await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Delete media file once campaign processing is complete
+      if (campaign.mediaPath && fs.existsSync(campaign.mediaPath)) {
+        try {
+          fs.unlinkSync(campaign.mediaPath);
+        } catch (e) {
+          console.error('[Scheduler] Failed to clean up completed schedule media:', e);
+        }
       }
 
       campaign.status = failedCount === recipients.length ? 'failed' : 'completed';
