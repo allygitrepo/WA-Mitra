@@ -45,3 +45,9 @@ export const templateService = {
   createTemplate: (data) => API.post('/templates', data),
   deleteTemplate: (id) => API.delete(`/templates/${id}`),
 };
+
+export const scheduleService = {
+  getSchedules: () => API.get('/schedules'),
+  createSchedule: (data) => API.post('/schedules', data),
+  deleteSchedule: (id) => API.delete(`/schedules/${id}`),
+};

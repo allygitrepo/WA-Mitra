@@ -9,6 +9,7 @@ const sequelize = require('./config/db');
 // Ensure all models are loaded for sync
 require('./models/associations');
 const { seedAdmin } = require('./services/seederService');
+const { initScheduler } = require('./services/scheduleService');
 
 const server = http.createServer(app);
 
@@ -24,6 +25,7 @@ server.listen(PORT, async () => {
         await sequelize.sync({ alter: true });
         console.log('Database synced successfully');
         await seedAdmin();
+        initScheduler();
     } catch (error) {
         console.error('Database sync failed:', error);
     }

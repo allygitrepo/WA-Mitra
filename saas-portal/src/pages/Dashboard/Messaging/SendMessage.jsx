@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useOutletContext, Link, useSearchParams } from 'react-router-dom';
-import { instanceService, messageService, templateService } from '../../../api/services';
+import { instanceService, messageService, templateService, scheduleService } from '../../../api/services';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
@@ -86,6 +86,433 @@ const SendMessage = () => {
   });
 
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState('');
+
+  // Scheduling States
+  const [scheduleCampaignName, setScheduleCampaignName] = useState('');
+  const [scheduleTargetDate, setScheduleTargetDate] = useState('');
+  const [scheduleTargetTime, setScheduleTargetTime] = useState('');
+  const [scheduleInputMethod, setScheduleInputMethod] = useState('manual'); // 'manual' or 'csv'
+  const [scheduleNumbers, setScheduleNumbers] = useState(['']);
+  const [scheduleNumberCount, setScheduleNumberCount] = useState(1);
+  const [scheduleCsvData, setScheduleCsvData] = useState({
+    headers: [],
+    placeholders: [],
+    rows: [],
+    fileName: '',
+    phoneHeader: ''
+  });
+  const [scheduleMessage, setScheduleMessage] = useState('');
+  const [scheduleFile, setScheduleFile] = useState(null);
+  const [scheduleMediaPreviewUrl, setScheduleMediaPreviewUrl] = useState('');
+  const [scheduledCampaigns, setScheduledCampaigns] = useState(() => {
+    const local = localStorage.getItem('wa_mitra_scheduled_campaigns');
+    return local ? JSON.parse(local) : [];
+  });
+  const [timeTicker, setTimeTicker] = useState(0);
+  const [scheduleShowSaveDialog, setScheduleShowSaveDialog] = useState(false);
+  const [scheduleNewTemplateName, setScheduleNewTemplateName] = useState('');
+
+  // Auto-save scheduled campaigns to localStorage
+  useEffect(() => {
+    localStorage.setItem('wa_mitra_scheduled_campaigns', JSON.stringify(scheduledCampaigns));
+  }, [scheduledCampaigns]);
+
+  // Load schedules from database on mount (with localStorage fallback)
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const response = await scheduleService.getSchedules();
+        setScheduledCampaigns(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch schedules from DB:', err);
+        const local = localStorage.getItem('wa_mitra_scheduled_campaigns');
+        if (local) {
+          try {
+            setScheduledCampaigns(JSON.parse(local));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+    loadSchedules();
+  }, []);
+
+  // Keep remaining time ticker updating every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeTicker(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Update media preview for scheduling
+  useEffect(() => {
+    if (!scheduleFile) {
+      setScheduleMediaPreviewUrl('');
+      return;
+    }
+    const isImage = scheduleFile.type?.startsWith('image/') || 
+                    ['.jpg', '.jpeg', '.png', '.gif'].some(ext => scheduleFile.name?.toLowerCase().endsWith(ext));
+    if (isImage) {
+      const objectUrl = URL.createObjectURL(scheduleFile);
+      setScheduleMediaPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setScheduleMediaPreviewUrl('');
+    }
+  }, [scheduleFile]);
+
+  const handleScheduleNumberCountChange = (count) => {
+    const val = parseInt(count) || 0;
+    setScheduleNumberCount(val);
+    if (val > 0) {
+      const newNumbers = [...scheduleNumbers];
+      if (val > newNumbers.length) {
+        for (let i = newNumbers.length; i < val; i++) newNumbers.push('');
+      } else {
+        newNumbers.length = val;
+      }
+      setScheduleNumbers(newNumbers);
+    }
+  };
+
+  const addScheduleNumberField = () => {
+    setScheduleNumbers([...scheduleNumbers, '']);
+    setScheduleNumberCount(scheduleNumbers.length + 1);
+  };
+
+  const removeScheduleNumberField = (index) => {
+    if (scheduleNumbers.length <= 1) return;
+    const newNumbers = scheduleNumbers.filter((_, i) => i !== index);
+    setScheduleNumbers(newNumbers);
+    setScheduleNumberCount(newNumbers.length);
+  };
+
+  const updateScheduleNumber = (index, value) => {
+    const newNumbers = [...scheduleNumbers];
+    newNumbers[index] = value;
+    setScheduleNumbers(newNumbers);
+  };
+
+  const handleScheduleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const extension = file.name.split('.').pop().toLowerCase();
+    const allowedExtensions = ['csv', 'xlsx', 'xls'];
+    if (!allowedExtensions.includes(extension)) {
+      toast.error('Unsupported file format. Please upload .csv, .xlsx, or .xls files.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+
+    const processParsedData = (headers, rows, fileName) => {
+      if (headers.length === 0 || rows.length === 0) {
+        toast.error('Invalid sheet structure or empty file.');
+        return;
+      }
+
+      const phoneHeader = headers[0];
+      const placeholders = headers.slice(1);
+
+      const uniqueRows = [];
+      const seen = new Set();
+      let duplicateCount = 0;
+
+      rows.forEach(row => {
+        const rawNum = row[phoneHeader];
+        if (!rawNum) return;
+        const cleanNum = rawNum.toString().replace(/\D/g, '');
+        if (cleanNum) {
+          if (!seen.has(cleanNum)) {
+            seen.add(cleanNum);
+            uniqueRows.push({
+              ...row,
+              _cleanPhone: cleanNum
+            });
+          } else {
+            duplicateCount++;
+          }
+        }
+      });
+
+      if (uniqueRows.length === 0) {
+        toast.error('No valid phone numbers found in the file.');
+        return;
+      }
+
+      setScheduleCsvData({
+        headers,
+        placeholders,
+        rows: uniqueRows,
+        fileName: fileName,
+        phoneHeader
+      });
+
+      toast.success(
+        `Parsed ${uniqueRows.length} unique contacts successfully.` + 
+        (duplicateCount > 0 ? ` (${duplicateCount} duplicate numbers ignored)` : '')
+      );
+    };
+
+    if (extension === 'csv') {
+      reader.onload = (event) => {
+        const text = event.target.result;
+        const { headers, rows } = parseCSV(text);
+        processParsedData(headers, rows, file.name);
+      };
+      reader.readAsText(file);
+    } else {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          if (sheetData.length === 0) {
+            toast.error('The uploaded Excel sheet is empty.');
+            return;
+          }
+          const rawHeaders = sheetData[0];
+          const headers = rawHeaders.map(h => (h ? h.toString().trim() : '')).filter(h => h);
+          const rows = [];
+          for (let i = 1; i < sheetData.length; i++) {
+            const rowData = sheetData[i];
+            if (!rowData || rowData.length === 0) continue;
+            const rowObj = {};
+            let hasData = false;
+            headers.forEach((header, index) => {
+              const val = rowData[index];
+              rowObj[header] = val !== undefined && val !== null ? val.toString().trim() : '';
+              if (rowObj[header]) hasData = true;
+            });
+            if (hasData) {
+              rows.push(rowObj);
+            }
+          }
+          processParsedData(headers, rows, file.name);
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to parse Excel file. Please ensure it is not corrupted.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    e.target.value = '';
+  };
+
+  const clearScheduleCSV = () => {
+    setScheduleCsvData({
+      headers: [],
+      placeholders: [],
+      rows: [],
+      fileName: '',
+      phoneHeader: ''
+    });
+  };
+
+  const handleScheduleSaveTemplate = async () => {
+    if (!scheduleMessage.trim()) {
+      toast.error('Message content is empty. Type a template message first.');
+      return;
+    }
+    if (!scheduleNewTemplateName.trim()) {
+      toast.error('Please enter a name for your template.');
+      return;
+    }
+    if (savedTemplates.some(t => t.name.toLowerCase() === scheduleNewTemplateName.trim().toLowerCase())) {
+      toast.error('A template with this name already exists.');
+      return;
+    }
+    try {
+      const response = await templateService.createTemplate({
+        name: scheduleNewTemplateName.trim(),
+        content: scheduleMessage
+      });
+      if (response.data) {
+        const newTpl = response.data.template || response.data;
+        const updated = [newTpl, ...savedTemplates];
+        setSavedTemplates(updated);
+        localStorage.setItem('wa_mitra_message_templates', JSON.stringify(updated));
+        setScheduleNewTemplateName('');
+        setScheduleShowSaveDialog(false);
+        toast.success(`Template "${newTpl.name}" saved!`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save template.');
+    }
+  };
+
+  const handleScheduleFormatText = (formatType) => {
+    const textarea = document.getElementById('schedule-message-textarea');
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = scheduleMessage.substring(start, end);
+    let prefix = '';
+    let suffix = '';
+    switch (formatType) {
+      case 'bold': prefix = '*'; suffix = '*'; break;
+      case 'italic': prefix = '_'; suffix = '_'; break;
+      case 'underline': prefix = '__'; suffix = '__'; break;
+      case 'strikethrough': prefix = '~'; suffix = '~'; break;
+      case 'code': prefix = '`'; suffix = '`'; break;
+      default: break;
+    }
+    const formattedText = prefix + selectedText + suffix;
+    const newText = scheduleMessage.substring(0, start) + formattedText + scheduleMessage.substring(end);
+    setScheduleMessage(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+    }, 0);
+  };
+
+  const handleScheduleInsertPlaceholder = (placeholderName) => {
+    const textarea = document.getElementById('schedule-message-textarea');
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const insertText = `{${placeholderName}}`;
+      const newText = scheduleMessage.substring(0, start) + insertText + scheduleMessage.substring(end);
+      setScheduleMessage(newText);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + insertText.length;
+      }, 0);
+    } else {
+      setScheduleMessage(scheduleMessage + `{${placeholderName}}`);
+    }
+  };
+
+  const getRemainingTime = (targetDate, targetTime) => {
+    if (!targetDate || !targetTime) return 'Invalid Date/Time';
+    const target = new Date(`${targetDate}T${targetTime}`);
+    const now = new Date();
+    const diffMs = target.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      return 'Sent / Pending execution';
+    }
+    
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) {
+      const hours = diffHours % 24;
+      return `${diffDays}d ${hours}h remaining`;
+    } else if (diffHours > 0) {
+      const mins = diffMins % 60;
+      return `${diffHours}h ${mins}m remaining`;
+    } else if (diffMins > 0) {
+      const secs = diffSecs % 60;
+      return `${diffMins}m ${secs}s remaining`;
+    } else {
+      return `${diffSecs}s remaining`;
+    }
+  };
+
+  const handleCreateScheduleCampaign = async (e) => {
+    e.preventDefault();
+    if (!selectedInstance) {
+      toast.error('Please select a WhatsApp instance.');
+      return;
+    }
+    if (!scheduleTargetDate || !scheduleTargetTime) {
+      toast.error('Please select both a target date and time.');
+      return;
+    }
+
+    const targetDateTime = new Date(`${scheduleTargetDate}T${scheduleTargetTime}`);
+    if (targetDateTime.getTime() <= Date.now()) {
+      toast.error('Target date/time must be in the future.');
+      return;
+    }
+
+    let recipientsCount = 0;
+    let numbersList = [];
+    if (scheduleInputMethod === 'csv') {
+      if (scheduleCsvData.rows.length === 0) {
+        toast.error('Please upload a valid CSV/Excel file first.');
+        return;
+      }
+      recipientsCount = scheduleCsvData.rows.length;
+      numbersList = scheduleCsvData.rows.map(r => r._cleanPhone);
+    } else {
+      const filtered = scheduleNumbers.map(n => n.trim()).filter(n => n);
+      if (filtered.length === 0) {
+        toast.error('Please enter at least one recipient number.');
+        return;
+      }
+      recipientsCount = filtered.length;
+      numbersList = filtered;
+    }
+
+    if (!scheduleMessage.trim()) {
+      toast.error('Message content cannot be empty.');
+      return;
+    }
+
+    const activeInstanceObj = instances.find(i => i.instanceKey === selectedInstance);
+    const instanceName = activeInstanceObj ? activeInstanceObj.name : 'Instance';
+
+    const campaignData = {
+      name: scheduleCampaignName.trim() || `Schedule Campaign ${new Date().toLocaleDateString()}`,
+      instanceKey: selectedInstance,
+      targetDate: scheduleTargetDate,
+      targetTime: scheduleTargetTime,
+      recipients: numbersList,
+      message: scheduleMessage
+    };
+
+    const loadingToast = toast.loading('Scheduling campaign...');
+    try {
+      const res = await scheduleService.createSchedule(campaignData);
+      if (res.data && res.data.success) {
+        const newCampaign = res.data.schedule;
+        const uiCampaign = {
+          ...newCampaign,
+          instanceName
+        };
+        setScheduledCampaigns(prev => [uiCampaign, ...prev]);
+        toast.success('Campaign scheduled successfully!', { id: loadingToast });
+        
+        // Reset Form Fields
+        setScheduleCampaignName('');
+        setScheduleTargetDate('');
+        setScheduleTargetTime('');
+        setScheduleMessage('');
+        setScheduleFile(null);
+        setScheduleNumbers(['']);
+        setScheduleNumberCount(1);
+        clearScheduleCSV();
+      }
+    } catch (err) {
+      console.error('Error creating schedule:', err);
+      toast.error(err.response?.data?.message || 'Failed to schedule campaign.', { id: loadingToast });
+    }
+  };
+
+  const handleDeleteScheduleCampaign = async (id) => {
+    const loadingToast = toast.loading('Canceling scheduled campaign...');
+    try {
+      const res = await scheduleService.deleteSchedule(id);
+      if (res.data && res.data.success) {
+        setScheduledCampaigns(prev => prev.filter(c => c.id !== id));
+        toast.success('Scheduled campaign canceled successfully.', { id: loadingToast });
+      }
+    } catch (err) {
+      console.error('Error deleting schedule:', err);
+      toast.error(err.response?.data?.message || 'Failed to cancel scheduled campaign.', { id: loadingToast });
+    }
+  };
 
   // Load templates from database on mount (with localStorage fallback)
   useEffect(() => {
@@ -1031,79 +1458,377 @@ const SendMessage = () => {
 
   const renderSchedulingUI = () => {
     return (
-      <div className="messaging-body animate-fade-in">
+      <div className="messaging-body animate-fade-in" style={{ padding: '32px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           <div className="scheduling-form-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--text-main)' }}>Create New Scheduled Campaign</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+            
+            {/* Instance, Name, Target Date, Target Time */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
               <div className="form-group">
-                <label>Select Instance</label>
-                <select className="auth-input" style={{ paddingLeft: '14px' }} value={selectedInstance} onChange={e => setSelectedInstance(e.target.value)}>
+                <label>Select WhatsApp Instance</label>
+                <select 
+                  className="auth-input" 
+                  style={{ paddingLeft: '14px' }} 
+                  value={selectedInstance} 
+                  onChange={e => setSelectedInstance(e.target.value)}
+                  required
+                >
+                  {instances.length === 0 && <option value="">No connected instances found</option>}
                   {instances.map(inst => (
                     <option key={inst.instanceKey} value={inst.instanceKey}>{inst.name} ({inst.phone})</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label>Campaign Name</label>
-                <input type="text" className="auth-input" style={{ paddingLeft: '14px' }} placeholder="e.g. June Promotional Offer" />
+                <label>Campaign Name <span style={{ opacity: 0.6, fontSize: '0.8rem' }}>(Optional)</span></label>
+                <input 
+                  type="text" 
+                  className="auth-input" 
+                  style={{ paddingLeft: '14px' }} 
+                  placeholder="e.g. Weekly Promotion" 
+                  value={scheduleCampaignName}
+                  onChange={e => setScheduleCampaignName(e.target.value)}
+                />
               </div>
               <div className="form-group">
-                <label>Target Date & Time</label>
-                <input type="datetime-local" className="auth-input" style={{ paddingLeft: '14px' }} />
+                <label>Target Date</label>
+                <input 
+                  type="date" 
+                  className="auth-input" 
+                  style={{ paddingLeft: '14px' }} 
+                  value={scheduleTargetDate}
+                  onChange={e => setScheduleTargetDate(e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
-                <label>Recurrence</label>
-                <select className="auth-input" style={{ paddingLeft: '14px' }}>
-                  <option value="once">One-Time</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
+                <label>Target Time</label>
+                <input 
+                  type="time" 
+                  className="auth-input" 
+                  style={{ paddingLeft: '14px' }} 
+                  value={scheduleTargetTime}
+                  onChange={e => setScheduleTargetTime(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label>Message Template</label>
-              <textarea className="auth-input" style={{ paddingLeft: '14px', height: '100px', resize: 'none' }} placeholder="Type scheduled message content..."></textarea>
+            {/* Recipients numbers same as bulk */}
+            <div className="form-group" style={{ marginBottom: '24px' }}>
+              <label>Recipients (Manual list or CSV/Excel Broadcast)</label>
+              <div className="bulk-numbers-section" style={{ marginTop: '8px' }}>
+                <div className="input-method-selector">
+                  <button
+                    type="button"
+                    className={`method-btn ${scheduleInputMethod === 'manual' ? 'active' : ''}`}
+                    onClick={() => setScheduleInputMethod('manual')}
+                  >
+                    <Users size={16} /> Manual Input
+                  </button>
+                  <button
+                    type="button"
+                    className={`method-btn ${scheduleInputMethod === 'csv' ? 'active' : ''}`}
+                    onClick={() => setScheduleInputMethod('csv')}
+                  >
+                    <FileUp size={16} /> CSV Upload
+                  </button>
+                </div>
+
+                {scheduleInputMethod === 'manual' ? (
+                  <>
+                    <div className="form-group mb-4" style={{ maxWidth: '250px' }}>
+                      <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>How many numbers do you have? (Optional)</label>
+                      <input 
+                        type="number" 
+                        className="auth-input" 
+                        style={{ paddingLeft: '14px' }} 
+                        placeholder="Enter count"
+                        value={scheduleNumberCount}
+                        min="1"
+                        onChange={(e) => handleScheduleNumberCountChange(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="numbers-list-grid" data-lenis-prevent style={{ maxHeight: '200px' }}>
+                      {scheduleNumbers.map((num, idx) => (
+                        <div key={idx} className="number-input-row">
+                          <div className="input-with-count">
+                            <span className="idx-tag">{idx + 1}</span>
+                            <input 
+                              type="text" 
+                              className="auth-input" 
+                              style={{ paddingLeft: '35px' }} 
+                              placeholder="919876543210"
+                              value={num}
+                              onChange={(e) => updateScheduleNumber(idx, e.target.value)}
+                              required={scheduleInputMethod === 'manual'}
+                            />
+                          </div>
+                          {scheduleNumbers.length > 1 && (
+                            <button type="button" className="remove-num-btn" onClick={() => removeScheduleNumberField(idx)}>
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button type="button" className="add-number-btn mt-4" onClick={addScheduleNumberField}>
+                      <Plus size={16} /> Add Another Number
+                    </button>
+                  </>
+                ) : (
+                  <div className="csv-upload-container animate-fade-in">
+                    {!scheduleCsvData.fileName ? (
+                      <div className="csv-dropzone">
+                        <input 
+                          type="file" 
+                          id="schedule-csv-file-input" 
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleScheduleFileUpload}
+                          hidden 
+                        />
+                        <label htmlFor="schedule-csv-file-input" className="csv-dropzone-label">
+                          <FileUp size={32} className="upload-icon" />
+                          <span className="upload-title">Choose CSV/Excel File</span>
+                          <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="csv-success-card">
+                        <div className="csv-success-header">
+                          <div className="csv-file-info">
+                            <div className="csv-icon-wrapper">
+                              <FileText size={24} className="csv-icon" />
+                            </div>
+                            <div>
+                              <span className="csv-filename">{scheduleCsvData.fileName}</span>
+                              <span className="csv-details">
+                                {scheduleCsvData.rows.length} unique contacts parsed successfully
+                              </span>
+                            </div>
+                          </div>
+                          <button type="button" className="csv-clear-btn" onClick={clearScheduleCSV} title="Clear uploaded CSV">
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                      <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
+                        <FileText size={14} /> Download Sample CSV Template
+                      </button>
+                      <div style={{
+                        fontSize: '0.8rem',
+                        color: '#eab308',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '1px solid rgba(234, 179, 8, 0.2)',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '8px'
+                      }}>
+                        <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                        <span><strong>Note:</strong> The first column in the file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>).</span>
+                      </div>
+                    </div>
+
+                    {scheduleCsvData.rows.length > 0 && (
+                      <div className="csv-preview-section">
+                        <div className="preview-header">
+                          <h3>CSV Data Preview ({scheduleCsvData.rows.length} Contacts)</h3>
+                          <span className="phone-indicator">Phone column: <strong>{scheduleCsvData.phoneHeader}</strong></span>
+                        </div>
+                        <div className="csv-preview-table-container" data-lenis-prevent style={{ maxHeight: '150px' }}>
+                          <table className="csv-preview-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                {scheduleCsvData.headers.map((h, idx) => (
+                                  <th key={idx}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {scheduleCsvData.rows.slice(0, 5).map((row, rIdx) => (
+                                <tr key={rIdx}>
+                                  <td>{rIdx + 1}</td>
+                                  {scheduleCsvData.headers.map((h, cIdx) => (
+                                    <td key={cIdx}>{row[h]}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <button type="button" className="btn-primary" onClick={() => toast.success('Campaign scheduled successfully! (Mock Action)')}>
+            {/* Template select and editor */}
+            <div className="form-group" style={{ marginBottom: '24px' }}>
+              <div className="message-header-row">
+                <label style={{ margin: 0 }}>Message Content</label>
+                {scheduleInputMethod === 'csv' && scheduleCsvData.placeholders.length > 0 && (
+                  <div className="placeholder-container">
+                    <span className="placeholder-label">Placeholders:</span>
+                    <div className="placeholder-tags">
+                      {scheduleCsvData.placeholders.map((placeholder) => (
+                        <button
+                          key={placeholder}
+                          type="button"
+                          className="placeholder-tag"
+                          onClick={() => handleScheduleInsertPlaceholder(placeholder)}
+                        >
+                          +{placeholder}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="template-controls-bar">
+                <div className="template-selector-wrapper">
+                  {savedTemplates.length > 0 ? (
+                    <>
+                      <span className="template-label">Load Template:</span>
+                      <select
+                        className="template-select"
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            const t = savedTemplates.find(tpl => tpl.id.toString() === val.toString());
+                            if (t) setScheduleMessage(t.content);
+                          }
+                        }}
+                      >
+                        <option value="">-- Choose Template --</option>
+                        {savedTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <span className="template-label" style={{ opacity: 0.6 }}>No templates found</span>
+                  )}
+                </div>
+
+                <div className="save-template-trigger-wrapper">
+                  {!scheduleShowSaveDialog ? (
+                    <button
+                      type="button"
+                      className="save-template-trigger-btn"
+                      onClick={() => setScheduleShowSaveDialog(true)}
+                    >
+                      Save as Template
+                    </button>
+                  ) : (
+                    <div className="save-template-inline-form">
+                      <input
+                        type="text"
+                        placeholder="Template Name"
+                        value={scheduleNewTemplateName}
+                        onChange={(e) => setScheduleNewTemplateName(e.target.value)}
+                        className="template-name-input"
+                      />
+                      <button type="button" className="btn-save-confirm" onClick={handleScheduleSaveTemplate}>Save</button>
+                      <button type="button" className="btn-save-cancel" onClick={() => {
+                        setScheduleShowSaveDialog(false);
+                        setScheduleNewTemplateName('');
+                      }}>Cancel</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="formatting-toolbar">
+                <button type="button" className="format-btn" onClick={() => handleScheduleFormatText('bold')}><strong>B</strong></button>
+                <button type="button" className="format-btn" onClick={() => handleScheduleFormatText('italic')}><em>I</em></button>
+                <button type="button" className="format-btn" onClick={() => handleScheduleFormatText('underline')}><u>U</u></button>
+                <button type="button" className="format-btn" onClick={() => handleScheduleFormatText('strikethrough')}><del>S</del></button>
+                <button type="button" className="format-btn" onClick={() => handleScheduleFormatText('code')}><code>&lt;/&gt;</code></button>
+              </div>
+
+              <textarea 
+                id="schedule-message-textarea"
+                className="auth-input" 
+                style={{
+                  paddingLeft: '14px', 
+                  height: '120px', 
+                  resize: 'none',
+                  borderRadius: '0 0 8px 8px',
+                  borderTop: 'none'
+                }} 
+                placeholder="Type your scheduled message here..."
+                value={scheduleMessage}
+                onChange={(e) => setScheduleMessage(e.target.value)}
+                required
+              ></textarea>
+            </div>
+
+            <button type="button" className="btn-primary" onClick={handleCreateScheduleCampaign}>
               Schedule Campaign <Send size={16} />
             </button>
           </div>
 
+          {/* Table display */}
           <div className="schedules-list-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '16px', color: 'var(--text-main)' }}>Active Schedules</h3>
             <div className="csv-preview-table-container" style={{ maxHeight: 'none' }}>
               <table className="csv-preview-table">
                 <thead>
                   <tr>
-                    <th>Campaign Name</th>
-                    <th>Instance</th>
-                    <th>Scheduled Date/Time</th>
-                    <th>Recurrence</th>
-                    <th>Status</th>
+                    <th>Campaign name</th>
+                    <th>instance</th>
+                    <th>Date&Time</th>
+                    <th>Remaining time</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td style={{ fontWeight: '600' }}>Welcome Follow-up</td>
-                    <td>Customer Support Line</td>
-                    <td>2026-06-01 10:00 AM</td>
-                    <td>Daily</td>
-                    <td><span className="status-badge" data-status="connected" style={{ display: 'inline-flex' }}>Active</span></td>
-                    <td><button className="remove-num-btn" style={{ width: '28px', height: '28px' }} onClick={() => toast.success('Schedule canceled')}><X size={14} /></button></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: '600' }}>Weekend Promo Broadcast</td>
-                    <td>Marketing Account</td>
-                    <td>2026-06-05 06:00 PM</td>
-                    <td>Once</td>
-                    <td><span className="status-badge" data-status="connected" style={{ display: 'inline-flex' }}>Active</span></td>
-                    <td><button className="remove-num-btn" style={{ width: '28px', height: '28px' }} onClick={() => toast.success('Schedule canceled')}><X size={14} /></button></td>
-                  </tr>
+                  {scheduledCampaigns.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                        No campaigns scheduled yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    scheduledCampaigns.map((camp) => (
+                      <tr key={camp.id}>
+                        <td style={{ fontWeight: '600' }}>{camp.name}</td>
+                        <td>{camp.instanceName}</td>
+                        <td>{camp.targetDate} {camp.targetTime}</td>
+                        <td>
+                          <span style={{ 
+                            fontWeight: '600', 
+                            color: getRemainingTime(camp.targetDate, camp.targetTime).includes('remaining') ? 'var(--primary)' : 'var(--text-muted)'
+                          }}>
+                            {getRemainingTime(camp.targetDate, camp.targetTime)}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            type="button"
+                            className="remove-num-btn" 
+                            style={{ width: '28px', height: '28px' }} 
+                            onClick={() => handleDeleteScheduleCampaign(camp.id)}
+                          >
+                            <X size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
