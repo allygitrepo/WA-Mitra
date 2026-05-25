@@ -16,6 +16,7 @@ export const instanceService = {
   initiateSession: (instanceKey) => API.post('/instances/initiate', { instanceKey }),
   getStatus: (instanceKey) => API.get(`/instances/status?instanceKey=${instanceKey}`),
   deleteInstance: (instanceKey) => API.delete(`/instances/${instanceKey}`),
+  getGroups: (instanceKey) => API.get(`/instances/${instanceKey}/groups`),
 };
 
 export const tokenService = {

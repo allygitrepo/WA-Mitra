@@ -16,12 +16,49 @@ const fs = require('fs');
 const path = require('path');
 const { getIO } = require('../config/socket');
 const WhatsAppInstance = require('../models/instanceModel');
+const MessageLog = require('../models/messageLogModel');
 
 const pino = require('pino');
 const QRCode = require('qrcode');
 
 // Store all active sessions: Map<instanceKey, sessionData>
 const sessions = new Map();
+
+// Local rules storage for WhatsApp Auto-Reply (Testing mode - local JSON storage)
+const rulesFilePath = path.join(__dirname, '../../rules.json');
+let localRules = {};
+
+function loadRulesFromFile() {
+    try {
+        if (fs.existsSync(rulesFilePath)) {
+            const data = fs.readFileSync(rulesFilePath, 'utf8');
+            localRules = JSON.parse(data);
+        } else {
+            localRules = {};
+        }
+    } catch (e) {
+        console.error("Error loading rules.json:", e);
+        localRules = {};
+    }
+}
+loadRulesFromFile();
+
+function saveRulesToFile() {
+    try {
+        fs.writeFileSync(rulesFilePath, JSON.stringify(localRules, null, 2), 'utf8');
+    } catch (e) {
+        console.error("Error saving rules.json:", e);
+    }
+}
+
+function syncInstanceRules(instanceKey, rules) {
+    localRules[instanceKey] = rules;
+    saveRulesToFile();
+}
+
+function getInstanceRules(instanceKey) {
+    return localRules[instanceKey] || [];
+}
 
 function getSessionPath(instanceKey) {
     return path.join(__dirname, '../../sessions', `instance_${instanceKey}`);
@@ -75,8 +112,8 @@ async function startSession(instanceKey) {
                 sessionData.pushName = update.me.name;
                 try {
                     await WhatsAppInstance.update({ pushName: update.me.name }, { where: { instanceKey } });
-                    getIO().emit('connected', { 
-                        instanceKey, 
+                    getIO().emit('connected', {
+                        instanceKey,
                         pushName: update.me.name,
                         phone: sessionData.userPhone,
                         profilePic: sessionData.profilePic
@@ -130,8 +167,8 @@ async function startSession(instanceKey) {
                 lastConnected: new Date()
             }, { where: { instanceKey } });
 
-            getIO().emit('connected', { 
-                instanceKey, 
+            getIO().emit('connected', {
+                instanceKey,
                 phone: sessionData.userPhone,
                 pushName: sessionData.pushName,
                 profilePic: profilePic
@@ -167,6 +204,62 @@ async function startSession(instanceKey) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
                 }
                 getIO().emit('disconnected', { instanceKey });
+            }
+        }
+    });
+
+    sock.ev.on('messages.upsert', async (m) => {
+        if (m.type === 'notify') {
+            for (const msg of m.messages) {
+                // Ignore messages sent by ourselves and group chats
+                if (!msg.key.fromMe && msg.key.remoteJid && !msg.key.remoteJid.endsWith('@g.us')) {
+                    // Extract text content from message
+                    const text = msg.message?.conversation ||
+                        msg.message?.extendedTextMessage?.text ||
+                        msg.message?.imageMessage?.caption || "";
+
+                    if (text) {
+                        const rules = getInstanceRules(instanceKey);
+                        const incomingText = text.trim().toLowerCase();
+
+                        for (const rule of rules) {
+                            if (!rule.isActive) continue;
+
+                            let isMatch = false;
+                            const ruleKeyword = (rule.keyword || '').trim().toLowerCase();
+
+                            if (rule.matchType === 'exact' && incomingText === ruleKeyword) {
+                                isMatch = true;
+                            } else if (rule.matchType === 'contains' && incomingText.includes(ruleKeyword)) {
+                                isMatch = true;
+                            }
+
+                            if (isMatch) {
+                                console.log(`[AUTO-REPLY] Matching keyword "${rule.keyword}" for instance ${instanceKey}. Replying to ${msg.key.remoteJid}: "${rule.replyText}"`);
+                                try {
+                                    await sock.sendMessage(msg.key.remoteJid, { text: rule.replyText });
+
+                                    // Log the auto-reply in the MessageLog table so it appears in the user dashboard logs and stats
+                                    const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
+                                    if (instance) {
+                                        const cleanNumber = msg.key.remoteJid.split('@')[0];
+                                        await MessageLog.create({
+                                            instanceId: instance.id,
+                                            recipient: cleanNumber,
+                                            messageType: 'text',
+                                            status: 'sent',
+                                            errorMessage: 'Auto Reply' // Mark it so we know it was auto-reply
+                                        });
+                                        await WhatsAppInstance.increment('messageCount', { where: { id: instance.id } });
+                                    }
+                                } catch (err) {
+                                    console.error(`[AUTO-REPLY ERROR] Failed to send auto reply for ${instanceKey}:`, err);
+                                }
+                                break; // Only trigger first matching rule
+                            }
+                        }
+                    }
+                }
             }
         }
     });
@@ -230,5 +323,7 @@ module.exports = {
     startSession,
     getStatus,
     disconnect,
-    getSock
+    getSock,
+    syncInstanceRules,
+    getInstanceRules
 };

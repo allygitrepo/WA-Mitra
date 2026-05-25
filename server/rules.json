@@ -1,0 +1,30 @@
+{
+  "inst_4681a39024120451": [
+    {
+      "id": "rule_1779351446203",
+      "instanceKey": "inst_4681a39024120451",
+      "keyword": "byy",
+      "matchType": "contains",
+      "replyText": "Jane",
+      "isActive": true
+    },
+    {
+      "id": "rule_1779351499147",
+      "instanceKey": "inst_4681a39024120451",
+      "keyword": "Byy",
+      "matchType": "contains",
+      "replyText": "Hyy",
+      "isActive": true
+    }
+  ],
+  "inst_12aad3e3237245c1": [
+    {
+      "id": "rule_1779695335482",
+      "instanceKey": "inst_12aad3e3237245c1",
+      "keyword": "price",
+      "matchType": "exact",
+      "replyText": "740$",
+      "isActive": true
+    }
+  ]
+}

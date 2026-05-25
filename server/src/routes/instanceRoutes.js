@@ -10,5 +10,6 @@ router.post("/create", instanceController.createInstance);
 router.get("/list", instanceController.listInstances);
 router.delete("/:instanceKey", instanceController.deleteInstance);
 router.post("/initiate", instanceController.initiateSession);
+router.get("/:instanceKey/groups", instanceController.getGroups);
 
 module.exports = router;

@@ -9,5 +9,7 @@ router.use(authMiddleware);
 router.get("/status", whatsappController.status);
 router.post("/start", whatsappController.start);
 router.post("/logout", whatsappController.logout);
+router.post("/auto-reply/sync", whatsappController.syncRules);
+router.get("/auto-reply/rules", whatsappController.getRules);
 
 module.exports = router;

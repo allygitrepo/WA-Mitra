@@ -75,18 +75,31 @@ const messageController = {
                 let errorMsg = null;
 
                 try {
-                    const cleanNumber = number.replace(/\D/g, '');
-                    const [result] = await sock.onWhatsApp(cleanNumber);
-
-                    if (result && result.exists) {
-                        await sock.sendMessage(result.jid, { text: message });
-                        status = 'sent';
-                        results.sent++;
+                    const isJid = number.includes('@');
+                    let targetJid;
+                    if (isJid) {
+                        targetJid = number;
                     } else {
-                        errorMsg = 'Number is not on WhatsApp';
-                        results.failed++;
-                        results.errors.push({ number, error: errorMsg });
+                        const cleanNumber = number.replace(/\D/g, '');
+                        const [result] = await sock.onWhatsApp(cleanNumber);
+
+                        if (result && result.exists) {
+                            targetJid = result.jid;
+                        } else {
+                            errorMsg = 'Number is not on WhatsApp';
+                            results.failed++;
+                            results.errors.push({ number, error: errorMsg });
+                            await logMessage(instance.id, number, 'text', status, errorMsg);
+                            if (messages.indexOf(msg) < messages.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
+                            }
+                            continue;
+                        }
                     }
+
+                    await sock.sendMessage(targetJid, { text: message });
+                    status = 'sent';
+                    results.sent++;
                 } catch (error) {
                     errorMsg = error.message;
                     results.failed++;
@@ -138,13 +151,21 @@ const messageController = {
                 return res.status(500).json({ success: false, message: 'WhatsApp not connected for this instance' });
             }
 
-            const cleanNumber = number.replace(/\D/g, '');
-            const [result] = await sock.onWhatsApp(cleanNumber);
+            const isJid = number.includes('@');
+            let targetJid;
 
-            if (!result || !result.exists) {
-                if (file) fs.unlinkSync(file.path);
-                await logMessage(instance.id, number, file ? 'media' : 'text', 'failed', 'Number not on WhatsApp');
-                return res.status(400).json({ success: false, message: 'Number is not on WhatsApp' });
+            if (isJid) {
+                targetJid = number;
+            } else {
+                const cleanNumber = number.replace(/\D/g, '');
+                const [result] = await sock.onWhatsApp(cleanNumber);
+
+                if (!result || !result.exists) {
+                    if (file) fs.unlinkSync(file.path);
+                    await logMessage(instance.id, number, file ? 'media' : 'text', 'failed', 'Number not on WhatsApp');
+                    return res.status(400).json({ success: false, message: 'Number is not on WhatsApp' });
+                }
+                targetJid = result.jid;
             }
 
             let type = 'text';
@@ -154,9 +175,9 @@ const messageController = {
                 const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
 
                 if (isImage) {
-                    await sock.sendMessage(result.jid, { image: { url: file.path }, caption: message || '' });
+                    await sock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
                 } else {
-                    await sock.sendMessage(result.jid, {
+                    await sock.sendMessage(targetJid, {
                         document: { url: file.path },
                         mimetype: file.mimetype,
                         fileName: file.originalname,
@@ -165,7 +186,7 @@ const messageController = {
                 }
                 fs.unlinkSync(file.path);
             } else {
-                await sock.sendMessage(result.jid, { text: message });
+                await sock.sendMessage(targetJid, { text: message });
             }
 
             await logMessage(instance.id, number, type, 'sent');

@@ -21,6 +21,13 @@ const SendMessage = () => {
     file: null
   });
 
+  const [recipientType, setRecipientType] = useState('number'); // 'number' or 'group'
+  const [groups, setGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [isOpenGroupDropdown, setIsOpenGroupDropdown] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+
   const [bulkData, setBulkData] = useState({
     numbers: [''],
     message: '',
@@ -201,6 +208,52 @@ const SendMessage = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      if (!selectedInstance || recipientType !== 'group' || mode !== 'single') {
+        setGroups([]);
+        setGroupSearchQuery('');
+        setSelectedGroups([]);
+        return;
+      }
+      setLoadingGroups(true);
+      try {
+        const res = await instanceService.getGroups(selectedInstance);
+        const fetchedGroups = res.data.groups || [];
+        setGroups(fetchedGroups);
+        if (fetchedGroups.length > 0 && selectedGroups.length === 0) {
+          setSelectedGroups([fetchedGroups[0]]);
+        }
+        setGroupSearchQuery('');
+      } catch (err) {
+        console.error(err);
+        toast.error(err.response?.data?.message || 'Failed to fetch WhatsApp groups');
+        setGroups([]);
+        setSelectedGroups([]);
+        setGroupSearchQuery('');
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+    fetchGroups();
+  }, [selectedInstance, recipientType, mode]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.searchable-dropdown-container')) {
+        setIsOpenGroupDropdown(false);
+        setGroupSearchQuery('');
+      }
+    };
+
+    if (isOpenGroupDropdown) {
+      document.addEventListener('click', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [isOpenGroupDropdown]);
 
   const handleFileChange = (e, currentMode) => {
     const file = e.target.files[0];
@@ -475,12 +528,42 @@ const SendMessage = () => {
     const loadingToast = toast.loading('Sending message...');
     setLoading(true);
     try {
-      await messageService.sendMessage({
-        ...singleData,
-        instanceKey: selectedInstance
-      });
-      toast.success('Message sent successfully!', { id: loadingToast });
-      setSingleData({ number: '', message: '', file: null });
+      if (recipientType === 'group') {
+        if (selectedGroups.length === 0) {
+          toast.error('Please select at least one WhatsApp group', { id: loadingToast });
+          setLoading(false);
+          return;
+        }
+
+        // Loop through all selected groups sequentially
+        for (let i = 0; i < selectedGroups.length; i++) {
+          const group = selectedGroups[i];
+          toast.loading(`Sending message to group (${i + 1}/${selectedGroups.length}): ${group.subject}...`, { id: loadingToast });
+          
+          await messageService.sendMessage({
+            ...singleData,
+            number: group.id,
+            instanceKey: selectedInstance
+          });
+
+          // 1-second timeout delay between dispatches to maintain Baileys connection stability
+          if (i < selectedGroups.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        toast.success(`Message sent to all ${selectedGroups.length} groups successfully!`, { id: loadingToast });
+        setSelectedGroups([]);
+        setGroupSearchQuery('');
+        setSingleData({ number: '', message: '', file: null });
+      } else {
+        await messageService.sendMessage({
+          ...singleData,
+          instanceKey: selectedInstance
+        });
+        toast.success('Message sent successfully!', { id: loadingToast });
+        setSingleData({ number: '', message: '', file: null });
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send message', { id: loadingToast });
     } finally {
@@ -773,6 +856,12 @@ const SendMessage = () => {
 
   const currentFile = mode === 'single' ? singleData.file : bulkData.file;
 
+  // Filter groups alphabetically-sorted list by search query. Show all if empty.
+  const filteredGroupsList = groups.filter(g => {
+    if (!groupSearchQuery.trim()) return true;
+    return (g.subject || '').toLowerCase().includes(groupSearchQuery.toLowerCase());
+  });
+
   return (
     <div className="messaging-container">
       <div className="page-header">
@@ -825,17 +914,187 @@ const SendMessage = () => {
 
           <form className="messaging-form" onSubmit={mode === 'single' ? handleSendSingle : handleSendBulk}>
             <div className="form-group">
-              <label>{mode === 'single' ? 'Recipient Number' : 'Recipient Numbers'}</label>
+              <label>
+                {mode === 'single' 
+                  ? (recipientType === 'number' ? 'Recipient Number' : 'Select WhatsApp Group') 
+                  : 'Recipient Numbers'}
+              </label>
+              
+              {mode === 'single' && (
+                <div className="input-method-selector" style={{ marginBottom: '14px', maxWidth: '350px' }}>
+                  <button
+                    type="button"
+                    className={`method-btn ${recipientType === 'number' ? 'active' : ''}`}
+                    onClick={() => {
+                      setRecipientType('number');
+                      setSingleData(prev => ({ ...prev, number: '' }));
+                    }}
+                  >
+                    Contact Number
+                  </button>
+                  <button
+                    type="button"
+                    className={`method-btn ${recipientType === 'group' ? 'active' : ''}`}
+                    onClick={() => {
+                      setRecipientType('group');
+                      if (groups.length > 0 && selectedGroups.length === 0) {
+                        setSelectedGroups([groups[0]]);
+                      }
+                      setGroupSearchQuery('');
+                    }}
+                  >
+                    WhatsApp Group
+                  </button>
+                </div>
+              )}
+
               {mode === 'single' ? (
-                <input 
-                  type="text" 
-                  className="auth-input" 
-                  style={{paddingLeft: '14px'}} 
-                  placeholder="e.g. 919876543210"
-                  value={singleData.number}
-                  onChange={(e) => setSingleData({...singleData, number: e.target.value})}
-                  required
-                />
+                recipientType === 'number' ? (
+                  <input 
+                    type="text" 
+                    className="auth-input" 
+                    style={{paddingLeft: '14px'}} 
+                    placeholder="e.g. 919876543210"
+                    value={singleData.number}
+                    onChange={(e) => setSingleData({...singleData, number: e.target.value})}
+                    required
+                  />
+                ) : (
+                  <div className="searchable-dropdown-container" style={{ position: 'relative' }}>
+                    {/* Render Selected Groups Tags */}
+                    {selectedGroups.length > 0 && (
+                      <div className="selected-groups-tags" style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '10px'
+                      }}>
+                        {selectedGroups.map(group => (
+                          <div 
+                            key={group.id} 
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              borderRadius: '6px',
+                              padding: '4px 10px',
+                              fontSize: '0.85rem',
+                              color: 'var(--text)'
+                            }}
+                          >
+                            <span>{group.subject}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 0,
+                                cursor: 'pointer',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <input 
+                      type="text"
+                      className="auth-input"
+                      style={{ paddingLeft: '14px', width: '100%' }}
+                      placeholder={loadingGroups ? "Loading groups..." : "Search and select groups..."}
+                      value={groupSearchQuery}
+                      onChange={(e) => {
+                        setGroupSearchQuery(e.target.value);
+                        setIsOpenGroupDropdown(true);
+                      }}
+                      onFocus={() => setIsOpenGroupDropdown(true)}
+                      disabled={loadingGroups}
+                      required={selectedGroups.length === 0}
+                    />
+                    
+                    {isOpenGroupDropdown && !loadingGroups && (
+                      <div 
+                        className="dropdown-list-portal glass" 
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 1000,
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          marginTop: '6px',
+                          borderRadius: '8px',
+                          background: 'rgba(20, 20, 25, 0.95)',
+                          backdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
+                        }}
+                        data-lenis-prevent
+                      >
+                        {groups.length === 0 ? (
+                          <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            No participating groups found for this instance
+                          </div>
+                        ) : filteredGroupsList.length === 0 ? (
+                          <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            No groups found matching search query
+                          </div>
+                        ) : (
+                          filteredGroupsList.map(group => {
+                            const isSelected = selectedGroups.some(g => g.id === group.id);
+                            return (
+                              <div
+                                key={group.id}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                  } else {
+                                    setSelectedGroups(prev => [...prev, group]);
+                                  }
+                                  setGroupSearchQuery('');
+                                }}
+                                style={{
+                                  padding: '10px 14px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                  color: isSelected ? 'var(--primary)' : 'var(--text)',
+                                  background: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '0.9rem',
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent'}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: '500' }}>{group.subject}</span>
+                                  {isSelected && <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>(Selected)</span>}
+                                </div>
+                                <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{group.participantsCount} members</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="bulk-numbers-section">
                   <div className="input-method-selector">

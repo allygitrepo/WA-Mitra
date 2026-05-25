@@ -16,7 +16,8 @@ import {
   BarChart3,
   Layers,
   X,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquare
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -61,6 +62,7 @@ const DashboardLayout = () => {
     { name: 'Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
     { name: 'Instances', path: '/dashboard/instances', icon: <Smartphone size={20} /> },
     { name: 'Send Message', path: '/dashboard/messaging', icon: <Send size={20} /> },
+    { name: 'Auto Replies', path: '/dashboard/auto-replies', icon: <MessageSquare size={20} /> },
     { name: 'API Tokens', path: '/dashboard/tokens', icon: <Key size={20} /> },
     { name: 'Reports', path: '/dashboard/reports', icon: <BarChart3 size={20} /> },
     { name: 'Plans', path: '/dashboard/plans', icon: <Layers size={20} /> },

@@ -1,4 +1,5 @@
 const { startSession, getStatus, disconnect } = require("../services/whatsappService");
+const WhatsAppInstance = require("../models/instanceModel");
 
 const whatsappController = {
   start: async (req, res) => {
@@ -31,6 +32,59 @@ const whatsappController = {
     } catch (error) {
       console.error("Logout Error:", error);
       res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  syncRules: async (req, res) => {
+    try {
+      const { instanceKey, rules } = req.body;
+      const userId = req.user.id;
+
+      if (!instanceKey) {
+        return res.status(400).json({ success: false, message: "instanceKey is required" });
+      }
+      if (!Array.isArray(rules)) {
+        return res.status(400).json({ success: false, message: "rules must be an array" });
+      }
+
+      // Verify ownership
+      const instance = await WhatsAppInstance.findOne({ where: { instanceKey, userId } });
+      if (!instance) {
+        return res.status(404).json({ success: false, message: "Instance not found or unauthorized" });
+      }
+
+      const { syncInstanceRules } = require("../services/whatsappService");
+      syncInstanceRules(instanceKey, rules);
+
+      res.status(200).json({ success: true, message: "Rules synchronized successfully" });
+    } catch (error) {
+      console.error("Sync Rules Error:", error);
+      res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+  },
+
+  getRules: async (req, res) => {
+    try {
+      const { instanceKey } = req.query;
+      const userId = req.user.id;
+
+      if (!instanceKey) {
+        return res.status(400).json({ success: false, message: "instanceKey is required" });
+      }
+
+      // Verify ownership
+      const instance = await WhatsAppInstance.findOne({ where: { instanceKey, userId } });
+      if (!instance) {
+        return res.status(404).json({ success: false, message: "Instance not found or unauthorized" });
+      }
+
+      const { getInstanceRules } = require("../services/whatsappService");
+      const rules = getInstanceRules(instanceKey);
+
+      res.status(200).json({ success: true, rules });
+    } catch (error) {
+      console.error("Get Rules Error:", error);
+      res.status(500).json({ success: false, message: "Internal Server Error" });
     }
   },
 };
