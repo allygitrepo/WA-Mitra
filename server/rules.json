@@ -26,5 +26,15 @@
       "replyText": "740$",
       "isActive": true
     }
+  ],
+  "inst_c5df1abb3622b5eb": [
+    {
+      "id": "rule_1779709125618",
+      "instanceKey": "inst_c5df1abb3622b5eb",
+      "keyword": "price",
+      "matchType": "exact",
+      "replyText": "250",
+      "isActive": true
+    }
   ]
 }
