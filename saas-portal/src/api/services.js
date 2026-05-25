@@ -51,3 +51,21 @@ export const scheduleService = {
   createSchedule: (data) => API.post('/schedules', data),
   deleteSchedule: (id) => API.delete(`/schedules/${id}`),
 };
+
+export const cycleService = {
+  getCycles: () => API.get('/cycles'),
+  createCycle: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (key === 'recipients' || key === 'frequencyConfig') {
+        formData.append(key, JSON.stringify(data[key]));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    return API.post('/cycles', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  deleteCycle: (id) => API.delete(`/cycles/${id}`),
+};
