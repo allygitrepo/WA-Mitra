@@ -20,6 +20,7 @@ import Docs from './pages/Dashboard/Docs';
 import Reports from './pages/Dashboard/Reports';
 import UserPlans from './pages/Dashboard/Plans';
 import SelectPlan from './pages/Dashboard/SelectPlan';
+import AutoReplies from './pages/Dashboard/AutoReplies';
 import AdminLayout from './pages/Admin/AdminLayout';
 import AdminUsers from './pages/Admin/Users';
 import AdminPackages from './pages/Admin/Packages';
@@ -122,6 +123,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="reports" element={<Reports />} />
           <Route path="plans" element={<UserPlans />} />
+          <Route path="auto-replies" element={<AutoReplies />} />
         </Route>
 
         {/* Admin Routes */}

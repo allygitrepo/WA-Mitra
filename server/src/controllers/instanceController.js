@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const WhatsAppInstance = require("../models/instanceModel");
 const { Package } = require("../models/associations");
-const { startSession, disconnect, getStatus } = require("../services/whatsappService");
+const { startSession, disconnect, getStatus, getSock } = require("../services/whatsappService");
 
 const instanceController = {
   createInstance: async (req, res) => {
@@ -208,6 +208,45 @@ const instanceController = {
     } catch (error) {
       console.error("Fetch Status Error:", error);
       res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+  },
+
+  getGroups: async (req, res) => {
+    try {
+      const instanceKey = req.params.instanceKey || req.query.instanceKey;
+      const userId = req.user.id;
+
+      if (!instanceKey) {
+        return res.status(400).json({ success: false, message: "instanceKey is required" });
+      }
+
+      const instance = await WhatsAppInstance.findOne({ where: { instanceKey, userId } });
+      if (!instance) {
+        return res.status(404).json({ success: false, message: "Instance not found or unauthorized" });
+      }
+
+      const sock = getSock(instanceKey);
+      if (!sock) {
+        return res.status(400).json({ success: false, message: "WhatsApp not connected for this instance" });
+      }
+
+      const groups = await sock.groupFetchAllParticipating();
+      
+      const mappedGroups = Object.keys(groups).map(key => ({
+        id: key,
+        subject: groups[key].subject || 'Unnamed Group',
+        participantsCount: groups[key].participants ? groups[key].participants.length : 0
+      }));
+
+      // Sort alphabetically by subject (case-insensitive)
+      const sortedGroups = mappedGroups.sort((a, b) => 
+        a.subject.toLowerCase().localeCompare(b.subject.toLowerCase())
+      );
+
+      res.status(200).json({ success: true, groups: sortedGroups });
+    } catch (error) {
+      console.error("Fetch Groups Error:", error);
+      res.status(500).json({ success: false, message: error.message || "Internal Server Error" });
     }
   }
 };

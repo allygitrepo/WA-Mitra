@@ -5,6 +5,8 @@ const MessageLog = require('./messageLogModel');
 const Package = require('./packageModel');
 const Payment = require('./paymentModel');
 const Template = require('./templateModel');
+const Schedule = require('./scheduleModel');
+const Cycle = require('./cycleModel');
 
 // User <-> Instance
 User.hasMany(WhatsAppInstance, { foreignKey: 'userId', as: 'instances' });
@@ -34,4 +36,12 @@ MessageLog.belongsTo(WhatsAppInstance, { foreignKey: 'instanceId', as: 'instance
 User.hasMany(Template, { foreignKey: 'userId', as: 'templates' });
 Template.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template };
+// User <-> Schedule
+User.hasMany(Schedule, { foreignKey: 'userId', as: 'schedules' });
+Schedule.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// User <-> Cycle
+User.hasMany(Cycle, { foreignKey: 'userId', as: 'cycles' });
+Cycle.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template, Schedule, Cycle };

@@ -16,6 +16,7 @@ export const instanceService = {
   initiateSession: (instanceKey) => API.post('/instances/initiate', { instanceKey }),
   getStatus: (instanceKey) => API.get(`/instances/status?instanceKey=${instanceKey}`),
   deleteInstance: (instanceKey) => API.delete(`/instances/${instanceKey}`),
+  getGroups: (instanceKey) => API.get(`/instances/${instanceKey}/groups`),
 };
 
 export const tokenService = {
@@ -43,4 +44,40 @@ export const templateService = {
   getTemplates: () => API.get('/templates'),
   createTemplate: (data) => API.post('/templates', data),
   deleteTemplate: (id) => API.delete(`/templates/${id}`),
+};
+
+export const scheduleService = {
+  getSchedules: () => API.get('/schedules'),
+  createSchedule: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (key === 'recipients') {
+        formData.append(key, JSON.stringify(data[key]));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    return API.post('/schedules', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  deleteSchedule: (id) => API.delete(`/schedules/${id}`),
+};
+
+export const cycleService = {
+  getCycles: () => API.get('/cycles'),
+  createCycle: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (key === 'recipients' || key === 'frequencyConfig') {
+        formData.append(key, JSON.stringify(data[key]));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    return API.post('/cycles', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  deleteCycle: (id) => API.delete(`/cycles/${id}`),
 };

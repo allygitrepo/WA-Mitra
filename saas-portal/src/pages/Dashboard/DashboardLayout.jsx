@@ -16,7 +16,8 @@ import {
   BarChart3,
   Layers,
   X,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquare
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import { authService } from '../../api/services';
@@ -77,6 +78,7 @@ const DashboardLayout = () => {
     { name: 'Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
     { name: 'Instances', path: '/dashboard/instances', icon: <Smartphone size={20} /> },
     { name: 'Send Message', path: '/dashboard/messaging', icon: <Send size={20} /> },
+    { name: 'Auto Replies', path: '/dashboard/auto-replies', icon: <MessageSquare size={20} /> },
     { name: 'API Tokens', path: '/dashboard/tokens', icon: <Key size={20} /> },
     { name: 'Reports', path: '/dashboard/reports', icon: <BarChart3 size={20} /> },
     { name: 'Plans', path: '/dashboard/plans', icon: <Layers size={20} /> },
@@ -126,17 +128,81 @@ const DashboardLayout = () => {
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-            >
-              {item.icon}
-              <span>{item.name}</span>
-              {location.pathname === item.path && <ChevronRight size={16} className="active-arrow" />}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            if (item.name === 'Send Message') {
+              const isMessagingActive = location.pathname.startsWith('/dashboard/messaging');
+              const searchParams = new URLSearchParams(location.search);
+              const activeType = isMessagingActive ? (searchParams.get('type') || 'contact') : '';
+
+              return (
+                <React.Fragment key={item.path}>
+                  <Link
+                    to="/dashboard/messaging?type=contact"
+                    className={`nav-item ${isMessagingActive ? 'active' : ''}`}
+                    style={{ justifyContent: 'space-between' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </div>
+                    <ChevronRight 
+                      size={16} 
+                      style={{ 
+                        transform: isMessagingActive ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s',
+                        marginLeft: 'auto'
+                      }} 
+                    />
+                  </Link>
+                  {isMessagingActive && (
+                    <div className="sidebar-submenu">
+                      <Link 
+                        to="/dashboard/messaging?type=contact" 
+                        className={`submenu-item ${activeType === 'contact' ? 'active' : ''}`}
+                      >
+                        Contact
+                      </Link>
+                      <Link 
+                        to="/dashboard/messaging?type=bulk" 
+                        className={`submenu-item ${activeType === 'bulk' ? 'active' : ''}`}
+                      >
+                        Bulk messaging
+                      </Link>
+                      <Link 
+                        to="/dashboard/messaging?type=group" 
+                        className={`submenu-item ${activeType === 'group' ? 'active' : ''}`}
+                      >
+                        Group messaging
+                      </Link>
+                      <Link 
+                        to="/dashboard/messaging?type=schedule" 
+                        className={`submenu-item ${activeType === 'schedule' ? 'active' : ''}`}
+                      >
+                        Message Scheduling
+                      </Link>
+                      <Link 
+                        to="/dashboard/messaging?type=cycling" 
+                        className={`submenu-item ${activeType === 'cycling' ? 'active' : ''}`}
+                      >
+                        Message cycling
+                      </Link>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            }
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+                {location.pathname === item.path && <ChevronRight size={16} className="active-arrow" />}
+              </Link>
+            );
+          })}
         </nav>
 
       </aside>
