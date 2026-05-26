@@ -21,8 +21,8 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import ThemeToggle from '../../components/ThemeToggle';
+import { authService } from '../../api/services';
 import './Dashboard.css';
-
 import useThemeStore from '../../store/useThemeStore';
 
 const DashboardLayout = () => {
@@ -45,7 +45,6 @@ const DashboardLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   // Close sidebar on mobile after navigation
   React.useEffect(() => {
     if (window.innerWidth <= 1024) {
@@ -53,6 +52,20 @@ const DashboardLayout = () => {
     }
   }, [location.pathname]);
 
+  // Sync profile and timezone on dashboard mount
+  React.useEffect(() => {
+    const syncProfileTimezone = async () => {
+      try {
+        const res = await authService.getProfile();
+        if (res.data?.user) {
+          useAuthStore.getState().updateUser(res.data.user);
+        }
+      } catch (err) {
+        console.error('Failed to sync profile/timezone:', err);
+      }
+    };
+    syncProfileTimezone();
+  }, []);
   const handleLogout = () => {
     logout();
     navigate('/login');

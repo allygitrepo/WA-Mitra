@@ -123,8 +123,13 @@ const authController = {
       if (!isMatch) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-
       const token = generateToken(user.id);
+
+      const clientTimezone = req.headers['x-user-timezone'];
+      if (clientTimezone && user.timezone !== clientTimezone) {
+        user.timezone = clientTimezone;
+        await user.save();
+      }
 
       res.status(200).json({
         message: "Login successful",
@@ -146,7 +151,6 @@ const authController = {
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
-
   googleLogin: async (req, res) => {
     try {
       const { idToken, accessToken } = req.body;
@@ -184,8 +188,13 @@ const authController = {
         // Send welcome email for first time registration
         await emailService.sendEmail(user.email, emailTemplates.welcomeEmail(user.username));
       }
-
       const token = generateToken(user.id);
+
+      const clientTimezone = req.headers['x-user-timezone'];
+      if (clientTimezone && user.timezone !== clientTimezone) {
+        user.timezone = clientTimezone;
+        await user.save();
+      }
 
       res.status(200).json({
         message: "Google Login successful",
@@ -207,7 +216,6 @@ const authController = {
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
-
   forgotPassword: async (req, res) => {
     try {
       const { email } = req.body;
@@ -257,14 +265,21 @@ const authController = {
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
-  
   getProfile: async (req, res) => {
     try {
       const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ['password', 'otp', 'otpExpiry'] }
       });
+      
+      const clientTimezone = req.headers['x-user-timezone'];
+      if (clientTimezone && user && user.timezone !== clientTimezone) {
+        user.timezone = clientTimezone;
+        await user.save();
+      }
+
       res.status(200).json({ user });
     } catch (error) {
+      console.error("Get Profile Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   }

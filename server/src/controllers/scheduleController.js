@@ -1,6 +1,6 @@
-const { Schedule, WhatsAppInstance } = require('../models/associations');
+const { Schedule, WhatsAppInstance, User } = require('../models/associations');
 const fs = require('fs');
-
+const moment = require('moment-timezone');
 module.exports = {
   getSchedules: async (req, res) => {
     try {
@@ -55,13 +55,19 @@ module.exports = {
         if (file) fs.unlinkSync(file.path);
         return res.status(404).json({ success: false, message: 'Instance not found or unauthorized' });
       }
+      const user = await User.findByPk(userId);
+      const timezone = user?.timezone || 'UTC';
+      const parsedMoment = moment.tz(`${targetDate}T${targetTime}`, timezone);
+      if (!parsedMoment.isValid()) {
+        if (file) fs.unlinkSync(file.path);
+        return res.status(400).json({ success: false, message: 'Invalid target date or time format' });
+      }
 
-      const targetDateTime = new Date(`${targetDate}T${targetTime}`);
+      const targetDateTime = parsedMoment.toDate();
       if (targetDateTime.getTime() <= Date.now()) {
         if (file) fs.unlinkSync(file.path);
         return res.status(400).json({ success: false, message: 'Target date/time must be in the future' });
       }
-
       const schedule = await Schedule.create({
         userId,
         instanceKey,
