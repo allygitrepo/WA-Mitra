@@ -1,24 +1,24 @@
-const { Schedule, Cycle, WhatsAppInstance, MessageLog } = require('../models/associations');
+const { Schedule, Cycle, WhatsAppInstance, MessageLog, User } = require('../models/associations');
 const { getSock } = require('./whatsappService');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
-
+const moment = require('moment-timezone');
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
-    try {
-        await MessageLog.create({
-            instanceId,
-            recipient,
-            messageType: type,
-            status,
-            errorMessage: error
-        });
-        if (status === 'sent') {
-            await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
-        }
-    } catch (e) {
-        console.error("Logging Error:", e);
+  try {
+    await MessageLog.create({
+      instanceId,
+      recipient,
+      messageType: type,
+      status,
+      errorMessage: error
+    });
+    if (status === 'sent') {
+      await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
     }
+  } catch (e) {
+    console.error("Logging Error:", e);
+  }
 };
 
 const processSchedules = async () => {
@@ -131,38 +131,39 @@ const processSchedules = async () => {
 
 const processCycles = async () => {
   try {
-    const now = new Date();
-    
-    // Get time in local format 'HH:MM'
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTimeStr = `${hours}:${minutes}`;
-
-    // Get today's date in local format YYYY-MM-DD
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const dayDate = String(now.getDate()).padStart(2, '0');
-    const todayDateStr = `${year}-${month}-${dayDate}`;
-
-    // Get day of week (e.g. 'Sunday', 'Monday')
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const currentDayOfWeek = daysOfWeek[now.getDay()];
-
-    // Find active cycles that match the sendTime
     const activeCycles = await Cycle.findAll({
       where: {
-        status: 'active',
-        sendTime: currentTimeStr
-      }
+        status: 'active'
+      },
+      include: [{
+        model: User,
+        as: 'user'
+      }]
     });
 
     if (activeCycles.length === 0) return;
 
     for (const cycle of activeCycles) {
+      const user = cycle.user;
+      const timezone = user?.timezone || 'UTC';
+      const userNow = moment().tz(timezone);
+      const currentTimeStr = userNow.format('HH:mm');
+
+
+
+      if (cycle.sendTime !== currentTimeStr) {
+        continue;
+      }
+
+      const todayDateStr = userNow.format('YYYY-MM-DD');
+
       // Prevent running multiple times within the same minute
       if (cycle.lastRunDate === todayDateStr) {
         continue;
       }
+
+      const currentDayOfWeek = userNow.format('dddd');
+      const dayDate = userNow.date();
 
       // Check frequency rules
       let shouldRun = false;
@@ -171,20 +172,8 @@ const processCycles = async () => {
         shouldRun = true;
       } else if (cycle.frequency === 'alternate') {
         const config = cycle.frequencyConfig || {};
-        // Check if it ran yesterday
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        const yYear = yesterday.getFullYear();
-        const yMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
-        const yDayDate = String(yesterday.getDate()).padStart(2, '0');
-        const yesterdayDateStr = `${yYear}-${yMonth}-${yDayDate}`;
-
-        // Get creation date in local YYYY-MM-DD
-        const createdDate = new Date(cycle.createdAt);
-        const cYear = createdDate.getFullYear();
-        const cMonth = String(createdDate.getMonth() + 1).padStart(2, '0');
-        const cDayDate = String(createdDate.getDate()).padStart(2, '0');
-        const createdDateStr = `${cYear}-${cMonth}-${cDayDate}`;
+        const yesterdayDateStr = userNow.clone().subtract(1, 'day').format('YYYY-MM-DD');
+        const createdDateStr = moment(cycle.createdAt).tz(timezone).format('YYYY-MM-DD');
 
         if (cycle.lastRunDate === yesterdayDateStr) {
           shouldRun = false;

@@ -55,6 +55,11 @@ const User = sequelize.define("User", {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  timezone: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "UTC",
+  },
   otp: {
     type: DataTypes.STRING,
     allowNull: true,

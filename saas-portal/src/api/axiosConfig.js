@@ -5,13 +5,14 @@ const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
-// Add a request interceptor to include the auth token
+// Add a request interceptor to include the auth token and client timezone
 API.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['x-user-timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return config;
   },
   (error) => Promise.reject(error)

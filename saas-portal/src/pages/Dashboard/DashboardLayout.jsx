@@ -22,8 +22,8 @@ import {
 import useAuthStore from '../../store/useAuthStore';
 import { authService } from '../../api/services';
 import ThemeToggle from '../../components/ThemeToggle';
+import { authService } from '../../api/services';
 import './Dashboard.css';
-
 import useThemeStore from '../../store/useThemeStore';
 
 const DashboardLayout = () => {
@@ -46,7 +46,6 @@ const DashboardLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   // Close sidebar on mobile after navigation
   React.useEffect(() => {
     if (window.innerWidth <= 1024) {
@@ -54,21 +53,20 @@ const DashboardLayout = () => {
     }
   }, [location.pathname]);
 
-  // Fetch latest user profile on mount to sync subscription details
+  // Sync profile and timezone on dashboard mount
   React.useEffect(() => {
-    const fetchProfile = async () => {
+    const syncProfileTimezone = async () => {
       try {
-        const profileRes = await authService.getProfile();
-        if (profileRes.data.user) {
-          useAuthStore.getState().updateUser(profileRes.data.user);
+        const res = await authService.getProfile();
+        if (res.data?.user) {
+          useAuthStore.getState().updateUser(res.data.user);
         }
       } catch (err) {
-        console.error("Failed to load user profile:", err);
+        console.error('Failed to sync profile/timezone:', err);
       }
     };
-    fetchProfile();
+    syncProfileTimezone();
   }, []);
-
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -145,43 +143,43 @@ const DashboardLayout = () => {
                       {item.icon}
                       <span>{item.name}</span>
                     </div>
-                    <ChevronRight 
-                      size={16} 
-                      style={{ 
+                    <ChevronRight
+                      size={16}
+                      style={{
                         transform: isMessagingActive ? 'rotate(90deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s',
                         marginLeft: 'auto'
-                      }} 
+                      }}
                     />
                   </Link>
                   {isMessagingActive && (
                     <div className="sidebar-submenu">
-                      <Link 
-                        to="/dashboard/messaging?type=contact" 
+                      <Link
+                        to="/dashboard/messaging?type=contact"
                         className={`submenu-item ${activeType === 'contact' ? 'active' : ''}`}
                       >
                         Contact
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=bulk" 
+                      <Link
+                        to="/dashboard/messaging?type=bulk"
                         className={`submenu-item ${activeType === 'bulk' ? 'active' : ''}`}
                       >
                         Bulk messaging
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=group" 
+                      <Link
+                        to="/dashboard/messaging?type=group"
                         className={`submenu-item ${activeType === 'group' ? 'active' : ''}`}
                       >
                         Group messaging
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=schedule" 
+                      <Link
+                        to="/dashboard/messaging?type=schedule"
                         className={`submenu-item ${activeType === 'schedule' ? 'active' : ''}`}
                       >
                         Message Scheduling
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=cycling" 
+                      <Link
+                        to="/dashboard/messaging?type=cycling"
                         className={`submenu-item ${activeType === 'cycling' ? 'active' : ''}`}
                       >
                         Message cycling
