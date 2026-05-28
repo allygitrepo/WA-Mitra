@@ -5,20 +5,20 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment-timezone');
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
-    try {
-        await MessageLog.create({
-            instanceId,
-            recipient,
-            messageType: type,
-            status,
-            errorMessage: error
-        });
-        if (status === 'sent') {
-            await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
-        }
-    } catch (e) {
-        console.error("Logging Error:", e);
+  try {
+    await MessageLog.create({
+      instanceId,
+      recipient,
+      messageType: type,
+      status,
+      errorMessage: error
+    });
+    if (status === 'sent') {
+      await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
     }
+  } catch (e) {
+    console.error("Logging Error:", e);
+  }
 };
 
 const processSchedules = async () => {
@@ -149,7 +149,7 @@ const processCycles = async () => {
       const userNow = moment().tz(timezone);
       const currentTimeStr = userNow.format('HH:mm');
 
-      console.log(`[Scheduler] Checking cycle: "${cycle.name}" | User TZ: ${timezone} | Local time: ${currentTimeStr} | Send time: ${cycle.sendTime}`);
+
 
       if (cycle.sendTime !== currentTimeStr) {
         continue;
