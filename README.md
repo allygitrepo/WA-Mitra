@@ -49,6 +49,36 @@ curl -X POST https://api.wa-mitra.com/api/v1/messages/send \
   }'
 ```
 
+### 5. Advanced Developer APIs
+You can also use the Master Token to programmatically manage your instances and send bulk campaigns.
+
+**Bulk Messaging Endpoint (`POST /api/v1/messages/bulk`)**
+Allows you to dispatch an array of numbers and customized messages.
+```bash
+curl -X POST https://api.wa-mitra.com/api/v1/messages/bulk \
+  -H "Authorization: Bearer YOUR_MASTER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instanceKey": "your_instance_key",
+    "messages": [
+      { "number": "919876543210", "message": "Bulk message 1" },
+      { "number": "919876543211", "message": "Bulk message 2" }
+    ]
+  }'
+```
+
+**Scheduled Messaging Endpoint (`POST /api/v1/messages/schedule`)**
+Schedule a message for a future date and time (uses `multipart/form-data`). Required fields include `instanceKey`, `targetDate` (YYYY-MM-DD), `targetTime` (HH:mm), `recipients` (JSON array), and `message`.
+
+**Recurring Cycle Endpoint (`POST /api/v1/messages/cycle`)**
+Create a recurring drip campaign (uses `multipart/form-data`). Required fields include `instanceKey`, `frequency` (e.g., daily, weekly), `sendTime`, `recipients` (JSON array), and `message`.
+
+**Instance Management Endpoints:**
+- `POST /api/v1/instance/create`: Programmatically create a new WhatsApp instance.
+- `GET /api/v1/instance/list`: Fetch all instances associated with your account.
+- `GET /api/v1/instance/status`: Check the connection status of a specific instance.
+- `DELETE /api/v1/instance/delete`: Remove an instance and clear its session.
+
 ---
 
 ## 📋 What You Need to Use WA-Mitra

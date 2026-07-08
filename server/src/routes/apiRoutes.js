@@ -1,6 +1,8 @@
 const express = require("express");
 const messageController = require("../controllers/messageController");
 const instanceController = require("../controllers/instanceController");
+const scheduleController = require("../controllers/scheduleController");
+const cycleController = require("../controllers/cycleController");
 const apiAuthMiddleware = require("../middleware/apiAuthMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
@@ -20,5 +22,7 @@ router.delete("/instance/:instanceKey", instanceController.deleteInstance); // S
 // Messaging (External)
 router.post("/messages/send", upload.single('file'), messageController.sendMessage);
 router.post("/messages/bulk", messageController.sendBulkMessage);
+router.post("/messages/schedule", upload.single('file'), scheduleController.createSchedule);
+router.post("/messages/cycle", upload.single('file'), cycleController.createCycle);
 
 module.exports = router;

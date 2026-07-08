@@ -22,7 +22,6 @@ import {
 import useAuthStore from '../../store/useAuthStore';
 import { authService } from '../../api/services';
 import ThemeToggle from '../../components/ThemeToggle';
-import { authService } from '../../api/services';
 import './Dashboard.css';
 import useThemeStore from '../../store/useThemeStore';
 import CustomModal from '../../components/CustomModal';

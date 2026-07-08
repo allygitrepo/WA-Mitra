@@ -319,6 +319,29 @@ const Docs = () => {
 }`}</code></pre>
                   </div>
                 </div>
+                <h3 style={{ marginTop: '60px' }}>Listing All Instances</h3>
+                <p>Fetch a list of all WhatsApp instances associated with your account.</p>
+                <div className="postman-req">
+                  <div className="pm-header">
+                    <span className="pm-method" style={{ color: '#61afef' }}>GET</span>
+                    <span className="pm-url">{`${baseUrl}/api/v1/instance/list`}</span>
+                  </div>
+                  <div className="pm-section">
+                    <span className="pm-section-title">Success Response</span>
+                    <pre><code>{`{
+  "success": true,
+  "instances": [
+    {
+      "id": 1,
+      "name": "Support Line",
+      "instanceKey": "inst_123...",
+      "status": "connected",
+      "phone": "919876543210"
+    }
+  ]
+}`}</code></pre>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -415,6 +438,110 @@ const Docs = () => {
     { "number": "9100000002", "message": "Hello Customer 2" }
   ]
 }`}</code></pre>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '60px' }}>4. Scheduled Campaigns</h3>
+                <p>Schedule a message to be sent at a specific date and time in the future. Can handle text and media. Must use <code>multipart/form-data</code>.</p>
+
+                <div className="postman-req">
+                  <div className="pm-header">
+                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-url">{`${baseUrl}/api/v1/messages/schedule`}</span>
+                  </div>
+                  <div className="pm-section">
+                    <span className="pm-section-title">Body (form-data)</span>
+                    <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
+                      <tbody>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Your connected instance key.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>name</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Name of the schedule.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>targetDate</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: YYYY-MM-DD.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>targetTime</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: HH:mm.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>recipients</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>JSON stringified array of numbers e.g., <code>["91987..."]</code>.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Message text or caption.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>file</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Media file to send.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '60px' }}>5. Recurring Cycle Campaigns</h3>
+                <p>Create a recurring drip campaign that sends messages repeatedly based on a frequency. Must use <code>multipart/form-data</code>.</p>
+
+                <div className="postman-req">
+                  <div className="pm-header">
+                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-url">{`${baseUrl}/api/v1/messages/cycle`}</span>
+                  </div>
+                  <div className="pm-section">
+                    <span className="pm-section-title">Body (form-data)</span>
+                    <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
+                      <tbody>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Your connected instance key.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>name</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Name of the cycle.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>frequency</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td><code>daily</code>, <code>weekly</code>, <code>monthly</code>, etc.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>sendTime</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: HH:mm.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>recipients</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>JSON stringified array of numbers.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Message text or caption.</td>
+                        </tr>
+                        <tr>
+                          <td><code style={{ color: '#d19a66' }}>file</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Media file to send.</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
