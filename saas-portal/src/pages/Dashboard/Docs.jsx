@@ -27,7 +27,7 @@ const Docs = () => {
               </div>
             )}
             <div>
-              <h1 className="page-title">Documentation</h1>
+              <h1 className="page-title">API Documentation</h1>
               <p className="page-subtitle">Learn how to integrate and use the WA-Mitra API effectively.</p>
             </div>
           </div>

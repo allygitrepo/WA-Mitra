@@ -28,7 +28,7 @@ const Navbar = () => {
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
-          <Link to="/docs">Docs</Link>
+          <Link to="/docs">API Docs</Link>
           {!isAuthenticated ? (
             <>
               <Link to="/login" className="nav-btn-outline">Login</Link>

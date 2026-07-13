@@ -81,7 +81,7 @@ const DashboardLayout = () => {
     { name: 'API Tokens', path: '/dashboard/tokens', icon: <Key size={20} /> },
     { name: 'Reports', path: '/dashboard/reports', icon: <BarChart3 size={20} /> },
     { name: 'Plans', path: '/dashboard/plans', icon: <Layers size={20} /> },
-    { name: 'Docs', path: '/dashboard/docs', icon: <Book size={20} /> },
+    { name: 'API Docs', path: '/dashboard/docs', icon: <Book size={20} /> },
     { name: 'Settings', path: '/dashboard/settings', icon: <Settings size={20} /> },
   ];
 
@@ -144,43 +144,43 @@ const DashboardLayout = () => {
                       {item.icon}
                       <span>{item.name}</span>
                     </div>
-                    <ChevronRight 
-                      size={16} 
-                      style={{ 
+                    <ChevronRight
+                      size={16}
+                      style={{
                         transform: isMessagingActive ? 'rotate(90deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s',
                         marginLeft: 'auto'
-                      }} 
+                      }}
                     />
                   </Link>
                   {isMessagingActive && (
                     <div className="sidebar-submenu">
-                      <Link 
-                        to="/dashboard/messaging?type=contact" 
+                      <Link
+                        to="/dashboard/messaging?type=contact"
                         className={`submenu-item ${activeType === 'contact' ? 'active' : ''}`}
                       >
                         Contact
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=bulk" 
+                      <Link
+                        to="/dashboard/messaging?type=bulk"
                         className={`submenu-item ${activeType === 'bulk' ? 'active' : ''}`}
                       >
                         Bulk messaging
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=group" 
+                      <Link
+                        to="/dashboard/messaging?type=group"
                         className={`submenu-item ${activeType === 'group' ? 'active' : ''}`}
                       >
                         Group messaging
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=schedule" 
+                      <Link
+                        to="/dashboard/messaging?type=schedule"
                         className={`submenu-item ${activeType === 'schedule' ? 'active' : ''}`}
                       >
                         Message Scheduling
                       </Link>
-                      <Link 
-                        to="/dashboard/messaging?type=cycling" 
+                      <Link
+                        to="/dashboard/messaging?type=cycling"
                         className={`submenu-item ${activeType === 'cycling' ? 'active' : ''}`}
                       >
                         Message cycling
