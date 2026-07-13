@@ -99,6 +99,22 @@ const adminController = {
     }
   },
 
+  extendExpiry: async (req, res) => {
+    try {
+      const { userId, expiresAt } = req.body;
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      user.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      await user.save();
+
+      res.status(200).json({ message: "User expiry date updated successfully", expiresAt: user.expiresAt });
+    } catch (error) {
+      console.error("Extend Expiry Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
   // Package Management
   getAllPackages: async (req, res) => {
     try {
