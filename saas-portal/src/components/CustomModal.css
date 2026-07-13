@@ -16,9 +16,9 @@
 }
 
 .custom-modal-container {
-  background: rgba(22, 28, 36, 0.95);
+  background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5), 
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.3), 
               0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   border-radius: 16px;
   width: 90%;
@@ -46,7 +46,7 @@
 }
 
 .custom-modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   color: var(--text-main);
 }
 
@@ -62,8 +62,8 @@
   align-items: center;
   justify-content: center;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -103,7 +103,7 @@
 
 .custom-modal-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text-main);
   padding: 10px 14px;
@@ -117,14 +117,14 @@
 .custom-modal-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.15);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg);
 }
 
 .custom-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border);
   padding-top: 18px;
 }
 
@@ -145,7 +145,7 @@
 }
 
 .custom-modal-btn.btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   color: var(--text-main);
   border-color: var(--text-secondary);
 }

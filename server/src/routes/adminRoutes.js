@@ -17,6 +17,7 @@ router.get("/analytics/activity", adminController.getRecentActivity);
 router.get("/users", adminController.getAllUsers);
 router.post("/users/status", adminController.updateUserStatus);
 router.post("/users/assign-package", adminController.assignPackage);
+router.post("/users/extend-expiry", adminController.extendExpiry);
 
 // Package Management
 router.get("/packages", adminController.getAllPackages);

@@ -23,7 +23,7 @@ import './LandingPage.css';
 
 const LandingPage = () => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return (
     <div className="landing-container">
       <Navbar />
@@ -54,7 +54,7 @@ const LandingPage = () => {
                 </Link>
               )}
               <Link to="/docs" className="btn-hero-secondary">
-                View Documentation
+                View API Documentation
               </Link>
             </div>
           </div>
@@ -145,25 +145,25 @@ const LandingPage = () => {
           </div>
 
           <div className="faq-list">
-            <FAQItem 
-              question="What is WA-Mitra?" 
-              answer="WA-Mitra is an enterprise-grade WhatsApp Gateway that allows developers to connect multiple WhatsApp accounts and interact with them via a clean REST API. It's built for scale, automation, and high reliability." 
+            <FAQItem
+              question="What is WA-Mitra?"
+              answer="WA-Mitra is an enterprise-grade WhatsApp Gateway that allows developers to connect multiple WhatsApp accounts and interact with them via a clean REST API. It's built for scale, automation, and high reliability."
             />
-            <FAQItem 
-              question="How many WhatsApp instances can I connect?" 
-              answer="Depending on your plan, you can connect anywhere from 1 to 100+ instances. Our infrastructure is designed to handle multiple concurrent sessions with automatic reconnection." 
+            <FAQItem
+              question="How many WhatsApp instances can I connect?"
+              answer="Depending on your plan, you can connect anywhere from 1 to 100+ instances. Our infrastructure is designed to handle multiple concurrent sessions with automatic reconnection."
             />
-            <FAQItem 
-              question="Is my data and session secure?" 
-              answer="Yes. We use industry-standard encryption for session storage. Your WhatsApp sessions are managed securely, and we never access your message content beyond what is necessary for the API relay." 
+            <FAQItem
+              question="Is my data and session secure?"
+              answer="Yes. We use industry-standard encryption for session storage. Your WhatsApp sessions are managed securely, and we never access your message content beyond what is necessary for the API relay."
             />
-            <FAQItem 
-              question="Do you support media messages?" 
-              answer="Absolutely. You can send and receive images, videos, PDFs, audio files, and documents through our unified API endpoints." 
+            <FAQItem
+              question="Do you support media messages?"
+              answer="Absolutely. You can send and receive images, videos, PDFs, audio files, and documents through our unified API endpoints."
             />
-            <FAQItem 
-              question="Can I integrate WA-Mitra with my CRM?" 
-              answer="Yes, our REST API and Webhook system make it incredibly easy to integrate with any platform, including Salesforce, HubSpot, or your custom internal CRM." 
+            <FAQItem
+              question="Can I integrate WA-Mitra with my CRM?"
+              answer="Yes, our REST API and Webhook system make it incredibly easy to integrate with any platform, including Salesforce, HubSpot, or your custom internal CRM."
             />
           </div>
         </div>
@@ -195,7 +195,7 @@ const FeatureCard = ({ icon, title, desc }) => (
 
 const FAQItem = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
     <div className={`faq-item glass ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
       <div className="faq-question">

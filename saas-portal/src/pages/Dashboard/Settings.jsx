@@ -7,7 +7,6 @@ import {
   Moon,
   Monitor,
   Edit2,
-  LogOut,
   X,
   Box,
   Smartphone,
@@ -25,7 +24,7 @@ import './Settings.css';
 import '../Admin/Admin.css';
 
 const Settings = () => {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -73,11 +72,6 @@ const Settings = () => {
 
   const currentPackage = packages.find(p => p.id === user?.packageId) || user?.package;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -116,12 +110,6 @@ const Settings = () => {
           >
             <Box size={18} /> <span>Subscription</span>
           </button>
-
-          <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-            <button className="s-nav-item text-error" onClick={handleLogout}>
-              <LogOut size={18} /> <span>Logout Session</span>
-            </button>
-          </div>
         </div>
 
         <div className="settings-content">

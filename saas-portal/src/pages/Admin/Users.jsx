@@ -36,6 +36,7 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('all');
   const [assigningUser, setAssigningUser] = useState(null);
+  const [extendingUser, setExtendingUser] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -109,6 +110,18 @@ const AdminUsers = () => {
       toast.success("Package assigned successfully!", { id: loadingToast });
     } catch (err) {
       toast.error("Failed to assign package", { id: loadingToast });
+    }
+  };
+
+  const handleExtendExpiry = async (userId, expiresAt) => {
+    const loadingToast = toast.loading("Updating expiration date...");
+    try {
+      await API.post('/admin/users/extend-expiry', { userId, expiresAt });
+      setExtendingUser(null);
+      fetchUsers();
+      toast.success("Expiration date updated successfully!", { id: loadingToast });
+    } catch (err) {
+      toast.error("Failed to update expiration date", { id: loadingToast });
     }
   };
 
@@ -189,12 +202,80 @@ const AdminUsers = () => {
     );
   };
 
+  const ExtendExpiryModal = ({ user, onClose }) => {
+    const getInitialDate = () => {
+      if (!user.expiresAt) return '';
+      const date = new Date(user.expiresAt);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const [selectedDate, setSelectedDate] = useState(getInitialDate());
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async (e) => {
+      e.preventDefault();
+      setIsSaving(true);
+      await handleExtendExpiry(user.id, selectedDate ? new Date(selectedDate) : null);
+      onClose();
+    };
+
+    return (
+      <div className="modal-overlay animate-fade-in" onClick={onClose}>
+        <div className="assign-modal glass" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>Extend Expiry Date</h3>
+            <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
+          </div>
+
+          <form onSubmit={handleSave}>
+            <div className="modal-body">
+              <p className="text-muted text-sm mb-6">
+                Set or extend the subscription expiry date for <b>{user.username}</b>.
+              </p>
+
+              <div className="form-group-modern">
+                <label>Expiry Date</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="modern-select"
+                  style={{ width: '100%', padding: '10px 14px' }}
+                />
+                <span className="text-[11px] text-muted mt-2 block">
+                  Leave blank to set the package as "Never Expires".
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-footer mt-8">
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={isSaving}>
+                {isSaving ? 'Updating...' : 'Update Expiry'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="admin-users-container animate-fade-in">
       {assigningUser && (
         <AssignPackageModal
           user={assigningUser}
           onClose={() => setAssigningUser(null)}
+        />
+      )}
+
+      {extendingUser && (
+        <ExtendExpiryModal
+          user={extendingUser}
+          onClose={() => setExtendingUser(null)}
         />
       )}
 
@@ -388,6 +469,14 @@ const AdminUsers = () => {
                             onClick={() => setAssigningUser(user)}
                           >
                             <Package size={16} />
+                          </button>
+
+                          <button
+                            className="action-btn-extend"
+                            title="Extend Expiry Date"
+                            onClick={() => setExtendingUser(user)}
+                          >
+                            <Calendar size={16} />
                           </button>
 
                           <button className="action-btn-delete" title="Delete User">
