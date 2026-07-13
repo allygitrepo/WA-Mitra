@@ -24,6 +24,7 @@ import ThemeToggle from '../../components/ThemeToggle';
 import { authService } from '../../api/services';
 import './Dashboard.css';
 import useThemeStore from '../../store/useThemeStore';
+import CustomModal from '../../components/CustomModal';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -32,6 +33,7 @@ const DashboardLayout = () => {
   const { theme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Handle responsive sidebar on resize
   React.useEffect(() => {
@@ -201,7 +203,12 @@ const DashboardLayout = () => {
             );
           })}
         </nav>
-
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={() => setIsLogoutModalOpen(true)}>
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -235,6 +242,17 @@ const DashboardLayout = () => {
           <Outlet context={{ searchQuery }} />
         </div>
       </main>
+
+      <CustomModal
+        isOpen={isLogoutModalOpen}
+        type="confirm"
+        title="Logout Confirmation"
+        message="Are you sure you want to log out of your session?"
+        okText="Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        onCancel={() => setIsLogoutModalOpen(false)}
+      />
     </div>
   );
 };
