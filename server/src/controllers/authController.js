@@ -20,7 +20,29 @@ const authController = {
       // Check if user already exists
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: "User with this email already exists" });
+        if (existingUser.isVerified) {
+          return res.status(400).json({ message: "User with this email already exists" });
+        } else {
+          // Email exists but not verified, resend OTP with updated info
+          const hashedPassword = await bcrypt.hash(password, 10);
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+          existingUser.username = username;
+          existingUser.phone = phone;
+          existingUser.orgName = orgName;
+          existingUser.password = hashedPassword;
+          existingUser.otp = otp;
+          existingUser.otpExpiry = otpExpiry;
+          await existingUser.save();
+
+          await emailService.sendEmail(email, emailTemplates.otpEmail(otp));
+
+          return res.status(200).json({
+            message: "Registration updated. Please check your email for the OTP to verify your account.",
+            email: existingUser.email,
+          });
+        }
       }
 
       // Hash password
@@ -98,6 +120,35 @@ const authController = {
       });
     } catch (error) {
       console.error("OTP Verification Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  resendOtp: async (req, res) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ where: { email } });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.isVerified) {
+        return res.status(400).json({ message: "Email is already verified" });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+
+      await emailService.sendEmail(email, emailTemplates.otpEmail(otp));
+
+      res.status(200).json({ message: "OTP resent successfully. Please check your email." });
+    } catch (error) {
+      console.error("Resend OTP Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   },

@@ -74,6 +74,10 @@
   max-width: 420px;
 }
 
+.auth-card.register-card {
+  max-width: 580px;
+}
+
 .auth-header {
   position: relative;
   z-index: 1;

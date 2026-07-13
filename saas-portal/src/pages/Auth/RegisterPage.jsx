@@ -66,7 +66,7 @@ const RegisterPage = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-card compact glass">
+      <div className="auth-card compact register-card glass">
         <div className="auth-header">
           <Link to="/">
             <img
