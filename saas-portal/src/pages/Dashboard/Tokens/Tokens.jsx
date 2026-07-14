@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { tokenService } from '../../../api/services';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ const Tokens = () => {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(null);
+  const [visibleTokens, setVisibleTokens] = useState({});
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: '',
@@ -77,6 +78,13 @@ const Tokens = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const toggleVisibility = (id) => {
+    setVisibleTokens(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
   const filteredTokens = tokens.filter(t => 
     (t.token?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
@@ -116,7 +124,19 @@ const Tokens = () => {
               <Key size={20} className="text-muted" />
               <div className="token-details">
                 <span className="token-label">Master API Token</span>
-                <code className="token-value">{token.token}</code>
+                <div className="token-value-container">
+                  <code className="token-value">
+                    {visibleTokens[token.id] ? token.token : '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+                  </code>
+                  <button 
+                    type="button"
+                    className="btn-toggle-visibility"
+                    onClick={() => toggleVisibility(token.id)}
+                    title={visibleTokens[token.id] ? "Hide Token" : "Show Token"}
+                  >
+                    {visibleTokens[token.id] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
             
