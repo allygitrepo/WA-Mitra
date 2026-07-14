@@ -27,18 +27,26 @@
 
 .grid-row-3 {
     grid-template-columns: repeat(3, 1fr);
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .grid-row-4 {
     grid-template-columns: repeat(4, 1fr);
+    max-width: 1500px;
+    margin: 0 auto;
 }
 
 .grid-row-5 {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    max-width: 1700px;
+    margin: 0 auto;
 }
 
 .grid-multi {
     grid-template-columns: repeat(3, 1fr);
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 @media (min-width: 1600px) {
