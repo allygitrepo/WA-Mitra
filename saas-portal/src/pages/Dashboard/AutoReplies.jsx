@@ -6,7 +6,8 @@ import {
   X,
   Bot,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Edit2
 } from 'lucide-react';
 import { instanceService } from '../../api/services';
 import API from '../../api/axiosConfig';
@@ -23,11 +24,32 @@ const AutoReplies = () => {
   const [matchType, setMatchType] = useState('exact');
   const [replyText, setReplyText] = useState('');
   const [filterInstance, setFilterInstance] = useState('All Instances');
+  const [editingRule, setEditingRule] = useState(null);
 
   // Load instances & rules
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchAllInstanceRules = async (fetchedInstances) => {
+    try {
+      const rulesPromises = fetchedInstances.map(async (inst) => {
+        try {
+          const rulesRes = await API.get('/whatsapp/auto-reply/rules', {
+            params: { instanceKey: inst.instanceKey }
+          });
+          return rulesRes.data.rules || [];
+        } catch (e) {
+          return [];
+        }
+      });
+      const allRulesArrays = await Promise.all(rulesPromises);
+      return allRulesArrays.flat();
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -41,18 +63,8 @@ const AutoReplies = () => {
         setSelectedInstance(fetchedInstances[0].instanceKey);
       }
 
-      // Load from localStorage
-      const localRules = localStorage.getItem('wa_mitra_auto_reply_rules');
-      if (localRules) {
-        const parsedRules = JSON.parse(localRules);
-        setRules(parsedRules);
-        
-        // Sync rules for all instances with backend on startup
-        for (const inst of fetchedInstances) {
-          const instRules = parsedRules.filter(r => r.instanceKey === inst.instanceKey);
-          await syncWithBackend(inst.instanceKey, instRules);
-        }
-      }
+      const dbRules = await fetchAllInstanceRules(fetchedInstances);
+      setRules(dbRules);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load instances.");
@@ -70,64 +82,132 @@ const AutoReplies = () => {
       });
     } catch (err) {
       console.error(`Failed to sync rules for instance ${instanceKey} to server:`, err);
+      throw err;
     }
   };
 
-  const handleAddRule = async (e) => {
+  const handleOpenEditModal = (rule) => {
+    setEditingRule(rule);
+    setSelectedInstance(rule.instanceKey);
+    setKeyword(rule.keyword);
+    setMatchType(rule.matchType);
+    setReplyText(rule.replyText);
+    setShowAddModal(true);
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingRule(null);
+    if (instances.length > 0) {
+      setSelectedInstance(instances[0].instanceKey);
+    }
+    setKeyword('');
+    setMatchType('exact');
+    setReplyText('');
+    setShowAddModal(true);
+  };
+
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!selectedInstance || !keyword.trim() || !replyText.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
 
-    const newRule = {
-      id: `rule_${Date.now()}`,
-      instanceKey: selectedInstance,
-      keyword: keyword.trim(),
-      matchType,
-      replyText: replyText.trim(),
-      isActive: true
-    };
+    if (editingRule) {
+      // EDIT MODE
+      const updatedRules = rules.map(r => {
+        if (r.id === editingRule.id) {
+          return {
+            ...r,
+            instanceKey: selectedInstance,
+            keyword: keyword.trim(),
+            matchType,
+            replyText: replyText.trim()
+          };
+        }
+        return r;
+      });
 
-    const updatedRules = [...rules, newRule];
-    setRules(updatedRules);
-    localStorage.setItem('wa_mitra_auto_reply_rules', JSON.stringify(updatedRules));
+      const loadingToast = toast.loading("Updating auto-reply rule...");
+      try {
+        await syncWithBackend(selectedInstance, updatedRules.filter(r => r.instanceKey === selectedInstance));
+        
+        if (editingRule.instanceKey !== selectedInstance) {
+          await syncWithBackend(editingRule.instanceKey, updatedRules.filter(r => r.instanceKey === editingRule.instanceKey));
+        }
 
-    // Reset Form
-    setKeyword('');
-    setReplyText('');
-    setShowAddModal(false);
-    toast.success("Auto-reply rule added successfully!");
+        const dbRules = await fetchAllInstanceRules(instances);
+        setRules(dbRules);
 
-    // Sync instance rules to backend
-    const instRules = updatedRules.filter(r => r.instanceKey === selectedInstance);
-    await syncWithBackend(selectedInstance, instRules);
+        setKeyword('');
+        setReplyText('');
+        setEditingRule(null);
+        setShowAddModal(false);
+        toast.success("Auto-reply rule updated successfully!", { id: loadingToast });
+      } catch (err) {
+        toast.error("Failed to update auto-reply rule.", { id: loadingToast });
+      }
+    } else {
+      // ADD MODE
+      const newRule = {
+        instanceKey: selectedInstance,
+        keyword: keyword.trim(),
+        matchType,
+        replyText: replyText.trim(),
+        isActive: true
+      };
+
+      const instanceRules = rules.filter(r => r.instanceKey === selectedInstance);
+      const updatedInstRules = [...instanceRules, newRule];
+
+      const loadingToast = toast.loading("Adding auto-reply rule...");
+      try {
+        await syncWithBackend(selectedInstance, updatedInstRules);
+        
+        const dbRules = await fetchAllInstanceRules(instances);
+        setRules(dbRules);
+
+        setKeyword('');
+        setReplyText('');
+        setShowAddModal(false);
+        toast.success("Auto-reply rule added successfully!", { id: loadingToast });
+      } catch (err) {
+        toast.error("Failed to add auto-reply rule.", { id: loadingToast });
+      }
+    }
   };
 
   const handleDeleteRule = async (ruleId, instanceKey) => {
-    const updatedRules = rules.filter(r => r.id !== ruleId);
-    setRules(updatedRules);
-    localStorage.setItem('wa_mitra_auto_reply_rules', JSON.stringify(updatedRules));
-    toast.success("Rule deleted successfully.");
+    const loadingToast = toast.loading("Deleting rule...");
+    try {
+      const instRules = rules.filter(r => r.instanceKey === instanceKey && r.id !== ruleId);
+      await syncWithBackend(instanceKey, instRules);
 
-    // Sync instance rules to backend
-    const instRules = updatedRules.filter(r => r.instanceKey === instanceKey);
-    await syncWithBackend(instanceKey, instRules);
+      const dbRules = await fetchAllInstanceRules(instances);
+      setRules(dbRules);
+      toast.success("Rule deleted successfully.", { id: loadingToast });
+    } catch (err) {
+      toast.error("Failed to delete rule.", { id: loadingToast });
+    }
   };
 
   const handleToggleRule = async (ruleId, instanceKey) => {
-    const updatedRules = rules.map(r => {
-      if (r.id === ruleId) {
-        return { ...r, isActive: !r.isActive };
-      }
-      return r;
-    });
-    setRules(updatedRules);
-    localStorage.setItem('wa_mitra_auto_reply_rules', JSON.stringify(updatedRules));
+    const loadingToast = toast.loading("Updating rule status...");
+    try {
+      const instRules = rules.filter(r => r.instanceKey === instanceKey).map(r => {
+        if (r.id === ruleId) {
+          return { ...r, isActive: !r.isActive };
+        }
+        return r;
+      });
+      await syncWithBackend(instanceKey, instRules);
 
-    // Sync instance rules to backend
-    const instRules = updatedRules.filter(r => r.instanceKey === instanceKey);
-    await syncWithBackend(instanceKey, instRules);
+      const dbRules = await fetchAllInstanceRules(instances);
+      setRules(dbRules);
+      toast.success("Rule status updated.", { id: loadingToast });
+    } catch (err) {
+      toast.error("Failed to update rule status.", { id: loadingToast });
+    }
   };
 
   // Filter Logic
@@ -166,11 +246,7 @@ const AutoReplies = () => {
           <button 
             className="btn-primary" 
             onClick={() => {
-              if (instances.length === 0) {
-                toast.error("Please create a WhatsApp instance first.");
-                return;
-              }
-              setShowAddModal(true);
+              handleOpenAddModal();
             }}
           >
             <Plus size={18} /> New Rule
@@ -215,6 +291,13 @@ const AutoReplies = () => {
                   </button>
                   <button 
                     className="icon-btn-sm" 
+                    onClick={() => handleOpenEditModal(rule)}
+                    title="Edit Rule"
+                  >
+                    <Edit2 size={16} style={{ color: 'var(--text-muted)' }} />
+                  </button>
+                  <button 
+                    className="icon-btn-sm" 
                     onClick={() => handleDeleteRule(rule.id, rule.instanceKey)}
                     title="Delete Rule"
                   >
@@ -245,10 +328,10 @@ const AutoReplies = () => {
       {/* Add Rule Modal */}
       {showAddModal && (
         <div className="modal-overlay">
-          <form className="modal-content glass animate-fade-in" onSubmit={handleAddRule}>
+          <form className="modal-content glass animate-fade-in" onSubmit={handleFormSubmit}>
             <div className="modal-header">
-              <h3>Create Auto-Reply Rule</h3>
-              <button type="button" className="close-btn" onClick={() => setShowAddModal(false)}><X size={20} /></button>
+              <h3>{editingRule ? 'Edit Auto-Reply Rule' : 'Create Auto-Reply Rule'}</h3>
+              <button type="button" className="close-btn" onClick={() => { setShowAddModal(false); setEditingRule(null); }}><X size={20} /></button>
             </div>
             <div className="modal-body">
               <div className="form-group">
@@ -320,9 +403,9 @@ const AutoReplies = () => {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button type="button" className="btn-secondary" onClick={() => { setShowAddModal(false); setEditingRule(null); }}>Cancel</button>
               <button type="submit" className="btn-primary">
-                Create Rule
+                {editingRule ? 'Save Changes' : 'Create Rule'}
               </button>
             </div>
           </form>

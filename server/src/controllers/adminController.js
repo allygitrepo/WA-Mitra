@@ -29,6 +29,51 @@ const adminController = {
     }
   },
 
+  createUser: async (req, res) => {
+    try {
+      const { username, email, phone, orgName, password, role } = req.body;
+
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: "Username, email, and password are required." });
+      }
+
+      // Check if user already exists
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      const bcrypt = require("bcryptjs");
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const newUser = await User.create({
+        username,
+        email,
+        phone,
+        orgName,
+        password: hashedPassword,
+        role: role || "user",
+        status: "active",
+        isVerified: true
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "User created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role,
+          status: newUser.status
+        }
+      });
+    } catch (error) {
+      console.error("Create User Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
   updateUserStatus: async (req, res) => {
     try {
       const { userId, status } = req.body; // 'active' or 'suspended'

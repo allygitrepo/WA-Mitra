@@ -335,6 +335,39 @@ const authController = {
       console.error("Get Profile Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
+  },
+  updateProfile: async (req, res) => {
+    try {
+      const { username, phone, orgName } = req.body;
+      const { User: AssocUser } = require("../models/associations");
+      const user = await AssocUser.findByPk(req.user.id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (username) user.username = username;
+      if (phone !== undefined) user.phone = phone;
+      if (orgName !== undefined) user.orgName = orgName;
+
+      await user.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          orgName: user.orgName,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error("Update Profile Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 };
 

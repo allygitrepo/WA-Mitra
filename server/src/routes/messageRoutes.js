@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.use(authMiddleware);
 
 router.post('/send', upload.single('file'), messageController.sendMessage);
-router.post('/bulk', messageController.sendBulkMessage);
+router.post('/bulk', upload.single('file'), messageController.sendBulkMessage);
 router.get('/logs', messageController.getMessageLogs);
 router.get('/reports', messageController.getReports);
 

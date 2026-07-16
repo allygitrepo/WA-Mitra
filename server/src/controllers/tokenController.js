@@ -69,6 +69,27 @@ const tokenController = {
       res.status(500).json({ success: false, message: "Internal Server Error" });
     }
   },
+
+  deleteToken: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const apiToken = await ApiToken.findOne({ where: { id, userId } });
+
+      if (!apiToken) {
+        return res.status(404).json({ success: false, message: "Token not found or unauthorized" });
+      }
+
+      await apiToken.destroy();
+      res.status(200).json({
+        success: true,
+        message: "API Token revoked successfully",
+      });
+    } catch (error) {
+      console.error("Delete Token Error:", error);
+      res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+  },
 };
 
 module.exports = tokenController;

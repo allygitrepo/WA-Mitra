@@ -7,6 +7,7 @@ const Payment = require('./paymentModel');
 const Template = require('./templateModel');
 const Schedule = require('./scheduleModel');
 const Cycle = require('./cycleModel');
+const AutoReplyRule = require('./autoReplyModel');
 
 // User <-> Instance
 User.hasMany(WhatsAppInstance, { foreignKey: 'userId', as: 'instances' });
@@ -44,4 +45,8 @@ Schedule.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasMany(Cycle, { foreignKey: 'userId', as: 'cycles' });
 Cycle.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template, Schedule, Cycle };
+// Instance <-> AutoReplyRule
+WhatsAppInstance.hasMany(AutoReplyRule, { foreignKey: 'instanceKey', sourceKey: 'instanceKey', as: 'rules' });
+AutoReplyRule.belongsTo(WhatsAppInstance, { foreignKey: 'instanceKey', targetKey: 'instanceKey', as: 'instance' });
+
+module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template, Schedule, Cycle, AutoReplyRule };

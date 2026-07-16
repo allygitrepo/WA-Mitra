@@ -54,7 +54,7 @@ const whatsappController = {
       }
 
       const { syncInstanceRules } = require("../services/whatsappService");
-      syncInstanceRules(instanceKey, rules);
+      await syncInstanceRules(instanceKey, rules);
 
       res.status(200).json({ success: true, message: "Rules synchronized successfully" });
     } catch (error) {
@@ -79,7 +79,7 @@ const whatsappController = {
       }
 
       const { getInstanceRules } = require("../services/whatsappService");
-      const rules = getInstanceRules(instanceKey);
+      const rules = await getInstanceRules(instanceKey);
 
       res.status(200).json({ success: true, rules });
     } catch (error) {
