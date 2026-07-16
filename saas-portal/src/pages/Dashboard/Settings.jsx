@@ -24,14 +24,49 @@ import './Settings.css';
 import '../Admin/Admin.css';
 
 const Settings = () => {
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    username: '',
+    orgName: '',
+    phone: ''
+  });
   const [packages, setPackages] = useState([]);
   const [loadingPkg, setLoadingPkg] = useState(false);
   const [usage, setUsage] = useState({ instances: 0, messages: 0 });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        username: user.username || '',
+        orgName: user.orgName || '',
+        phone: user.phone || ''
+      });
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!profileForm.username.trim()) {
+      toast.error("Username cannot be empty.");
+      return;
+    }
+    setSavingProfile(true);
+    const loadingToast = toast.loading("Updating profile...");
+    try {
+      const res = await API.put('/auth/profile', profileForm);
+      updateUser(res.data.user);
+      setIsEditing(false);
+      toast.success("Profile updated successfully!", { id: loadingToast });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update profile", { id: loadingToast });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'subscription') {
@@ -136,7 +171,8 @@ const Settings = () => {
                       type="text"
                       className="auth-input"
                       style={{ paddingLeft: '14px' }}
-                      defaultValue={user?.username}
+                      value={profileForm.username}
+                      onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
                       readOnly={!isEditing}
                     />
                   </div>
@@ -160,7 +196,8 @@ const Settings = () => {
                       type="text"
                       className="auth-input"
                       style={{ paddingLeft: '14px' }}
-                      defaultValue={user?.orgName}
+                      value={profileForm.orgName}
+                      onChange={(e) => setProfileForm({ ...profileForm, orgName: e.target.value })}
                       readOnly={!isEditing}
                       placeholder="Not set"
                     />
@@ -171,7 +208,8 @@ const Settings = () => {
                       type="text"
                       className="auth-input"
                       style={{ paddingLeft: '14px' }}
-                      defaultValue={user?.phone}
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                       readOnly={!isEditing}
                       placeholder="Not set"
                     />
@@ -180,7 +218,7 @@ const Settings = () => {
 
                 {isEditing && (
                   <div className="form-actions animate-fade-in">
-                    <button className="btn-primary" onClick={() => setIsEditing(false)}>
+                    <button className="btn-primary" onClick={handleSaveProfile} disabled={savingProfile}>
                       <Save size={18} /> Save Changes
                     </button>
                   </div>

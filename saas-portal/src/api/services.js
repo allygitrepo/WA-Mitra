@@ -36,7 +36,22 @@ export const messageService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  sendBulk: (data) => API.post('/messages/bulk', data),
+  sendBulk: (data) => {
+    if (data.file) {
+      const formData = new FormData();
+      Object.keys(data).forEach(key => {
+        if (key === 'messages') {
+          formData.append(key, JSON.stringify(data[key]));
+        } else {
+          formData.append(key, data[key]);
+        }
+      });
+      return API.post('/messages/bulk', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    }
+    return API.post('/messages/bulk', data);
+  },
   getLogs: () => API.get('/messages/logs'),
   getReports: () => API.get('/messages/reports'),
 };

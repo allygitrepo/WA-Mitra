@@ -30,9 +30,7 @@ const CreateAdmin = () => {
     setLoading(true);
     const loadingToast = toast.loading("Creating administrator...");
     try {
-      // Logic to create admin would go here
-      // For now, we assume it's a standard user creation with role: 'admin'
-      await API.post('/auth/register', { ...formData, role: 'admin' });
+      await API.post('/admin/users/create', { ...formData, role: 'admin' });
       toast.success("Admin created successfully!", { id: loadingToast });
       navigate('/admin/users');
     } catch (err) {

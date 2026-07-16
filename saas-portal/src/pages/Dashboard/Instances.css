@@ -311,10 +311,7 @@
 /* Image Preview Modal */
 .image-preview-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -326,25 +323,15 @@
   cursor: zoom-out;
 }
 
-.preview-content {
-  position: relative;
-  width: auto;
-  height: auto;
+.preview-image {
   max-width: 90vw;
-  max-height: 90vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.preview-content img {
-  max-width: 100%;
   max-height: 85vh;
   object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: #000;
+  cursor: default;
 }
 
 .preview-close {

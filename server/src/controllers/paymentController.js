@@ -125,6 +125,16 @@ const paymentController = {
       const pkg = await Package.findByPk(paymentRecord.packageId);
       const user = await User.findByPk(paymentRecord.userId);
 
+      // Check one-time package restriction
+      if (pkg.isOneTime) {
+        const existingPayment = await Payment.findOne({
+          where: { userId: user.id, packageId: pkg.id, status: 'completed' }
+        });
+        if (existingPayment) {
+          return res.status(400).json({ message: "You have already used this one-time package." });
+        }
+      }
+
       // Update Payment Record
       paymentRecord.status = 'completed';
       paymentRecord.razorpayPaymentId = razorpay_payment_id;

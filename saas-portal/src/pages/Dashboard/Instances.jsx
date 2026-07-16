@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   MoreVertical,
@@ -310,15 +311,14 @@ const Instances = () => {
       )}
 
       {/* Image Preview Modal */}
-      {previewImage && (
+      {previewImage && createPortal(
         <div className="image-preview-overlay animate-fade-in" onClick={() => setPreviewImage(null)}>
-          <div className="preview-content" onClick={e => e.stopPropagation()}>
-            <button className="preview-close" onClick={() => setPreviewImage(null)}>
-              <X size={24} />
-            </button>
-            <img src={previewImage} alt="Profile Preview" className="animate-scale-up" />
-          </div>
-        </div>
+          <button className="preview-close" onClick={() => setPreviewImage(null)}>
+            <X size={24} />
+          </button>
+          <img src={previewImage} alt="Profile Preview" className="preview-image" onClick={e => e.stopPropagation()} />
+        </div>,
+        document.body
       )}
 
       <CustomModal

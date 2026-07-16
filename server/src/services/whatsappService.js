@@ -27,40 +27,33 @@ const sessions = new Map();
 // Store temporary connection errors: Map<instanceKey, errorMessage>
 const connectionErrors = new Map();
 
-// Local rules storage for WhatsApp Auto-Reply (Testing mode - local JSON storage)
-const rulesFilePath = path.join(__dirname, '../../rules.json');
-let localRules = {};
-
-function loadRulesFromFile() {
+async function syncInstanceRules(instanceKey, rules) {
     try {
-        if (fs.existsSync(rulesFilePath)) {
-            const data = fs.readFileSync(rulesFilePath, 'utf8');
-            localRules = JSON.parse(data);
-        } else {
-            localRules = {};
+        const { AutoReplyRule } = require("../models/associations");
+        await AutoReplyRule.destroy({ where: { instanceKey } });
+        if (rules && rules.length > 0) {
+            const rulesToCreate = rules.map(rule => ({
+                instanceKey,
+                keyword: rule.keyword,
+                replyText: rule.replyText,
+                matchType: rule.matchType || 'exact',
+                isActive: rule.isActive !== undefined ? rule.isActive : true
+            }));
+            await AutoReplyRule.bulkCreate(rulesToCreate);
         }
     } catch (e) {
-        console.error("Error loading rules.json:", e);
-        localRules = {};
+        console.error("Error syncing instance rules to DB:", e);
     }
 }
-loadRulesFromFile();
 
-function saveRulesToFile() {
+async function getInstanceRules(instanceKey) {
     try {
-        fs.writeFileSync(rulesFilePath, JSON.stringify(localRules, null, 2), 'utf8');
+        const { AutoReplyRule } = require("../models/associations");
+        return await AutoReplyRule.findAll({ where: { instanceKey } });
     } catch (e) {
-        console.error("Error saving rules.json:", e);
+        console.error("Error getting instance rules from DB:", e);
+        return [];
     }
-}
-
-function syncInstanceRules(instanceKey, rules) {
-    localRules[instanceKey] = rules;
-    saveRulesToFile();
-}
-
-function getInstanceRules(instanceKey) {
-    return localRules[instanceKey] || [];
 }
 
 function getSessionPath(instanceKey) {
@@ -268,7 +261,7 @@ async function startSession(instanceKey) {
                         msg.message?.imageMessage?.caption || "";
 
                     if (text) {
-                        const rules = getInstanceRules(instanceKey);
+                        const rules = await getInstanceRules(instanceKey);
                         const incomingText = text.trim().toLowerCase();
 
                         for (const rule of rules) {

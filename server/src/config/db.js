@@ -10,6 +10,12 @@ const sequelize = new Sequelize(
         dialect: process.env.DB_DIALECT,
         port: process.env.DB_PORT,
         logging: false, // disable SQL logs
+        pool: {
+            max: 25,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+        }
     }
 );
 

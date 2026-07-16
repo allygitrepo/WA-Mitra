@@ -10,7 +10,7 @@ import {
   Users,
   MessageSquare
 } from 'lucide-react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { instanceService, messageService } from '../../api/services';
 import useAuthStore from '../../store/useAuthStore';
 import './Overview.css';
@@ -19,6 +19,7 @@ import '../Admin/Admin.css';
 const Overview = () => {
   const { searchQuery } = useOutletContext();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +113,7 @@ const Overview = () => {
         <div className="content-card glass">
           <div className="card-header">
             <h3>Recent Activity</h3>
-            <button className="text-btn" onClick={() => window.location.href = '/dashboard/reports'}>View All</button>
+            <button className="text-btn" onClick={() => navigate('/dashboard/reports')}>View All</button>
           </div>
           <div className="activity-list">
             {filteredLogs.length === 0 ? (
@@ -138,15 +139,15 @@ const Overview = () => {
             <h3>Quick Actions</h3>
           </div>
           <div className="quick-actions-grid">
-            <button className="q-action-btn" onClick={() => window.location.href = '/dashboard/messaging'}>
+            <button className="q-action-btn" onClick={() => navigate('/dashboard/messaging')}>
               <Send size={20} />
               <span>Send Message</span>
             </button>
-            <button className="q-action-btn" onClick={() => window.location.href = '/dashboard/instances'}>
+            <button className="q-action-btn" onClick={() => navigate('/dashboard/instances')}>
               <Smartphone size={20} />
               <span>Manage Instances</span>
             </button>
-            <button className="q-action-btn" onClick={() => window.location.href = '/dashboard/tokens'}>
+            <button className="q-action-btn" onClick={() => navigate('/dashboard/tokens')}>
               <Activity size={20} />
               <span>API Tokens</span>
             </button>

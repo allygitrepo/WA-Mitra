@@ -44,35 +44,60 @@ const checkMessageQuota = async (user, count = 1) => {
 
 const messageController = {
     sendBulkMessage: async (req, res) => {
+        const file = req.file;
         try {
-            const { messages, instanceKey } = req.body;
+            const { instanceKey } = req.body;
+            let parsedMessages = req.body.messages;
 
-            if (!instanceKey) return res.status(400).json({ success: false, message: 'instanceKey is required' });
-            if (!messages || !Array.isArray(messages)) return res.status(400).json({ success: false, message: 'messages array is required' });
+            if (typeof parsedMessages === 'string') {
+                try {
+                    parsedMessages = JSON.parse(parsedMessages);
+                } catch (e) {
+                    if (file) fs.unlinkSync(file.path);
+                    return res.status(400).json({ success: false, message: 'Invalid messages format' });
+                }
+            }
+
+            if (!instanceKey) {
+                if (file) fs.unlinkSync(file.path);
+                return res.status(400).json({ success: false, message: 'instanceKey is required' });
+            }
+            if (!parsedMessages || !Array.isArray(parsedMessages)) {
+                if (file) fs.unlinkSync(file.path);
+                return res.status(400).json({ success: false, message: 'messages array is required' });
+            }
 
             const instance = await WhatsAppInstance.findOne({ where: { instanceKey, userId: req.user.id } });
-            if (!instance) return res.status(404).json({ success: false, message: 'Instance not found or unauthorized' });
+            if (!instance) {
+                if (file) fs.unlinkSync(file.path);
+                return res.status(404).json({ success: false, message: 'Instance not found or unauthorized' });
+            }
 
-            const hasQuota = await checkMessageQuota(req.user, messages.length);
+            const hasQuota = await checkMessageQuota(req.user, parsedMessages.length);
             if (!hasQuota) {
+                if (file) fs.unlinkSync(file.path);
                 return res.status(403).json({ success: false, message: 'Message quota exceeded. Please upgrade your package.' });
             }
 
             const sock = getSock(instanceKey);
-            if (!sock) return res.status(500).json({ success: false, message: 'WhatsApp not connected for this instance' });
+            if (!sock) {
+                if (file) fs.unlinkSync(file.path);
+                return res.status(500).json({ success: false, message: 'WhatsApp not connected for this instance' });
+            }
 
             const QUEUE_INTERVAL_MS = 1000;
             const results = {
-                total: messages.length,
+                total: parsedMessages.length,
                 sent: 0,
                 failed: 0,
                 errors: []
             };
 
-            for (const msg of messages) {
+            for (const msg of parsedMessages) {
                 const { number, message } = msg;
                 let status = 'failed';
                 let errorMsg = null;
+                let type = file ? 'media' : 'text';
 
                 try {
                     const isJid = number.includes('@');
@@ -89,15 +114,30 @@ const messageController = {
                             errorMsg = 'Number is not on WhatsApp';
                             results.failed++;
                             results.errors.push({ number, error: errorMsg });
-                            await logMessage(instance.id, number, 'text', status, errorMsg);
-                            if (messages.indexOf(msg) < messages.length - 1) {
+                            await logMessage(instance.id, number, type, status, errorMsg);
+                            if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
                                 await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
                             }
                             continue;
                         }
                     }
 
-                    await sock.sendMessage(targetJid, { text: message });
+                    if (file) {
+                        const ext = path.extname(file.originalname).toLowerCase();
+                        const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
+                        if (isImage) {
+                            await sock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
+                        } else {
+                            await sock.sendMessage(targetJid, {
+                                document: { url: file.path },
+                                mimetype: file.mimetype,
+                                fileName: file.originalname,
+                                caption: message || ''
+                            });
+                        }
+                    } else {
+                        await sock.sendMessage(targetJid, { text: message });
+                    }
                     status = 'sent';
                     results.sent++;
                 } catch (error) {
@@ -106,8 +146,8 @@ const messageController = {
                     results.errors.push({ number, error: errorMsg });
                 }
 
-                await logMessage(instance.id, number, 'text', status, errorMsg);
-                if (messages.indexOf(msg) < messages.length - 1) {
+                await logMessage(instance.id, number, type, status, errorMsg);
+                if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
                 }
             }
@@ -120,6 +160,14 @@ const messageController = {
 
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
+        } finally {
+            if (file && fs.existsSync(file.path)) {
+                try {
+                    fs.unlinkSync(file.path);
+                } catch (e) {
+                    console.error("Failed to clean up bulk upload file:", e);
+                }
+            }
         }
     },
 

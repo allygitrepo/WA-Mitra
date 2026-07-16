@@ -85,23 +85,69 @@ const Reports = () => {
     }
 
     const tableRows = [];
-    filteredReports.forEach(report => {
-      tableRows.push([
-        new Date(report.date).toLocaleDateString(),
-        report.instance?.name || 'Unknown',
-        report.instanceId,
-        report.count
-      ]);
+    Object.keys(groupedReports).forEach(date => {
+      Object.values(groupedReports[date]).forEach(stat => {
+        tableRows.push([
+          new Date(stat.date).toLocaleDateString(),
+          stat.instance?.name || 'Unknown',
+          stat.sent,
+          stat.failed
+        ]);
+      });
     });
 
     autoTable(doc, {
       startY: 45,
-      head: [['Date', 'Instance Name', 'Instance ID', 'Messages Sent']],
+      head: [['Date', 'Instance Name', 'Sent Messages', 'Failed Messages']],
       body: tableRows,
       theme: 'grid',
       headStyles: { fillColor: [0, 168, 132] },
       margin: { top: 45 }
     });
+
+    // Add Detailed logs table
+    const detailedRows = [];
+    const dateFilteredLogs = logs.filter(log => {
+      if (!fromDate && !toDate) return true;
+      const logDate = new Date(log.createdAt);
+      if (fromDate) {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        if (logDate < from) return false;
+      }
+      if (toDate) {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        if (logDate > to) return false;
+      }
+      return true;
+    });
+
+    dateFilteredLogs.forEach(log => {
+      detailedRows.push([
+        new Date(log.createdAt).toLocaleString(),
+        log.instance?.name || 'Unknown',
+        log.recipient,
+        log.status === 'sent' ? 'Sent' : 'Failed',
+        log.errorMessage || '-'
+      ]);
+    });
+
+    if (detailedRows.length > 0) {
+      const finalY = doc.lastAutoTable.finalY || 45;
+      doc.setFontSize(14);
+      doc.setTextColor(0, 168, 132);
+      doc.text('Detailed Message Log', 14, finalY + 15);
+
+      autoTable(doc, {
+        startY: finalY + 20,
+        head: [['Date & Time', 'Instance Name', 'Recipient Number', 'Status', 'Failure Reason']],
+        body: detailedRows,
+        theme: 'grid',
+        headStyles: { fillColor: [0, 168, 132] },
+        margin: { top: 45 }
+      });
+    }
 
     doc.save(`WA-Mitra_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
