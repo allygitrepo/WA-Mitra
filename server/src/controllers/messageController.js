@@ -85,6 +85,12 @@ const messageController = {
                 return res.status(500).json({ success: false, message: 'WhatsApp not connected for this instance' });
             }
 
+            // Set headers for NDJSON streaming
+            res.setHeader('Content-Type', 'application/x-ndjson');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
             const QUEUE_INTERVAL_MS = 1000;
             const results = {
                 total: parsedMessages.length,
@@ -93,11 +99,13 @@ const messageController = {
                 errors: []
             };
 
+            let index = 0;
             for (const msg of parsedMessages) {
                 const { number, message } = msg;
                 let status = 'failed';
                 let errorMsg = null;
                 let type = file ? 'media' : 'text';
+                index++;
 
                 try {
                     const isJid = number.includes('@');
@@ -115,6 +123,18 @@ const messageController = {
                             results.failed++;
                             results.errors.push({ number, error: errorMsg });
                             await logMessage(instance.id, number, type, status, errorMsg);
+
+                            res.write(JSON.stringify({
+                                type: 'progress',
+                                index,
+                                total: results.total,
+                                sent: results.sent,
+                                failed: results.failed,
+                                currentNumber: number,
+                                status: 'failed',
+                                error: errorMsg
+                            }) + '\n');
+
                             if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
                                 await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
                             }
@@ -147,16 +167,28 @@ const messageController = {
                 }
 
                 await logMessage(instance.id, number, type, status, errorMsg);
+
+                res.write(JSON.stringify({
+                    type: 'progress',
+                    index,
+                    total: results.total,
+                    sent: results.sent,
+                    failed: results.failed,
+                    currentNumber: number,
+                    status,
+                    error: errorMsg
+                }) + '\n');
+
                 if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
                 }
             }
 
-            res.json({
-                success: true,
-                message: 'Bulk processing completed',
+            res.write(JSON.stringify({
+                type: 'done',
                 results
-            });
+            }) + '\n');
+            res.end();
 
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
