@@ -238,11 +238,14 @@ const adminController = {
       const messageInteractions = await MessageLog.findAll({
         attributes: [
           [sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')), 'date'],
-          [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('instance.userId'))), 'count']
+          [sequelize.col('instance.userId'), 'userId']
         ],
         include: [{ model: WhatsAppInstance, as: 'instance', attributes: [], required: true }],
         where: { createdAt: { [Op.gte]: startDate } },
-        group: [sequelize.fn('DATE', sequelize.col('MessageLog.createdAt'))],
+        group: [
+          sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')),
+          sequelize.col('instance.userId')
+        ],
         raw: true
       });
 
@@ -250,10 +253,9 @@ const adminController = {
       const userRegistrations = await User.findAll({
         attributes: [
           [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+          ['id', 'userId']
         ],
         where: { createdAt: { [Op.gte]: startDate } },
-        group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
         raw: true
       });
 
@@ -261,21 +263,27 @@ const adminController = {
       const instanceCreations = await WhatsAppInstance.findAll({
         attributes: [
           [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+          ['userId', 'userId']
         ],
         where: { createdAt: { [Op.gte]: startDate } },
-        group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
+        group: [
+          sequelize.fn('DATE', sequelize.col('createdAt')),
+          sequelize.col('userId')
+        ],
         raw: true
       });
 
       // Combine all activities into a daily unique user interaction map
-      // Note: This is an approximation of "Any activity by a user"
       const dailyMap = {};
 
       const processActivity = (data) => {
         data.forEach(item => {
+          if (!item.userId) return;
           const dateStr = item.date instanceof Date ? item.date.toISOString().split('T')[0] : item.date;
-          dailyMap[dateStr] = (dailyMap[dateStr] || 0) + parseInt(item.count);
+          if (!dailyMap[dateStr]) {
+            dailyMap[dateStr] = new Set();
+          }
+          dailyMap[dateStr].add(item.userId.toString());
         });
       };
 
@@ -290,7 +298,8 @@ const adminController = {
         d.setDate(d.getDate() - i);
         const dateStr = d.toISOString().split('T')[0];
 
-        const count = dailyMap[dateStr] || 0;
+        const activeUsersSet = dailyMap[dateStr] || new Set();
+        const count = activeUsersSet.size;
         totalInteractions += count;
 
         formattedData.push({
