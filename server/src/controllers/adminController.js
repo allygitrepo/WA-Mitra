@@ -11,7 +11,7 @@ const adminController = {
         attributes: { exclude: ["password", "otp", "otpExpiry"] },
         include: [
           { model: Package, as: "package" },
-          { model: WhatsAppInstance, as: "instances", attributes: ["id", "status"] },
+          { model: WhatsAppInstance, as: "instances", attributes: ["id", "name", "instanceKey", "phone", "status", "messageCount"] },
           {
             model: Payment,
             as: "payments",

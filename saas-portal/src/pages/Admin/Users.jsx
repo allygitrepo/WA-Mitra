@@ -37,6 +37,9 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [assigningUser, setAssigningUser] = useState(null);
   const [extendingUser, setExtendingUser] = useState(null);
+  const [expandedUserId, setExpandedUserId] = useState(null);
+  const [expandedUsageUserId, setExpandedUsageUserId] = useState(null);
+  const [activeView, setActiveView] = useState('list'); // 'list' or 'usage'
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -352,187 +355,448 @@ const AdminUsers = () => {
       <div className="users-filter-bar mt-4">
         <div className="filter-tabs-modern">
           <button
-            className={`filter-tab-text ${roleFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setRoleFilter('all')}
+            className={`filter-tab-text ${roleFilter === 'all' && activeView === 'list' ? 'active' : ''}`}
+            onClick={() => { setActiveView('list'); setRoleFilter('all'); }}
           >
             All Users
           </button>
           <button
-            className={`filter-tab-text ${roleFilter === 'user' ? 'active' : ''}`}
-            onClick={() => setRoleFilter('user')}
+            className={`filter-tab-text ${roleFilter === 'user' && activeView === 'list' ? 'active' : ''}`}
+            onClick={() => { setActiveView('list'); setRoleFilter('user'); }}
           >
             Business Owners
           </button>
           <button
-            className={`filter-tab-text ${roleFilter === 'admin' ? 'active' : ''}`}
-            onClick={() => setRoleFilter('admin')}
+            className={`filter-tab-text ${roleFilter === 'admin' && activeView === 'list' ? 'active' : ''}`}
+            onClick={() => { setActiveView('list'); setRoleFilter('admin'); }}
           >
             Portal Admins
+          </button>
+          <button
+            className={`filter-tab-text ${activeView === 'usage' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveView('usage');
+            }}
+          >
+            Usage Analytics
           </button>
         </div>
       </div>
 
-      <div className="glass mt-4 overflow-hidden">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Registered</th>
-              <th>Package</th>
-              <th>Access</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="6" className="text-center py-10">Loading users...</td></tr>
-            ) : currentRows.length === 0 ? (
-              <tr><td colSpan="6" className="text-center py-10">No users found.</td></tr>
-            ) : (
-              currentRows.map(user => (
-                <tr key={user.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="avatar-circle" style={{
-                        backgroundColor: `hsl(${(user.username.length * 40) % 360}, 60%, 55%)`,
-                        flexShrink: 0
-                      }}>
-                        {user.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div className="font-bold text-sm" style={{ whiteSpace: 'nowrap' }}>{user.username}</div>
-                        <div className="text-[11px] text-muted" style={{ whiteSpace: 'nowrap' }}>{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="role-badge">
-                      <Briefcase size={12} />
-                      <span>{user.role === 'admin' ? 'PORTAL_ADMIN' : 'BUSINESS_OWNER'}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="text-sm font-medium">
-                      {formatDate(user.createdAt)}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="pkg-info-cell">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className={`pkg-tag ${(user.package?.name || 'Free').toLowerCase()}`}>
-                          {user.package?.name || 'Free'}
-                        </span>
-                        {user.payments?.[0]?.paymentMethod === 'manual_admin' && (
-                          <span style={{
-                            fontSize: '9px',
-                            background: 'var(--primary)20',
-                            color: 'var(--primary)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                          }}>
-                            Manually Assigned
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-muted mt-1">
-                        Expires: {user.expiresAt ? formatDate(user.expiresAt) : 'Never'}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={user.status === 'active'}
-                          onChange={() => handleStatusChange(user.id, user.status)}
-                          disabled={user.role === 'admin'}
-                        />
-                        <span className="slider round"></span>
-                      </label>
-                      <span className={`text-xs font-semibold ${user.status === 'active' ? 'text-success' : 'text-error'}`}>
-                        {user.status === 'active' ? 'Active' : 'Suspended'}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
-                      {user.role !== 'admin' && (
-                        <>
-                          <button
-                            className="action-btn-assign"
-                            title="Assign Package"
-                            onClick={() => setAssigningUser(user)}
-                          >
-                            <Package size={16} />
-                          </button>
+      {activeView === 'list' ? (
+        <div className="glass mt-4 overflow-hidden">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Registered</th>
+                <th>Package</th>
+                <th>Usage</th>
+                <th>Access</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="7" className="text-center py-10">Loading users...</td></tr>
+              ) : currentRows.length === 0 ? (
+                <tr><td colSpan="7" className="text-center py-10">No users found.</td></tr>
+              ) : (
+                currentRows.map(user => {
+                  const totalMessages = user.instances?.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
+                  return (
+                    <React.Fragment key={user.id}>
+                      <tr 
+                        className={expandedUserId === user.id ? 'user-expanded-row' : ''}
+                      >
+                        <td>
+                          <div className="flex-row-center-gap-16">
+                            <div className="avatar-circle" style={{
+                              backgroundColor: `hsl(${(user.username.length * 40) % 360}, 60%, 55%)`,
+                              flexShrink: 0
+                            }}>
+                              {user.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-col-left">
+                              <div className="font-bold-nowrap-sm">{user.username}</div>
+                              <div className="text-muted-nowrap-xs">{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="role-badge">
+                            <Briefcase size={12} />
+                            <span>{user.role === 'admin' ? 'PORTAL_ADMIN' : 'BUSINESS_OWNER'}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-sm font-medium">
+                            {formatDate(user.createdAt)}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="pkg-info-cell">
+                            <div className="flex-row-center-gap-12">
+                              <span className={`pkg-tag ${(user.package?.name || 'Free').toLowerCase()}`}>
+                                {user.package?.name || 'Free'}
+                              </span>
+                              {user.payments?.[0]?.paymentMethod === 'manual_admin' && (
+                                <span className="user-manual-assigned-badge">
+                                  Manually Assigned
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-muted mt-1">
+                              Expires: {user.expiresAt ? formatDate(user.expiresAt) : 'Never'}
+                            </div>
+                          </div>
+                        </td>
+                        <td 
+                          onClick={() => user.role !== 'admin' && setExpandedUserId(expandedUserId === user.id ? null : user.id)}
+                          className={user.role !== 'admin' ? 'pointer-cursor' : 'default-cursor'}
+                        >
+                          {user.role === 'admin' ? (
+                            <span className="text-muted text-xs">—</span>
+                          ) : (
+                            <div className="flex-between-gap-8">
+                              <div className="flex-col-gap-2">
+                                <div className="text-sm font-semibold flex-center-gap-6">
+                                  <Smartphone size={14} className="text-primary" />
+                                  <span>{user.instances?.length || 0} Instance{(user.instances?.length !== 1) ? 's' : ''}</span>
+                                </div>
+                                <div className="text-[11px] text-muted flex-center-gap-6">
+                                  <MessageSquare size={12} />
+                                  <span>{totalMessages} Sent</span>
+                                </div>
+                              </div>
+                              <ChevronDown 
+                                size={16} 
+                                className="text-muted" 
+                                style={{ 
+                                  transform: expandedUserId === user.id ? 'rotate(180deg)' : 'none',
+                                  transition: 'transform 0.2s ease',
+                                  flexShrink: 0
+                                }} 
+                              />
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <label className="switch">
+                              <input
+                                type="checkbox"
+                                checked={user.status === 'active'}
+                                onChange={() => handleStatusChange(user.id, user.status)}
+                                disabled={user.role === 'admin'}
+                              />
+                              <span className="slider round"></span>
+                            </label>
+                            <span className={`text-xs font-semibold ${user.status === 'active' ? 'text-success' : 'text-error'}`}>
+                              {user.status === 'active' ? 'Active' : 'Suspended'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex-row-center-gap-12">
+                            {user.role !== 'admin' && (
+                              <>
+                                <button
+                                  className="action-btn-assign"
+                                  title="Assign Package"
+                                  onClick={() => setAssigningUser(user)}
+                                >
+                                  <Package size={16} />
+                                </button>
 
-                          <button
-                            className="action-btn-extend"
-                            title="Extend Expiry Date"
-                            onClick={() => setExtendingUser(user)}
-                          >
-                            <Calendar size={16} />
-                          </button>
+                                <button
+                                  className="action-btn-extend"
+                                  title="Extend Expiry Date"
+                                  onClick={() => setExtendingUser(user)}
+                                >
+                                  <Calendar size={16} />
+                                </button>
 
-                          <button className="action-btn-delete" title="Delete User">
-                            <Trash2 size={16} />
-                          </button>
-                        </>
+                                <button className="action-btn-delete" title="Delete User">
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedUserId === user.id && user.role !== 'admin' && (
+                        <tr className="user-expanded-row">
+                          <td colSpan="7" className="user-expanded-cell">
+                            <div className="animate-slide-down user-breakdown-container">
+                              <div className="user-breakdown-header">
+                                <Smartphone size={16} className="text-primary" />
+                                <h4 className="user-breakdown-title">
+                                  Instances Breakdown for {user.username}
+                                </h4>
+                              </div>
+                              {user.instances && user.instances.length > 0 ? (
+                                <div className="user-breakdown-grid">
+                                  {user.instances.map(inst => (
+                                    <div 
+                                      key={inst.id} 
+                                      className="user-breakdown-card"
+                                    >
+                                      <div className="user-breakdown-card-header">
+                                        <span className="user-breakdown-card-name" title={inst.name}>{inst.name}</span>
+                                        <span className={`user-breakdown-card-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
+                                          <span className="user-breakdown-card-status-dot"></span>
+                                          {inst.status}
+                                        </span>
+                                      </div>
+                                      <div className="user-breakdown-card-details">
+                                        <div>Key: <code className="user-breakdown-card-key">{inst.instanceKey}</code></div>
+                                        <div>Phone: {inst.phone ? `+${inst.phone}` : 'Not Linked'}</div>
+                                      </div>
+                                      <div className="user-breakdown-card-footer">
+                                        <MessageSquare size={14} className="text-primary" />
+                                        <span>{inst.messageCount || 0} Messages Sent</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-muted text-sm py-2">No active or inactive WhatsApp instances found.</div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
 
-        {/* Pagination Footer */}
-        <div className="table-pagination">
-          <div className="pagination-rows">
-            <span>Rows per page:</span>
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="pagination-select"
-            >
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-            </select>
-          </div>
+          {/* Pagination Footer */}
+          <div className="table-pagination">
+            <div className="pagination-rows">
+              <span>Rows per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="pagination-select"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
 
-          <div className="pagination-info">
-            <span>{indexOfFirstRow + 1}-{Math.min(indexOfLastRow, filteredUsers.length)} of {filteredUsers.length}</span>
-            <div className="pagination-actions">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => p - 1)}
-                className="pagination-btn"
-                title="Previous Page"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => p + 1)}
-                className="pagination-btn"
-                title="Next Page"
-              >
-                <ChevronRight size={18} />
-              </button>
+            <div className="pagination-info">
+              <span>{indexOfFirstRow + 1}-{Math.min(indexOfLastRow, filteredUsers.length)} of {filteredUsers.length}</span>
+              <div className="pagination-actions">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="pagination-btn"
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="pagination-btn"
+                  title="Next Page"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="glass mt-4 overflow-hidden animate-fade-in">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Business Owner</th>
+                <th>Plan</th>
+                <th>Expires</th>
+                <th>Instances</th>
+                <th>Messages Sent</th>
+                <th>Quota Usage</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.filter(u => u.role === 'user').filter(u => 
+                u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+                u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
+              ).length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="text-center py-10 text-muted">
+                    No business owners found.
+                  </td>
+                </tr>
+              ) : (
+                users
+                  .filter(u => u.role === 'user')
+                  .filter(u => 
+                    u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+                    u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
+                  )
+                  .map(u => {
+                    const uInstances = u.instances || [];
+                    const uMessages = uInstances.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
+                    const isExpanded = expandedUsageUserId === u.id;
+                    
+                    return (
+                      <React.Fragment key={u.id}>
+                        <tr className={isExpanded ? 'user-expanded-row' : ''}>
+                          <td>
+                            <div className="flex-row-center-gap-16">
+                              <div className="avatar-circle usage-sidebar-avatar" style={{
+                                backgroundColor: `hsl(${(u.username.length * 40) % 360}, 60%, 55%)`
+                              }}>
+                                {u.username.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-col-left">
+                                <div className="font-bold-nowrap-sm">{u.username}</div>
+                                <div className="text-muted-nowrap-xs">{u.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`pkg-tag ${(u.package?.name || 'Free').toLowerCase()}`}>
+                              {u.package?.name || 'Free'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="text-sm font-medium">
+                              {u.expiresAt ? formatDate(u.expiresAt) : 'Never'}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="text-sm font-semibold flex-center-gap-6">
+                              <Smartphone size={14} className="text-primary" />
+                              <span>{uInstances.length} Instance{uInstances.length !== 1 ? 's' : ''}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="text-sm font-semibold flex-center-gap-6">
+                              <MessageSquare size={14} className="text-primary" />
+                              <span>{uMessages} Dispatched</span>
+                            </div>
+                          </td>
+                          <td style={{ minWidth: '180px' }}>
+                            {u.package ? (
+                              <div className="flex-col-gap-2">
+                                <div className="progress-bar-bg" style={{ margin: '0' }}>
+                                  <div 
+                                    className="progress-bar-fill" 
+                                    style={{ 
+                                      width: u.package.messageLimit === -1 ? '100%' : `${Math.min(100, (uMessages / u.package.messageLimit) * 100)}%` 
+                                    }}
+                                  ></div>
+                                </div>
+                                <div className="text-[10px] text-muted text-right">
+                                  {u.package.messageLimit === -1 ? 'Unlimited' : `${Math.min(100, Math.round((uMessages / u.package.messageLimit) * 100))}% used`}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted text-xs">—</span>
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              className="action-btn-assign"
+                              style={{ background: isExpanded ? 'rgba(0, 168, 132, 0.1)' : 'transparent', color: isExpanded ? 'var(--primary)' : 'var(--text-muted)' }}
+                              title={isExpanded ? "Collapse Details" : "Expand Details"}
+                              onClick={() => setExpandedUsageUserId(isExpanded ? null : u.id)}
+                            >
+                              <ChevronDown 
+                                size={16} 
+                                style={{ 
+                                  transform: isExpanded ? 'rotate(180deg)' : 'none',
+                                  transition: 'transform 0.2s ease'
+                                }}
+                              />
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="user-expanded-row">
+                            <td colSpan="7" className="user-expanded-cell">
+                              <div className="animate-slide-down user-breakdown-container">
+                                <div className="user-breakdown-header">
+                                  <Smartphone size={16} className="text-primary" />
+                                  <h4 className="user-breakdown-title">
+                                    WhatsApp Instances Details for {u.username}
+                                  </h4>
+                                </div>
+
+                                {uInstances.length > 0 ? (
+                                  <div className="usage-instances-grid" style={{ marginTop: '12px' }}>
+                                    {uInstances.map(inst => (
+                                      <div key={inst.id} className="usage-instance-card">
+                                        <div className="usage-instance-header">
+                                          <h4 className="usage-instance-name" title={inst.name}>{inst.name}</h4>
+                                          <span className={`usage-instance-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
+                                            <span className="status-dot"></span>
+                                            {inst.status}
+                                          </span>
+                                        </div>
+
+                                        <div className="usage-instance-details">
+                                          <div className="usage-instance-detail-row">
+                                            <span>Phone:</span>
+                                            <strong>{inst.phone ? `+${inst.phone}` : 'Not Linked'}</strong>
+                                          </div>
+                                          <div className="usage-instance-detail-row">
+                                            <span>Instance Key:</span>
+                                            <code className="usage-instance-key-code">{inst.instanceKey}</code>
+                                          </div>
+                                        </div>
+
+                                        <div className="usage-instance-footer">
+                                          <div className="usage-instance-msg-info">
+                                            <div className="usage-instance-msg-icon-box">
+                                              <MessageSquare size={16} />
+                                            </div>
+                                            <span className="usage-instance-msg-label">Messages Dispatched</span>
+                                          </div>
+                                          <span className="usage-instance-msg-count">
+                                            {inst.messageCount || 0}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="admin-empty-state" style={{ padding: '40px 24px', marginTop: '8px' }}>
+                                    <div className="admin-empty-state-icon-box" style={{ width: '48px', height: '48px', padding: '12px' }}>
+                                      <MessageSquare size={24} />
+                                    </div>
+                                    <div>
+                                      <h4 className="admin-empty-state-title">No WhatsApp Instances</h4>
+                                      <p className="admin-empty-state-desc">No WhatsApp instances have been configured or linked for this user yet.</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
