@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import Packages from '../../components/Packages';
 import useAuthStore from '../../store/useAuthStore';
+import useThemeStore from '../../store/useThemeStore';
+import ThemeToggle from '../../components/ThemeToggle';
 import './Dashboard.css';
 
 const SelectPlan = () => {
   const { user, logout } = useAuthStore();
+  const { theme } = useThemeStore();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -14,17 +17,26 @@ const SelectPlan = () => {
     navigate('/login');
   };
 
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   return (
     <div className="select-plan-overlay">
       <div className="select-plan-container">
         <div className="select-plan-header">
           <div className="header-top">
             <div className="brand-wrap">
-              <img src="/Logo_Dark.png" alt="WA-Mitra" className="select-plan-logo" />
+              <img 
+                src={isDark ? '/Logo_Dark.png' : '/Logo_Light.png'} 
+                alt="WA-Mitra" 
+                className="select-plan-logo" 
+              />
             </div>
-            <button className="logout-btn" onClick={handleLogout}>
-              <LogOut size={18} /> Logout
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <ThemeToggle />
+              <button className="logout-btn" onClick={handleLogout}>
+                <LogOut size={18} /> Logout
+              </button>
+            </div>
           </div>
           
           <div className="header-content-main text-center mb-5">

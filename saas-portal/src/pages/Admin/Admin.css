@@ -2135,3 +2135,52 @@ input:checked+.slider:before {
   color: var(--text-muted);
   pointer-events: none;
 }
+
+/* Sub-table Styles for Instances Breakdowns */
+.admin-subtable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+[data-theme='light'] .admin-subtable {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.admin-subtable th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-subtable td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='light'] .admin-subtable td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.admin-subtable tr:last-child td {
+  border-bottom: none;
+}
+
+.subtable-code-key {
+  font-family: monospace;
+  font-size: 0.75rem;
+  background: rgba(0, 168, 132, 0.08);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-all;
+}

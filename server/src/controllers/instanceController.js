@@ -62,7 +62,8 @@ const instanceController = {
           liveStatus: liveStatus.status,
           qr: liveStatus.qr,
           pushName: liveStatus.pushName || inst.pushName,
-          profilePic: liveStatus.profilePic || inst.profilePic
+          profilePic: liveStatus.profilePic || inst.profilePic,
+          error: liveStatus.error
         };
       });
 
@@ -203,7 +204,8 @@ const instanceController = {
         instanceKey,
         profileImage,
         name: liveStatus.pushName || instance.pushName || "",
-        phone: liveStatus.phone || instance.phone || ""
+        phone: liveStatus.phone || instance.phone || "",
+        error: liveStatus.error
       });
     } catch (error) {
       console.error("Fetch Status Error:", error);

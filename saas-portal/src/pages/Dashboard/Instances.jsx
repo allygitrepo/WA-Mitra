@@ -37,6 +37,7 @@ const Instances = () => {
     onConfirm: () => {},
     onCancel: () => {}
   });
+  const [toastedErrors, setToastedErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -65,7 +66,23 @@ const Instances = () => {
   const fetchInstances = async () => {
     try {
       const res = await instanceService.getInstances();
-      setInstances(res.data.instances || []);
+      const fetched = res.data.instances || [];
+
+      // Toast duplicate phone number / connection errors
+      fetched.forEach(inst => {
+        if (inst.error && toastedErrors[inst.instanceKey] !== inst.error) {
+          toast.error(`${inst.name}: ${inst.error}`);
+          setToastedErrors(prev => ({ ...prev, [inst.instanceKey]: inst.error }));
+        } else if (!inst.error && toastedErrors[inst.instanceKey]) {
+          setToastedErrors(prev => {
+            const next = { ...prev };
+            delete next[inst.instanceKey];
+            return next;
+          });
+        }
+      });
+
+      setInstances(fetched);
     } catch (err) {
       console.error("Fetch Instances Error:", err);
     }

@@ -37,8 +37,8 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [assigningUser, setAssigningUser] = useState(null);
   const [extendingUser, setExtendingUser] = useState(null);
-  const [expandedUserId, setExpandedUserId] = useState(null);
-  const [expandedUsageUserId, setExpandedUsageUserId] = useState(null);
+  const [expandedUserIds, setExpandedUserIds] = useState({});
+  const [expandedUsageUserIds, setExpandedUsageUserIds] = useState({});
   const [activeView, setActiveView] = useState('list'); // 'list' or 'usage'
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -408,7 +408,7 @@ const AdminUsers = () => {
                   return (
                     <React.Fragment key={user.id}>
                       <tr 
-                        className={expandedUserId === user.id ? 'user-expanded-row' : ''}
+                        className={expandedUserIds[user.id] ? 'user-expanded-row' : ''}
                       >
                         <td>
                           <div className="flex-row-center-gap-16">
@@ -453,7 +453,7 @@ const AdminUsers = () => {
                           </div>
                         </td>
                         <td 
-                          onClick={() => user.role !== 'admin' && setExpandedUserId(expandedUserId === user.id ? null : user.id)}
+                          onClick={() => user.role !== 'admin' && setExpandedUserIds(prev => ({ ...prev, [user.id]: !prev[user.id] }))}
                           className={user.role !== 'admin' ? 'pointer-cursor' : 'default-cursor'}
                         >
                           {user.role === 'admin' ? (
@@ -474,7 +474,7 @@ const AdminUsers = () => {
                                 size={16} 
                                 className="text-muted" 
                                 style={{ 
-                                  transform: expandedUserId === user.id ? 'rotate(180deg)' : 'none',
+                                  transform: expandedUserIds[user.id] ? 'rotate(180deg)' : 'none',
                                   transition: 'transform 0.2s ease',
                                   flexShrink: 0
                                 }} 
@@ -526,7 +526,7 @@ const AdminUsers = () => {
                           </div>
                         </td>
                       </tr>
-                      {expandedUserId === user.id && user.role !== 'admin' && (
+                      {expandedUserIds[user.id] && user.role !== 'admin' && (
                         <tr className="user-expanded-row">
                           <td colSpan="7" className="user-expanded-cell">
                             <div className="animate-slide-down user-breakdown-container">
@@ -537,32 +537,45 @@ const AdminUsers = () => {
                                 </h4>
                               </div>
                               {user.instances && user.instances.length > 0 ? (
-                                <div className="user-breakdown-grid">
-                                  {user.instances.map(inst => (
-                                    <div 
-                                      key={inst.id} 
-                                      className="user-breakdown-card"
-                                    >
-                                      <div className="user-breakdown-card-header">
-                                        <span className="user-breakdown-card-name" title={inst.name}>{inst.name}</span>
-                                        <span className={`user-breakdown-card-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
-                                          <span className="user-breakdown-card-status-dot"></span>
-                                          {inst.status}
-                                        </span>
-                                      </div>
-                                      <div className="user-breakdown-card-details">
-                                        <div>Key: <code className="user-breakdown-card-key">{inst.instanceKey}</code></div>
-                                        <div>Phone: {inst.phone ? `+${inst.phone}` : 'Not Linked'}</div>
-                                      </div>
-                                      <div className="user-breakdown-card-footer">
-                                        <MessageSquare size={14} className="text-primary" />
-                                        <span>{inst.messageCount || 0} Messages Sent</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                <table className="admin-subtable">
+                                  <thead>
+                                    <tr>
+                                      <th>Instance Name</th>
+                                      <th>Instance Key</th>
+                                      <th>Phone Number</th>
+                                      <th>Status</th>
+                                      <th style={{ textAlign: 'right' }}>Messages Sent</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {user.instances.map(inst => (
+                                      <tr key={inst.id}>
+                                        <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{inst.name}</td>
+                                        <td>
+                                          <code className="subtable-code-key">{inst.instanceKey}</code>
+                                        </td>
+                                        <td>{inst.phone ? `+${inst.phone}` : 'Not Linked'}</td>
+                                        <td>
+                                          <span className={`user-breakdown-card-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
+                                            <span className="user-breakdown-card-status-dot"></span>
+                                            {inst.status}
+                                          </span>
+                                        </td>
+                                        <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-main)' }}>{inst.messageCount || 0}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               ) : (
-                                <div className="text-muted text-sm py-2">No active or inactive WhatsApp instances found.</div>
+                                <div className="admin-empty-state" style={{ padding: '40px 24px', marginTop: '8px' }}>
+                                  <div className="admin-empty-state-icon-box" style={{ width: '48px', height: '48px', padding: '12px' }}>
+                                    <MessageSquare size={24} />
+                                  </div>
+                                  <div>
+                                    <h4 className="admin-empty-state-title">No WhatsApp Instances</h4>
+                                    <p className="admin-empty-state-desc">No WhatsApp instances have been configured or linked for this user yet.</p>
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </td>
@@ -650,7 +663,7 @@ const AdminUsers = () => {
                   .map(u => {
                     const uInstances = u.instances || [];
                     const uMessages = uInstances.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
-                    const isExpanded = expandedUsageUserId === u.id;
+                    const isExpanded = !!expandedUsageUserIds[u.id];
                     
                     return (
                       <React.Fragment key={u.id}>
@@ -714,7 +727,7 @@ const AdminUsers = () => {
                               className="action-btn-assign"
                               style={{ background: isExpanded ? 'rgba(0, 168, 132, 0.1)' : 'transparent', color: isExpanded ? 'var(--primary)' : 'var(--text-muted)' }}
                               title={isExpanded ? "Collapse Details" : "Expand Details"}
-                              onClick={() => setExpandedUsageUserId(isExpanded ? null : u.id)}
+                              onClick={() => setExpandedUsageUserIds(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
                             >
                               <ChevronDown 
                                 size={16} 
@@ -738,42 +751,35 @@ const AdminUsers = () => {
                                 </div>
 
                                 {uInstances.length > 0 ? (
-                                  <div className="usage-instances-grid" style={{ marginTop: '12px' }}>
-                                    {uInstances.map(inst => (
-                                      <div key={inst.id} className="usage-instance-card">
-                                        <div className="usage-instance-header">
-                                          <h4 className="usage-instance-name" title={inst.name}>{inst.name}</h4>
-                                          <span className={`usage-instance-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
-                                            <span className="status-dot"></span>
-                                            {inst.status}
-                                          </span>
-                                        </div>
-
-                                        <div className="usage-instance-details">
-                                          <div className="usage-instance-detail-row">
-                                            <span>Phone:</span>
-                                            <strong>{inst.phone ? `+${inst.phone}` : 'Not Linked'}</strong>
-                                          </div>
-                                          <div className="usage-instance-detail-row">
-                                            <span>Instance Key:</span>
-                                            <code className="usage-instance-key-code">{inst.instanceKey}</code>
-                                          </div>
-                                        </div>
-
-                                        <div className="usage-instance-footer">
-                                          <div className="usage-instance-msg-info">
-                                            <div className="usage-instance-msg-icon-box">
-                                              <MessageSquare size={16} />
-                                            </div>
-                                            <span className="usage-instance-msg-label">Messages Dispatched</span>
-                                          </div>
-                                          <span className="usage-instance-msg-count">
-                                            {inst.messageCount || 0}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                                  <table className="admin-subtable">
+                                    <thead>
+                                      <tr>
+                                        <th>Instance Name</th>
+                                        <th>Instance Key</th>
+                                        <th>Phone Number</th>
+                                        <th>Status</th>
+                                        <th style={{ textAlign: 'right' }}>Messages Sent</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {uInstances.map(inst => (
+                                        <tr key={inst.id}>
+                                          <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{inst.name}</td>
+                                          <td>
+                                            <code className="subtable-code-key">{inst.instanceKey}</code>
+                                          </td>
+                                          <td>{inst.phone ? `+${inst.phone}` : 'Not Linked'}</td>
+                                          <td>
+                                            <span className={`user-breakdown-card-status ${inst.status === 'connected' ? 'connected' : 'disconnected'}`}>
+                                              <span className="user-breakdown-card-status-dot"></span>
+                                              {inst.status}
+                                            </span>
+                                          </td>
+                                          <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-main)' }}>{inst.messageCount || 0}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 ) : (
                                   <div className="admin-empty-state" style={{ padding: '40px 24px', marginTop: '8px' }}>
                                     <div className="admin-empty-state-icon-box" style={{ width: '48px', height: '48px', padding: '12px' }}>
