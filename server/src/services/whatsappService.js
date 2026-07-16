@@ -24,6 +24,9 @@ const QRCode = require('qrcode');
 // Store all active sessions: Map<instanceKey, sessionData>
 const sessions = new Map();
 
+// Store temporary connection errors: Map<instanceKey, errorMessage>
+const connectionErrors = new Map();
+
 // Local rules storage for WhatsApp Auto-Reply (Testing mode - local JSON storage)
 const rulesFilePath = path.join(__dirname, '../../rules.json');
 let localRules = {};
@@ -151,6 +154,52 @@ async function startSession(instanceKey) {
             sessionData.userPhone = sock.user.id.split(':')[0];
             sessionData.pushName = sock.user.name || sock.user.notify || (state.creds.me && state.creds.me.name) || 'WhatsApp User';
 
+            // Check if this phone number is already connected to any other instance
+            const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
+            if (instance) {
+                const duplicatePhone = await WhatsAppInstance.findOne({
+                    where: {
+                        phone: sessionData.userPhone,
+                        id: { [require('sequelize').Op.ne]: instance.id }
+                    }
+                });
+                if (duplicatePhone) {
+                    console.log(`[INSTANCE REJECTED] Phone ${sessionData.userPhone} is already linked to another instance.`);
+                    
+                    connectionErrors.set(instanceKey, "This WhatsApp number is already connected to another instance.");
+                    setTimeout(() => {
+                        connectionErrors.delete(instanceKey);
+                    }, 15000);
+
+                    try {
+                        await sock.logout();
+                    } catch (e) {
+                        try {
+                            sock.terminate();
+                        } catch (err) {}
+                    }
+                    sessions.delete(instanceKey);
+                    
+                    const sessionDir = getSessionPath(instanceKey);
+                    if (fs.existsSync(sessionDir)) {
+                        fs.rmSync(sessionDir, { recursive: true, force: true });
+                    }
+                    
+                    await WhatsAppInstance.update({
+                        status: 'disconnected',
+                        phone: null,
+                        pushName: null,
+                        profilePic: null
+                    }, { where: { instanceKey } });
+                    
+                    getIO().emit('disconnected', { 
+                        instanceKey, 
+                        error: "This WhatsApp number is already connected to another instance." 
+                    });
+                    return;
+                }
+            }
+
             // Fetch profile picture if possible
             let profilePic = null;
             try {
@@ -269,13 +318,16 @@ async function startSession(instanceKey) {
 
 function getStatus(instanceKey) {
     const sessionData = sessions.get(instanceKey);
+    const error = connectionErrors.get(instanceKey) || null;
+    
     if (!sessionData) {
         const exists = fs.existsSync(getSessionPath(instanceKey));
         return {
             connected: false,
             status: exists ? 'connecting' : 'disconnected',
             qr: null,
-            phone: null
+            phone: null,
+            error
         };
     }
 
@@ -291,7 +343,8 @@ function getStatus(instanceKey) {
         qr: currentQR,
         phone: sessionData.userPhone,
         pushName: sessionData.pushName,
-        profilePic: sessionData.profilePic
+        profilePic: sessionData.profilePic,
+        error
     };
 }
 
