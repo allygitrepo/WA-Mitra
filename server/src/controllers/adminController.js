@@ -169,6 +169,12 @@ const adminController = {
       user.expiresAt = expiresAt ? new Date(expiresAt) : null;
       await user.save();
 
+      // Send validity update email to user asynchronously
+      emailService.sendEmail(
+        user.email,
+        emailTemplates.expiryExtensionEmail(user.username, user.expiresAt)
+      ).catch(err => console.error("Error sending expiry extension email:", err));
+
       res.status(200).json({ message: "User expiry date updated successfully", expiresAt: user.expiresAt });
     } catch (error) {
       console.error("Extend Expiry Error:", error);
