@@ -392,16 +392,15 @@ const AdminUsers = () => {
                 <th>Role</th>
                 <th>Registered</th>
                 <th>Package</th>
-                <th>Usage</th>
                 <th>Access</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="7" className="text-center py-10">Loading users...</td></tr>
+                <tr><td colSpan="6" className="text-center py-10">Loading users...</td></tr>
               ) : currentRows.length === 0 ? (
-                <tr><td colSpan="7" className="text-center py-10">No users found.</td></tr>
+                <tr><td colSpan="6" className="text-center py-10">No users found.</td></tr>
               ) : (
                 currentRows.map(user => {
                   const totalMessages = user.instances?.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
@@ -452,36 +451,6 @@ const AdminUsers = () => {
                             </div>
                           </div>
                         </td>
-                        <td 
-                          onClick={() => user.role !== 'admin' && setExpandedUserIds(prev => ({ ...prev, [user.id]: !prev[user.id] }))}
-                          className={user.role !== 'admin' ? 'pointer-cursor' : 'default-cursor'}
-                        >
-                          {user.role === 'admin' ? (
-                            <span className="text-muted text-xs">—</span>
-                          ) : (
-                            <div className="flex-between-gap-8">
-                              <div className="flex-col-gap-2">
-                                <div className="text-sm font-semibold flex-center-gap-6">
-                                  <Smartphone size={14} className="text-primary" />
-                                  <span>{user.instances?.length || 0} Instance{(user.instances?.length !== 1) ? 's' : ''}</span>
-                                </div>
-                                <div className="text-[11px] text-muted flex-center-gap-6">
-                                  <MessageSquare size={12} />
-                                  <span>{totalMessages} Sent</span>
-                                </div>
-                              </div>
-                              <ChevronDown 
-                                size={16} 
-                                className="text-muted" 
-                                style={{ 
-                                  transform: expandedUserIds[user.id] ? 'rotate(180deg)' : 'none',
-                                  transition: 'transform 0.2s ease',
-                                  flexShrink: 0
-                                }} 
-                              />
-                            </div>
-                          )}
-                        </td>
                         <td>
                           <div className="flex items-center gap-2">
                             <label className="switch">
@@ -528,7 +497,7 @@ const AdminUsers = () => {
                       </tr>
                       {expandedUserIds[user.id] && user.role !== 'admin' && (
                         <tr className="user-expanded-row">
-                          <td colSpan="7" className="user-expanded-cell">
+                          <td colSpan="6" className="user-expanded-cell">
                             <div className="animate-slide-down user-breakdown-container">
                               <div className="user-breakdown-header">
                                 <Smartphone size={16} className="text-primary" />
@@ -662,6 +631,7 @@ const AdminUsers = () => {
                   )
                   .map(u => {
                     const uInstances = u.instances || [];
+                    const connectedInstances = uInstances.filter(inst => inst.status === 'connected');
                     const uMessages = uInstances.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
                     const isExpanded = !!expandedUsageUserIds[u.id];
                     
@@ -694,7 +664,7 @@ const AdminUsers = () => {
                           <td>
                             <div className="text-sm font-semibold flex-center-gap-6">
                               <Smartphone size={14} className="text-primary" />
-                              <span>{uInstances.length} Instance{uInstances.length !== 1 ? 's' : ''}</span>
+                              <span>{connectedInstances.length} Instance{connectedInstances.length !== 1 ? 's' : ''}</span>
                             </div>
                           </td>
                           <td>
@@ -750,7 +720,7 @@ const AdminUsers = () => {
                                   </h4>
                                 </div>
 
-                                {uInstances.length > 0 ? (
+                                {connectedInstances.length > 0 ? (
                                   <table className="admin-subtable">
                                     <thead>
                                       <tr>
@@ -762,7 +732,7 @@ const AdminUsers = () => {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {uInstances.map(inst => (
+                                      {connectedInstances.map(inst => (
                                         <tr key={inst.id}>
                                           <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{inst.name}</td>
                                           <td>
@@ -786,8 +756,8 @@ const AdminUsers = () => {
                                       <MessageSquare size={24} />
                                     </div>
                                     <div>
-                                      <h4 className="admin-empty-state-title">No WhatsApp Instances</h4>
-                                      <p className="admin-empty-state-desc">No WhatsApp instances have been configured or linked for this user yet.</p>
+                                      <h4 className="admin-empty-state-title">No Connected Instances</h4>
+                                      <p className="admin-empty-state-desc">No active, connected WhatsApp instances found for this user.</p>
                                     </div>
                                   </div>
                                 )}
