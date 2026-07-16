@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
 import CustomModal from '../../../components/CustomModal';
+import useAuthStore from '../../../store/useAuthStore';
+import { createPortal } from 'react-dom';
 
 const SendMessage = () => {
   const { searchQuery } = useOutletContext();
@@ -37,6 +39,7 @@ const SendMessage = () => {
   const [selectedInstance, setSelectedInstance] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
+  const [progressData, setProgressData] = useState(null);
 
   const [singleData, setSingleData] = useState({
     number: '',
@@ -1586,7 +1589,7 @@ const SendMessage = () => {
   const executeSendBulk = async () => {
     setLoading(true);
     const totalCount = bulkInputMethod === 'csv' ? csvData.rows.length : bulkData.numbers.length;
-    const loadingToast = toast.loading(`Sending bulk messages (0/${totalCount})...`, {
+    const loadingToast = toast.loading(`Initiating campaign (0/${totalCount})...`, {
       style: { minWidth: '250px' }
     });
 
@@ -1665,18 +1668,97 @@ const SendMessage = () => {
         return;
       }
 
-      const res = await messageService.sendBulk({
-        instanceKey: selectedInstance,
-        messages: messagesArray,
-        file: bulkData.file
+      // Initialize progress modal state
+      setProgressData({
+        total: messagesArray.length,
+        sent: 0,
+        failed: 0,
+        currentNumber: messagesArray[0]?.number || '',
+        status: 'sending'
+      });
+      toast.dismiss(loadingToast);
+
+      const token = useAuthStore.getState().token;
+      const headers = {
+        'x-user-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let body;
+      if (bulkData.file) {
+        const formData = new FormData();
+        formData.append('instanceKey', selectedInstance);
+        formData.append('messages', JSON.stringify(messagesArray));
+        formData.append('file', bulkData.file);
+        body = formData;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify({
+          instanceKey: selectedInstance,
+          messages: messagesArray
+        });
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/messages/bulk`, {
+        method: 'POST',
+        headers,
+        body
       });
 
-      const { results } = res.data;
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMsg = 'Failed to process bulk messages';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.message || errorMsg;
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
 
-      if (results.failed === 0) {
-        toast.success(`Sent all ${results.sent} messages successfully!`, { id: loadingToast, duration: 5000 });
-      } else {
-        toast.success(`Process complete: ${results.sent} sent, ${results.failed} failed.`, { id: loadingToast, duration: 6000 });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          try {
+            const data = JSON.parse(part);
+            if (data.type === 'progress') {
+              setProgressData({
+                total: data.total,
+                sent: data.sent,
+                failed: data.failed,
+                currentNumber: data.currentNumber,
+                status: 'sending'
+              });
+            } else if (data.type === 'done') {
+              setProgressData(prev => ({
+                ...prev,
+                sent: data.results.sent,
+                failed: data.results.failed,
+                status: 'done'
+              }));
+
+              if (data.results.failed === 0) {
+                toast.success(`Sent all ${data.results.sent} messages successfully!`, { duration: 5000 });
+              } else {
+                toast.success(`Process complete: ${data.results.sent} sent, ${data.results.failed} failed.`, { duration: 6000 });
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse progress chunk:", e, part);
+          }
+        }
       }
 
       // Reset state
@@ -1686,7 +1768,8 @@ const SendMessage = () => {
         clearCSV();
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to process bulk messages', { id: loadingToast });
+      toast.error(err.message || 'Failed to process bulk messages');
+      setProgressData(prev => prev ? { ...prev, status: 'error', errorMsg: err.message || 'An unexpected error occurred.' } : null);
     } finally {
       setLoading(false);
     }
@@ -4028,6 +4111,96 @@ const SendMessage = () => {
         onConfirm={modalConfig.onConfirm}
         onCancel={modalConfig.onCancel}
       />
+
+      {/* Bulk Progress Modal */}
+      {progressData && createPortal(
+        <div className="progress-modal-overlay">
+          <div className="progress-modal-content glass animate-scale-up" onClick={e => e.stopPropagation()}>
+            <h3 className="progress-modal-title">Bulk Message Campaign</h3>
+            
+            <div className="progress-status-container">
+              <div className="progress-circle-wrapper">
+                <svg className="progress-ring" width="120" height="120">
+                  <circle 
+                    className="progress-ring__circle-bg" 
+                    stroke="rgba(255, 255, 255, 0.05)" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                    r="50" 
+                    cx="60" 
+                    cy="60" 
+                  />
+                  <circle 
+                    className="progress-ring__circle" 
+                    stroke="var(--primary)" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                    r="50" 
+                    cx="60" 
+                    cy="60" 
+                    strokeDasharray={`${2 * Math.PI * 50}`}
+                    strokeDashoffset={`${2 * Math.PI * 50 * (1 - (progressData.sent + progressData.failed) / progressData.total)}`}
+                    style={{ transition: 'stroke-dashoffset 0.35s', transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                  />
+                </svg>
+                <div className="progress-percentage">
+                  {Math.round(((progressData.sent + progressData.failed) / progressData.total) * 100)}%
+                </div>
+              </div>
+              
+              <div className="progress-stats">
+                <div className="progress-stat-item">
+                  <span className="label">Total Recipient(s)</span>
+                  <span className="value">{progressData.total}</span>
+                </div>
+                <div className="progress-stat-item">
+                  <span className="label">Processed</span>
+                  <span className="value">{progressData.sent + progressData.failed}</span>
+                </div>
+                <div className="progress-stat-item">
+                  <span className="label text-success">Sent Successfully</span>
+                  <span className="value text-success">{progressData.sent}</span>
+                </div>
+                <div className="progress-stat-item">
+                  <span className="label text-error">Failed</span>
+                  <span className="value text-error">{progressData.failed}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="progress-current-action">
+              {progressData.status === 'done' ? (
+                <div className="text-success font-bold flex items-center justify-center gap-2">
+                  <CheckCircle2 size={18} />
+                  Campaign complete!
+                </div>
+              ) : progressData.status === 'error' ? (
+                <div className="text-error font-bold flex items-center justify-center gap-2">
+                  <AlertCircle size={18} />
+                  {progressData.errorMsg}
+                </div>
+              ) : (
+                <div className="text-muted text-sm flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                  Sending to {progressData.currentNumber}...
+                </div>
+              )}
+            </div>
+
+            <div className="progress-modal-actions">
+              <button 
+                className="btn-primary" 
+                disabled={progressData.status !== 'done' && progressData.status !== 'error'} 
+                onClick={() => setProgressData(null)}
+                style={{ minWidth: '120px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
