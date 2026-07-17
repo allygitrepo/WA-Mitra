@@ -1237,9 +1237,6 @@ const SendMessage = () => {
         const res = await instanceService.getGroups(selectedInstance);
         const fetchedGroups = res.data.groups || [];
         setGroups(fetchedGroups);
-        if (fetchedGroups.length > 0 && selectedGroups.length === 0) {
-          setSelectedGroups([fetchedGroups[0]]);
-        }
         setGroupSearchQuery('');
       } catch (err) {
         console.error(err);
@@ -3492,20 +3489,7 @@ const SendMessage = () => {
                               marginBottom: '10px'
                             }}>
                               {selectedGroups.map(group => (
-                                <div
-                                  key={group.id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    background: 'rgba(255, 255, 255, 0.08)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    borderRadius: '6px',
-                                    padding: '4px 10px',
-                                    fontSize: '0.85rem',
-                                    color: 'var(--text)'
-                                  }}
-                                >
+                                <div key={group.id} className="selected-group-tag">
                                   <span>{group.subject}</span>
                                   <button
                                     type="button"
@@ -3513,17 +3497,7 @@ const SendMessage = () => {
                                       e.stopPropagation();
                                       setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
                                     }}
-                                    style={{
-                                      background: 'transparent',
-                                      border: 'none',
-                                      padding: 0,
-                                      cursor: 'pointer',
-                                      color: 'rgba(255, 255, 255, 0.5)',
-                                      display: 'flex',
-                                      alignItems: 'center'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                                    className="selected-group-tag-remove"
                                   >
                                     <X size={14} />
                                   </button>
@@ -3548,25 +3522,7 @@ const SendMessage = () => {
                           />
 
                           {isOpenGroupDropdown && !loadingGroups && (
-                            <div
-                              className="dropdown-list-portal glass"
-                              style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                right: 0,
-                                zIndex: 1000,
-                                maxHeight: '220px',
-                                overflowY: 'auto',
-                                marginTop: '6px',
-                                borderRadius: '8px',
-                                background: 'rgba(20, 20, 25, 0.95)',
-                                backdropFilter: 'blur(10px)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
-                              }}
-                              data-lenis-prevent
-                            >
+                            <div className="group-dropdown-list" data-lenis-prevent>
                               {groups.length === 0 ? (
                                 <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                   No participating groups found for this instance
@@ -3589,20 +3545,7 @@ const SendMessage = () => {
                                         }
                                         setGroupSearchQuery('');
                                       }}
-                                      style={{
-                                        padding: '10px 14px',
-                                        cursor: 'pointer',
-                                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                        color: isSelected ? 'var(--primary)' : 'var(--text)',
-                                        background: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        fontSize: '0.9rem',
-                                        transition: 'background 0.2s'
-                                      }}
-                                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                                      onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255, 255, 255, 0.05)' : 'transparent'}
+                                      className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
                                     >
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span style={{ fontWeight: '500' }}>{group.subject}</span>
