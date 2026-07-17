@@ -1349,6 +1349,81 @@ textarea.auth-input::-webkit-scrollbar-thumb:hover {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* Theme-adaptive WhatsApp group selection dropdown and selected tags */
+.group-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 6px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+}
+
+.group-dropdown-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  transition: var(--transition);
+  background: transparent;
+}
+
+.group-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.group-dropdown-item:hover {
+  background: var(--surface-hover);
+}
+
+.group-dropdown-item.selected {
+  color: var(--primary);
+  background: rgba(0, 168, 132, 0.08);
+}
+
+.group-dropdown-item.selected:hover {
+  background: rgba(0, 168, 132, 0.12);
+}
+
+.selected-group-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.selected-group-tag-remove {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.selected-group-tag-remove:hover {
+  color: var(--error);
+}
+
+
 
 
 
