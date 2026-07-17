@@ -4,6 +4,7 @@ import { messageService } from '../../api/services';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Reports.css';
+import CustomDateInput from '../../components/CustomDateInput';
 
 const Reports = () => {
   const [reports, setReports] = useState([]);
@@ -78,7 +79,7 @@ const Reports = () => {
     
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    doc.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, 14, 30);
     
     if (fromDate || toDate) {
       doc.text(`Period: ${fromDate || 'Start'} to ${toDate || 'End'}`, 14, 37);
@@ -88,7 +89,7 @@ const Reports = () => {
     Object.keys(groupedReports).forEach(date => {
       Object.values(groupedReports[date]).forEach(stat => {
         tableRows.push([
-          new Date(stat.date).toLocaleDateString(),
+          new Date(stat.date).toLocaleDateString('en-GB'),
           stat.instance?.name || 'Unknown',
           stat.sent,
           stat.failed
@@ -125,7 +126,7 @@ const Reports = () => {
 
     dateFilteredLogs.forEach(log => {
       detailedRows.push([
-        new Date(log.createdAt).toLocaleString(),
+        new Date(log.createdAt).toLocaleString('en-GB'),
         log.instance?.name || 'Unknown',
         log.recipient,
         log.status === 'sent' ? 'Sent' : 'Failed',
@@ -167,27 +168,19 @@ const Reports = () => {
       {/* Filters */}
       <div className="report-filters glass animate-fade-in">
         <div className="filter-group">
-          <div className="input-with-icon">
-            <Calendar size={18} />
-            <input 
-              type="date" 
-              value={fromDate} 
-              onChange={(e) => setFromDate(e.target.value)}
-              className="filter-date-input"
-              placeholder="From Date"
-            />
-          </div>
+          <CustomDateInput 
+            value={fromDate} 
+            onChange={setFromDate}
+            placeholder="From Date"
+            style={{ maxWidth: '180px' }}
+          />
           <span className="filter-separator">to</span>
-          <div className="input-with-icon">
-            <Calendar size={18} />
-            <input 
-              type="date" 
-              value={toDate} 
-              onChange={(e) => setToDate(e.target.value)}
-              className="filter-date-input"
-              placeholder="To Date"
-            />
-          </div>
+          <CustomDateInput 
+            value={toDate} 
+            onChange={setToDate}
+            placeholder="To Date"
+            style={{ maxWidth: '180px' }}
+          />
           <button 
             className="text-btn" 
             style={{ marginLeft: 'auto' }}
@@ -208,7 +201,7 @@ const Reports = () => {
             <div key={date} className="report-group">
               <div className="date-header">
                 <Calendar size={18} />
-                <h3>{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+                <h3>{new Date(date).toLocaleDateString('en-GB')}</h3>
               </div>
               <div className="instance-stats-grid">
                 {Object.values(groupedReports[date]).map((stat, i) => {

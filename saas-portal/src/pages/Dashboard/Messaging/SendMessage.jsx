@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
 import CustomModal from '../../../components/CustomModal';
+import CustomDateInput from '../../../components/CustomDateInput';
 import useAuthStore from '../../../store/useAuthStore';
 import { createPortal } from 'react-dom';
 
@@ -1025,7 +1026,7 @@ const SendMessage = () => {
     const instanceName = activeInstanceObj ? activeInstanceObj.name : 'Instance';
 
     const campaignData = {
-      name: scheduleCampaignName.trim() || `Schedule Campaign ${new Date().toLocaleDateString()}`,
+      name: scheduleCampaignName.trim() || `Schedule Campaign ${new Date().toLocaleDateString('en-GB')}`,
       instanceKey: selectedInstance,
       targetDate: scheduleTargetDate,
       targetTime: scheduleTargetTime,
@@ -2155,12 +2156,9 @@ const SendMessage = () => {
                 </div>
                 <div className="form-group">
                   <label>Target Date</label>
-                  <input
-                    type="date"
-                    className="auth-input"
-                    style={{ paddingLeft: '14px' }}
+                  <CustomDateInput
                     value={scheduleTargetDate}
-                    onChange={e => setScheduleTargetDate(e.target.value)}
+                    onChange={setScheduleTargetDate}
                     required
                   />
                 </div>
