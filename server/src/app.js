@@ -32,16 +32,6 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// Custom Request Logger
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
-  });
-  next();
-});
-
 const prefix = '/wa-mitra'
 // Portal Internal Routes (Require JWT Auth)
 app.use(`${prefix}/api/auth`, authRoutes);
