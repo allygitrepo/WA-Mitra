@@ -1,13 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Book, Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft } from 'lucide-react';
+import { 
+  Book, Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft, 
+  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare 
+} from 'lucide-react';
 import './Docs.css';
 
 const Docs = () => {
   const location = useLocation();
   const isExternal = location.pathname === '/docs';
-  const baseUrl = "https://silverapi.allysoftsolutions.com/wa-mitra";
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '') || "https://silverapi.allysoftsolutions.com/wa-mitra";
   const [copied, setCopied] = useState(null);
+  const [showFlowModal, setShowFlowModal] = useState(false);
+  const [activeStep, setActiveStep] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  useEffect(() => {
+    let timer;
+    if (isPlaying && showFlowModal) {
+      timer = setInterval(() => {
+        setActiveStep((prev) => (prev % 4) + 1);
+      }, 5000);
+    }
+    return () => clearInterval(timer);
+  }, [isPlaying, showFlowModal]);
 
   const copyToClipboard = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -97,9 +113,15 @@ const Docs = () => {
 
             {/* Zero-Config Session Flow */}
             <section id="zero-config" className="docs-section card glass">
-              <div className="section-header">
-                <Zap size={24} className="text-primary" />
-                <h2>Zero-Config External Sessions</h2>
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <Zap size={24} className="text-primary" />
+                  <h2>Zero-Config External Sessions</h2>
+                </div>
+                <button className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => setShowFlowModal(true)}>
+                  <Zap size={16} className="animate-pulse" style={{ marginRight: '6px' }} />
+                  <span>Interactive Flowchart</span>
+                </button>
               </div>
               <div className="section-content">
                 <p>Link a WhatsApp account entirely via the API. This flow is ideal for creating "On-the-fly" sessions without pre-configuring them in the dashboard.</p>
@@ -147,7 +169,7 @@ const Docs = () => {
 
                   <div className="postman-req">
                     <div className="pm-header">
-                      <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                      <span className="pm-method method-post">POST</span>
                       <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
                     </div>
                     <div className="pm-section">
@@ -166,7 +188,7 @@ const Docs = () => {
 
                   <div className="postman-req">
                     <div className="pm-header">
-                      <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                      <span className="pm-method method-post">POST</span>
                       <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
                     </div>
                     <div className="pm-section">
@@ -189,42 +211,42 @@ const Docs = () => {
                   </thead>
                   <tbody>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>success</code></td>
+                      <td><code className="code-key">success</code></td>
                       <td><span className="badge badge-type">boolean</span></td>
                       <td>Returns true if everything is fine.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>status</code></td>
+                      <td><code className="code-key">status</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td><code>connecting</code>, <code>qr_ready</code>, or <code>connected</code>.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>qr</code></td>
+                      <td><code className="code-key">qr</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td>The Base64 QR Image. Empty if already connected.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>instanceKey</code></td>
+                      <td><code className="code-key">instanceKey</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td>The permanent ID of this WhatsApp session.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>validinsecond</code></td>
+                      <td><code className="code-key">validinsecond</code></td>
                       <td><span className="badge badge-type">number</span></td>
                       <td>The time in seconds for which the QR code is valid.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>profileImage</code></td>
+                      <td><code className="code-key">profileImage</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td>The Base64 string of the WhatsApp profile picture.</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>name</code></td>
+                      <td><code className="code-key">name</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td>The WhatsApp profile name (Push Name).</td>
                     </tr>
                     <tr>
-                      <td><code style={{ color: '#61afef' }}>phone</code></td>
+                      <td><code className="code-key">phone</code></td>
                       <td><span className="badge badge-type">string</span></td>
                       <td>The connected WhatsApp phone number.</td>
                     </tr>
@@ -240,11 +262,16 @@ const Docs = () => {
                     <strong>⚠️ Expiration Note:</strong> The QR code will expire in <code>validinsecond</code> (40s). You will need to call the <strong>Initiate API</strong> again with your <code>instanceKey</code> to receive a fresh QR code as shown below. It is recommend to show the Timer to user
                   </p>
                 </div>
+                <div className="alert-box warning-alert" style={{ marginTop: '20px' }}>
+                  <p>
+                    <strong>⚠️ Phone Number Isolation:</strong> The system enforces strict isolation. A WhatsApp phone number can only be connected to <strong>one instance</strong> across the entire platform at any given time. Connecting a number that is already active on another instance will be rejected.
+                  </p>
+                </div>
 
                 <h3 style={{ marginTop: '40px' }}>Refreshing/Polling QR Code</h3>
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
                   </div>
                   <div className="pm-section">
@@ -292,7 +319,7 @@ const Docs = () => {
                 <p>Check the live status of any instance at any time without triggering a session restart.</p>
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#61afef' }}>GET</span>
+                    <span className="pm-method method-get">GET</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/instance/status?instanceKey=inst_123`}</span>
                   </div>
                 </div>
@@ -301,7 +328,7 @@ const Docs = () => {
                 <p>Permanently remove an instance from the database and clean up all session files. This is recommended for cleaning up unused keys to prevent server load.</p>
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#f44336' }}>DELETE</span>
+                    <span className="pm-method method-delete">DELETE</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/instance/delete?instanceKey=inst_123`}</span>
                   </div>
                   <div className="pm-section">
@@ -323,7 +350,7 @@ const Docs = () => {
                 <p>Fetch a list of all WhatsApp instances associated with your account.</p>
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#61afef' }}>GET</span>
+                    <span className="pm-method method-get">GET</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/instance/list`}</span>
                   </div>
                   <div className="pm-section">
@@ -357,7 +384,7 @@ const Docs = () => {
 
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/messages/send`}</span>
                   </div>
                   <div className="pm-section">
@@ -365,17 +392,17 @@ const Docs = () => {
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
                       <tbody>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Your connected instance key.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>number</code></td>
+                          <td><code className="code-key orange-key">number</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Phone with country code (e.g. 919876...).</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><code className="code-key orange-key">message</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>The text content of your message.</td>
                         </tr>
@@ -389,7 +416,7 @@ const Docs = () => {
 
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/messages/send`}</span>
                   </div>
                   <div className="pm-section">
@@ -397,22 +424,22 @@ const Docs = () => {
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
                       <tbody>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Your connected instance key.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>number</code></td>
+                          <td><code className="code-key orange-key">number</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Recipient phone with country code.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>file</code></td>
+                          <td><code className="code-key orange-key">file</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>The actual file to be uploaded.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><code className="code-key orange-key">message</code></td>
                           <td><span className="badge badge-opt">Optional</span></td>
                           <td>Text caption to be sent along with the file.</td>
                         </tr>
@@ -426,7 +453,7 @@ const Docs = () => {
 
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/messages/bulk`}</span>
                   </div>
                   <div className="pm-section">
@@ -446,7 +473,7 @@ const Docs = () => {
 
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/messages/schedule`}</span>
                   </div>
                   <div className="pm-section">
@@ -454,37 +481,37 @@ const Docs = () => {
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
                       <tbody>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Your connected instance key.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>name</code></td>
+                          <td><code className="code-key orange-key">name</code></td>
                           <td><span className="badge badge-opt">Optional</span></td>
                           <td>Name of the schedule.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>targetDate</code></td>
+                          <td><code className="code-key orange-key">targetDate</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Format: YYYY-MM-DD.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>targetTime</code></td>
+                          <td><code className="code-key orange-key">targetTime</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Format: HH:mm.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>recipients</code></td>
+                          <td><code className="code-key orange-key">recipients</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>JSON stringified array of numbers e.g., <code>["91987..."]</code>.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><code className="code-key orange-key">message</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Message text or caption.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>file</code></td>
+                          <td><code className="code-key orange-key">file</code></td>
                           <td><span className="badge badge-opt">Optional</span></td>
                           <td>Media file to send.</td>
                         </tr>
@@ -498,7 +525,7 @@ const Docs = () => {
 
                 <div className="postman-req">
                   <div className="pm-header">
-                    <span className="pm-method" style={{ color: '#e2b0ff' }}>POST</span>
+                    <span className="pm-method method-post">POST</span>
                     <span className="pm-url">{`${baseUrl}/api/v1/messages/cycle`}</span>
                   </div>
                   <div className="pm-section">
@@ -506,37 +533,37 @@ const Docs = () => {
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
                       <tbody>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>instanceKey</code></td>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Your connected instance key.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>name</code></td>
+                          <td><code className="code-key orange-key">name</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Name of the cycle.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>frequency</code></td>
+                          <td><code className="code-key orange-key">frequency</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td><code>daily</code>, <code>weekly</code>, <code>monthly</code>, etc.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>sendTime</code></td>
+                          <td><code className="code-key orange-key">sendTime</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Format: HH:mm.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>recipients</code></td>
+                          <td><code className="code-key orange-key">recipients</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>JSON stringified array of numbers.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>message</code></td>
+                          <td><code className="code-key orange-key">message</code></td>
                           <td><span className="badge badge-req">Required</span></td>
                           <td>Message text or caption.</td>
                         </tr>
                         <tr>
-                          <td><code style={{ color: '#d19a66' }}>file</code></td>
+                          <td><code className="code-key orange-key">file</code></td>
                           <td><span className="badge badge-opt">Optional</span></td>
                           <td>Media file to send.</td>
                         </tr>
@@ -639,6 +666,193 @@ const Docs = () => {
             </div>
           </div>
         </div>
+
+        {showFlowModal && (
+          <div className="flow-modal-overlay" onClick={() => setShowFlowModal(false)}>
+            <div className="flow-modal glass" onClick={(e) => e.stopPropagation()}>
+              <div className="flow-modal-header">
+                <div className="modal-title-area">
+                  <Zap size={22} className="text-primary animate-pulse" />
+                  <h3>Zero-Config Integration Flow</h3>
+                </div>
+                <button className="modal-close-btn" onClick={() => setShowFlowModal(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flow-modal-body">
+                {/* Stepper Steps */}
+                <div className="modal-stepper">
+                  {[
+                    { num: 1, label: '1. Initiate Session', desc: 'POST /initiate' },
+                    { num: 2, label: '2. Status Polling', desc: 'GET /status' },
+                    { num: 3, label: '3. QR Scan & Link', desc: 'Scan QR Code' },
+                    { num: 4, label: '4. Send API Message', desc: 'POST /messages/send' }
+                  ].map((step) => (
+                    <div 
+                      key={step.num} 
+                      className={`modal-step-tab ${activeStep === step.num ? 'active' : ''}`}
+                      onClick={() => { setActiveStep(step.num); setIsPlaying(false); }}
+                    >
+                      <span className="tab-number">{step.num}</span>
+                      <div className="tab-info">
+                        <span className="tab-label">{step.label}</span>
+                        <span className="tab-desc">{step.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Animated Arena */}
+                <div className="animation-arena">
+                  {/* Entity 1: Your System */}
+                  <div className={`arena-entity entity-client ${activeStep === 1 || activeStep === 2 || activeStep === 4 ? 'focus' : ''}`}>
+                    <div className="entity-icon-box">
+                      <Laptop size={32} />
+                    </div>
+                    <span className="entity-name">Your Application</span>
+                    <span className="entity-status">Status: Active</span>
+
+                    {/* Step specific floating details */}
+                    {activeStep === 1 && <div className="floating-bubble">POST /initiate</div>}
+                    {activeStep === 2 && <div className="floating-bubble">GET /status</div>}
+                    {activeStep === 3 && (
+                      <div className="floating-qr-box animate-pulse">
+                        <Code size={40} className="qr-fallback-icon" />
+                        <span className="qr-badge">QR READY</span>
+                      </div>
+                    )}
+                    {activeStep === 4 && <div className="floating-bubble">POST /send</div>}
+                  </div>
+
+                  {/* Connectors & Animation paths */}
+                  <div className="arena-connector-path">
+                    {/* Path 1: Client to Server */}
+                    <div className="connector-line">
+                      {/* Animated packets depending on activeStep */}
+                      {activeStep === 1 && (
+                        <div className="animated-packet to-right">
+                          <span className="packet-tag post">POST</span>
+                        </div>
+                      )}
+                      {activeStep === 2 && (
+                        <div className="animated-packet to-right">
+                          <span className="packet-tag get">GET</span>
+                        </div>
+                      )}
+                      {activeStep === 4 && (
+                        <div className="animated-packet to-right">
+                          <span className="packet-tag post">POST</span>
+                        </div>
+                      )}
+                      {/* Return packets */}
+                      {activeStep === 1 && (
+                        <div className="animated-packet to-left delay-1">
+                          <span className="packet-data">QR Code</span>
+                        </div>
+                      )}
+                      {activeStep === 2 && (
+                        <div className="animated-packet to-left delay-1">
+                          <span className="packet-data">qr_ready</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Entity 2: WA-Mitra Server */}
+                  <div className={`arena-entity entity-server ${activeStep === 1 || activeStep === 2 || activeStep === 3 || activeStep === 4 ? 'focus' : ''}`}>
+                    <div className="entity-icon-box">
+                      <Server size={32} />
+                    </div>
+                    <span className="entity-name">WA-Mitra Server</span>
+                    <span className="entity-status">API Gateway</span>
+                    <div className="server-lights">
+                      <span className="light green"></span>
+                      <span className="light blue"></span>
+                    </div>
+                  </div>
+
+                  {/* Connectors Path 2: Server to Phone */}
+                  <div className="arena-connector-path">
+                    <div className="connector-line">
+                      {/* Handshake scan connection line */}
+                      {activeStep === 3 && (
+                        <div className="scan-laser-beam"></div>
+                      )}
+                      {activeStep === 4 && (
+                        <div className="animated-packet to-right delay-2">
+                          <span className="packet-data text-msg"><MessageSquare size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Msg</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Entity 3: WhatsApp Phone */}
+                  <div className={`arena-entity entity-phone ${activeStep === 3 || activeStep === 4 ? 'focus' : ''}`}>
+                    <div className="entity-icon-box">
+                      <Smartphone size={32} />
+                    </div>
+                    <span className="entity-name">WhatsApp Device</span>
+                    <span className="entity-status">
+                      {activeStep >= 3 ? (
+                        <span className="connected-text"><CheckCircle size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Connected</span>
+                      ) : (
+                        'Disconnected'
+                      )}
+                    </span>
+                    {activeStep === 4 && (
+                      <div className="floating-phone-message animate-bounce">
+                        <MessageSquare size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                        <span>Hello!</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Explanation text */}
+                <div className="flow-explanation-box">
+                  <h4>
+                    {activeStep === 1 && "Step 1: Initiate WhatsApp Session"}
+                    {activeStep === 2 && "Step 2: Poll Session Status"}
+                    {activeStep === 3 && "Step 3: Scan QR Code & Link Session"}
+                    {activeStep === 4 && "Step 4: Dispatch Messages via API"}
+                  </h4>
+                  <p>
+                    {activeStep === 1 && "Your application makes a POST request with your Bearer Token to /initiate. WA-Mitra spins up a secure Baileys virtual container and returns a unique instanceKey along with a Base64 QR code image."}
+                    {activeStep === 2 && "Because the QR code lasts 40 seconds, your system polls /status or calls /initiate with the instanceKey to check connection state and pull fresh QR codes if needed."}
+                    {activeStep === 3 && "The user scans the QR code using their WhatsApp mobile app (Linked Devices). WA-Mitra detects the login event, saves session tokens, and establishes a persistent socket connection."}
+                    {activeStep === 4 && "With status 'connected', you send payload messages to /messages/send. WA-Mitra instantly routes the message to WhatsApp servers, displaying the sent bubble on the target recipient's phone."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Controls footer */}
+              <div className="flow-modal-footer">
+                <div className="footer-playback-controls">
+                  <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => setIsPlaying(!isPlaying)} title={isPlaying ? 'Pause auto-play' : 'Play auto-play'}>
+                    {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                    <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                  </button>
+                  <button 
+                    className="text-btn" 
+                    disabled={activeStep === 1} 
+                    onClick={() => { setActiveStep(prev => prev - 1); setIsPlaying(false); }}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    className="text-btn" 
+                    disabled={activeStep === 4} 
+                    onClick={() => { setActiveStep(prev => prev + 1); setIsPlaying(false); }}
+                  >
+                    Next
+                  </button>
+                </div>
+                <button className="btn-secondary" onClick={() => setShowFlowModal(false)}>Close Diagram</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
