@@ -22,7 +22,16 @@ server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
 
     try {
-        await sequelize.sync({ alter: true });
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+        const forceAlter = process.env.DB_SYNC_ALTER === 'true';
+
+        if (isProduction && !forceAlter) {
+            console.log('Production environment detected. Syncing database safely (without alter)...');
+            await sequelize.sync();
+        } else {
+            console.log('Syncing database with alter: true...');
+            await sequelize.sync({ alter: true });
+        }
         console.log('Database synced successfully');
         await seedAdmin();
         initScheduler();
