@@ -35,7 +35,7 @@ const VerifyOtpPage = () => {
     try {
       const code = otp.join('');
       const res = await authService.verifyOtp({ email, otp: code });
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.token, res.data.refreshToken);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP');

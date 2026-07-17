@@ -9,6 +9,8 @@ export const authService = {
   resetPassword: (data) => API.post('/auth/reset-password', data),
   resendOtp: (data) => API.post('/auth/resend-otp', data),
   getProfile: () => API.get('/auth/me'),
+  refreshToken: (refreshToken) => API.post('/auth/refresh-token', { refreshToken }),
+  logout: () => API.post('/auth/logout'),
 };
 
 export const instanceService = {

@@ -60,6 +60,10 @@ const User = sequelize.define("User", {
     allowNull: false,
     defaultValue: "UTC",
   },
+  refreshToken: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   otp: {
     type: DataTypes.STRING,
     allowNull: true,

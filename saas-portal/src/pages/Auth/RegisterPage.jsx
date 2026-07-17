@@ -30,7 +30,7 @@ const RegisterPage = () => {
       setError('');
       try {
         const res = await authService.googleLogin({ accessToken: tokenResponse.access_token });
-        setAuth(res.data.user, res.data.token);
+        setAuth(res.data.user, res.data.token, res.data.refreshToken);
         navigate('/dashboard');
       } catch (err) {
         setError(err.response?.data?.message || 'Google Login failed');

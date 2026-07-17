@@ -8,7 +8,13 @@ require("dotenv").config();
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+  });
+};
+
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   });
 };
 
@@ -96,16 +102,19 @@ const authController = {
       user.isVerified = true;
       user.otp = null;
       user.otpExpiry = null;
-      await user.save();
 
       // Send welcome email
       await emailService.sendEmail(user.email, emailTemplates.welcomeEmail(user.username));
 
       const token = generateToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      user.refreshToken = refreshToken;
+      await user.save();
 
       res.status(200).json({
         message: "Account verified successfully",
         token,
+        refreshToken,
         user: {
           id: user.id,
           username: user.username,
@@ -175,16 +184,19 @@ const authController = {
         return res.status(401).json({ message: "Invalid credentials" });
       }
       const token = generateToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      user.refreshToken = refreshToken;
 
       const clientTimezone = req.headers['x-user-timezone'];
       if (clientTimezone && user.timezone !== clientTimezone) {
         user.timezone = clientTimezone;
-        await user.save();
       }
+      await user.save();
 
       res.status(200).json({
         message: "Login successful",
         token,
+        refreshToken,
         user: {
           id: user.id,
           username: user.username,
@@ -240,16 +252,19 @@ const authController = {
         await emailService.sendEmail(user.email, emailTemplates.welcomeEmail(user.username));
       }
       const token = generateToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      user.refreshToken = refreshToken;
 
       const clientTimezone = req.headers['x-user-timezone'];
       if (clientTimezone && user.timezone !== clientTimezone) {
         user.timezone = clientTimezone;
-        await user.save();
       }
+      await user.save();
 
       res.status(200).json({
         message: "Google Login successful",
         token,
+        refreshToken,
         user: {
           id: user.id,
           username: user.username,
@@ -366,6 +381,75 @@ const authController = {
       });
     } catch (error) {
       console.error("Update Profile Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+  refreshToken: async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(400).json({ message: "Refresh token is required" });
+      }
+
+      let decoded;
+      try {
+        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+      } catch (err) {
+        return res.status(401).json({ message: "Invalid or expired refresh token" });
+      }
+
+      const user = await User.findByPk(decoded.id);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      if (user.refreshToken !== refreshToken) {
+        return res.status(401).json({ message: "Invalid refresh token session" });
+      }
+
+      if (!user.isVerified) {
+        return res.status(401).json({ message: "Account not verified" });
+      }
+
+      if (user.status === "suspended") {
+        return res.status(401).json({ message: "Account suspended" });
+      }
+
+      const newToken = generateToken(user.id);
+      const newRefreshToken = generateRefreshToken(user.id);
+      user.refreshToken = newRefreshToken;
+      await user.save();
+
+      res.status(200).json({
+        token: newToken,
+        refreshToken: newRefreshToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          orgName: user.orgName,
+          role: user.role,
+          status: user.status,
+          packageId: user.packageId,
+          expiresAt: user.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error("Refresh Token Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+  logout: async (req, res) => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (user) {
+        user.refreshToken = null;
+        await user.save();
+      }
+      res.status(200).json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+      console.error("Logout Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   }

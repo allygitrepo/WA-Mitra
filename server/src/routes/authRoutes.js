@@ -13,6 +13,8 @@ router.post("/login", validator.login, authController.login);
 router.post("/google-login", authController.googleLogin);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
+router.post("/refresh-token", authController.refreshToken);
+router.post("/logout", authMiddleware, authController.logout);
 router.get("/me", authMiddleware, authController.getProfile);
 router.put("/profile", authMiddleware, authController.updateProfile);
 
