@@ -28,6 +28,7 @@ import toast from 'react-hot-toast';
 import '../Dashboard/Dashboard.css';
 import '../Dashboard/Overview.css';
 import './Admin.css';
+import CustomDateInput from '../../components/CustomDateInput';
 
 const AdminUsers = () => {
   const { searchQuery } = useOutletContext();
@@ -241,12 +242,10 @@ const AdminUsers = () => {
 
               <div className="form-group-modern">
                 <label>Expiry Date</label>
-                <input
-                  type="date"
+                <CustomDateInput
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="modern-select"
-                  style={{ width: '100%', padding: '10px 14px' }}
+                  onChange={setSelectedDate}
+                  placeholder="Expiry Date"
                 />
                 <span className="text-[11px] text-muted mt-2 block">
                   Leave blank to set the package as "Never Expires".
