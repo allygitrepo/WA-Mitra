@@ -4,28 +4,88 @@ let DisconnectReason;
 let Browsers;
 
 async function loadBaileys() {
+    if (makeWASocket) return;
     const baileys = await import('@whiskeysockets/baileys');
-
     makeWASocket = baileys.default;
     useMultiFileAuthState = baileys.useMultiFileAuthState;
     DisconnectReason = baileys.DisconnectReason;
     Browsers = baileys.Browsers;
 }
+
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
 const { getIO } = require('../config/socket');
 const WhatsAppInstance = require('../models/instanceModel');
 const MessageLog = require('../models/messageLogModel');
-
 const pino = require('pino');
 const QRCode = require('qrcode');
 
-// Store all active sessions: Map<instanceKey, sessionData>
-const sessions = new Map();
+// Memory Storage
+const sessions = new Map();             // Map<instanceKey, sessionData>
+const connectionErrors = new Map();     // Map<instanceKey, errorMessage>
+const connectingInFlight = new Map();   // Map<instanceKey, Promise> - Mutex for startSession
+const reconnectTimers = new Map();      // Map<instanceKey, Timeout> - Track pending reconnect timers
+const reconnectAttempts = new Map();    // Map<instanceKey, number> - Exponential backoff tracker
+const rulesCache = new Map();           // Map<instanceKey, Array> - In-memory auto-reply rules cache
 
-// Store temporary connection errors: Map<instanceKey, errorMessage>
-const connectionErrors = new Map();
+function getSessionPath(instanceKey) {
+    return path.join(__dirname, '../../sessions', `instance_${instanceKey}`);
+}
+
+/**
+ * Safely updates instance database status ONLY if current status differs or additional data changed.
+ */
+async function updateInstanceStatusSafely(instanceKey, newStatus, updateFields = {}) {
+    try {
+        const sessionData = sessions.get(instanceKey);
+        if (sessionData) {
+            sessionData.connectionStatus = newStatus;
+        }
+
+        const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
+        if (!instance) return;
+
+        // Check if anything actually changed to prevent database update storms
+        let hasChanges = instance.status !== newStatus;
+        for (const [key, value] of Object.entries(updateFields)) {
+            if (instance[key] !== value) {
+                hasChanges = true;
+                break;
+            }
+        }
+
+        if (hasChanges) {
+            await WhatsAppInstance.update(
+                { status: newStatus, ...updateFields },
+                { where: { instanceKey } }
+            );
+        }
+    } catch (e) {
+        console.error(`[DB STATUS UPDATE ERROR] Failed to update status for ${instanceKey}:`, e.message);
+    }
+}
+
+/**
+ * Strips listeners and closes socket safely
+ */
+function cleanupSocket(instanceKey) {
+    if (reconnectTimers.has(instanceKey)) {
+        clearTimeout(reconnectTimers.get(instanceKey));
+        reconnectTimers.delete(instanceKey);
+    }
+
+    const sessionData = sessions.get(instanceKey);
+    if (sessionData && sessionData.sock) {
+        try {
+            sessionData.sock.ev.removeAllListeners();
+            sessionData.sock.terminate();
+        } catch (e) {
+            // Ignore socket termination errors
+        }
+        sessionData.sock = null;
+    }
+}
 
 async function syncInstanceRules(instanceKey, rules) {
     try {
@@ -40,6 +100,9 @@ async function syncInstanceRules(instanceKey, rules) {
                 isActive: rule.isActive !== undefined ? rule.isActive : true
             }));
             await AutoReplyRule.bulkCreate(rulesToCreate);
+            rulesCache.set(instanceKey, rulesToCreate);
+        } else {
+            rulesCache.set(instanceKey, []);
         }
     } catch (e) {
         console.error("Error syncing instance rules to DB:", e);
@@ -47,35 +110,58 @@ async function syncInstanceRules(instanceKey, rules) {
 }
 
 async function getInstanceRules(instanceKey) {
+    if (rulesCache.has(instanceKey)) {
+        return rulesCache.get(instanceKey);
+    }
     try {
         const { AutoReplyRule } = require("../models/associations");
-        return await AutoReplyRule.findAll({ where: { instanceKey } });
+        const rules = await AutoReplyRule.findAll({ where: { instanceKey } });
+        rulesCache.set(instanceKey, rules);
+        return rules;
     } catch (e) {
         console.error("Error getting instance rules from DB:", e);
         return [];
     }
 }
 
-function getSessionPath(instanceKey) {
-    return path.join(__dirname, '../../sessions', `instance_${instanceKey}`);
+/**
+ * Thread-safe startSession wrapped in Mutex
+ */
+async function startSession(instanceKey) {
+    if (connectingInFlight.has(instanceKey)) {
+        console.log(`[SESSION MUTEX] Connection initialization already in progress for ${instanceKey}. Returning active promise.`);
+        return connectingInFlight.get(instanceKey);
+    }
+
+    const connectPromise = (async () => {
+        try {
+            return await _internalStartSession(instanceKey);
+        } finally {
+            connectingInFlight.delete(instanceKey);
+        }
+    })();
+
+    connectingInFlight.set(instanceKey, connectPromise);
+    return connectPromise;
 }
 
-async function startSession(instanceKey) {
+async function _internalStartSession(instanceKey) {
     await loadBaileys();
-    // Check if session already exists
+
+    // Clear any existing reconnect timer
+    if (reconnectTimers.has(instanceKey)) {
+        clearTimeout(reconnectTimers.get(instanceKey));
+        reconnectTimers.delete(instanceKey);
+    }
+
+    // Check existing session state
     if (sessions.has(instanceKey)) {
         const session = sessions.get(instanceKey);
-        if (session.connectionStatus === 'connected') {
+        if (session.connectionStatus === 'connected' && session.sock) {
             console.log(`Instance ${instanceKey} is already connected.`);
             return session.sock;
         }
-        // If it's already connecting or has a QR, close the old socket before starting a new one
-        if (session.sock) {
-            try {
-                session.sock.ev.removeAllListeners();
-                session.sock.terminate();
-            } catch (e) { }
-        }
+        cleanupSocket(instanceKey);
     }
 
     const sessionDir = getSessionPath(instanceKey);
@@ -90,158 +176,161 @@ async function startSession(instanceKey) {
         markOnlineOnConnect: true,
     });
 
-    // Initialize session data
-    sessions.set(instanceKey, {
+    // Initialize session state object
+    const sessionData = {
         sock,
         qrCodeData: null,
         qrTimestamp: null,
         connectionStatus: 'connecting',
-        userPhone: null
-    });
+        userPhone: null,
+        pushName: null,
+        profilePic: null
+    };
+    sessions.set(instanceKey, sessionData);
 
+    // Creds update handler
     sock.ev.on('creds.update', async (update) => {
         await saveCreds();
-        // Capture name if it arrives late in creds
         if (update.me && update.me.name) {
-            const sessionData = sessions.get(instanceKey);
-            if (sessionData && (!sessionData.pushName || sessionData.pushName === 'WhatsApp User')) {
-                sessionData.pushName = update.me.name;
-                try {
-                    await WhatsAppInstance.update({ pushName: update.me.name }, { where: { instanceKey } });
-                    getIO().emit('connected', {
-                        instanceKey,
-                        pushName: update.me.name,
-                        phone: sessionData.userPhone,
-                        profilePic: sessionData.profilePic
-                    });
-                } catch (e) { }
+            const currentSession = sessions.get(instanceKey);
+            if (currentSession && (!currentSession.pushName || currentSession.pushName === 'WhatsApp User')) {
+                currentSession.pushName = update.me.name;
+                await updateInstanceStatusSafely(instanceKey, currentSession.connectionStatus, { pushName: update.me.name });
+                getIO().emit('connected', {
+                    instanceKey,
+                    pushName: update.me.name,
+                    phone: currentSession.userPhone,
+                    profilePic: currentSession.profilePic
+                });
             }
         }
     });
 
+    // Connection update handler
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
-        const sessionData = sessions.get(instanceKey);
-        if (!sessionData) return;
+        const currentSession = sessions.get(instanceKey);
+        if (!currentSession) return;
 
+        // QR Code Received
         if (qr) {
             try {
                 const qrDataURL = await QRCode.toDataURL(qr);
-                sessionData.qrCodeData = qrDataURL;
-                sessionData.qrTimestamp = Date.now();
-                sessionData.connectionStatus = 'qr_ready';
-                await WhatsAppInstance.update({ status: 'qr_ready' }, { where: { instanceKey } });
+                currentSession.qrCodeData = qrDataURL;
+                currentSession.qrTimestamp = Date.now();
+                await updateInstanceStatusSafely(instanceKey, 'qr_ready');
                 getIO().emit('qr', { instanceKey, qr: qrDataURL });
             } catch (err) {
                 console.error('Failed to generate QR Data URL:', err);
-                sessionData.qrCodeData = qr; // Fallback to raw string
-                sessionData.qrTimestamp = Date.now();
+                currentSession.qrCodeData = qr;
+                currentSession.qrTimestamp = Date.now();
             }
         }
 
+        // Connection Opened
         if (connection === 'open') {
             console.log(`[INSTANCE] ${instanceKey} connected!`);
-            sessionData.qrCodeData = null;
-            sessionData.qrTimestamp = null;
-            sessionData.connectionStatus = 'connected';
-            sessionData.userPhone = sock.user.id.split(':')[0];
-            sessionData.pushName = sock.user.name || sock.user.notify || (state.creds.me && state.creds.me.name) || 'WhatsApp User';
+            reconnectAttempts.delete(instanceKey);
+            currentSession.qrCodeData = null;
+            currentSession.qrTimestamp = null;
+            currentSession.connectionStatus = 'connected';
+            currentSession.userPhone = sock.user.id.split(':')[0];
+            currentSession.pushName = sock.user.name || sock.user.notify || (state.creds.me && state.creds.me.name) || 'WhatsApp User';
 
-            // Check if this phone number is already connected to any other instance
+            // Duplicate phone check across instances
             const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
             if (instance) {
+                const { Op } = require('sequelize');
                 const duplicatePhone = await WhatsAppInstance.findOne({
                     where: {
-                        phone: sessionData.userPhone,
-                        id: { [require('sequelize').Op.ne]: instance.id }
+                        phone: currentSession.userPhone,
+                        id: { [Op.ne]: instance.id }
                     }
                 });
                 if (duplicatePhone) {
-                    console.log(`[INSTANCE REJECTED] Phone ${sessionData.userPhone} is already linked to another instance.`);
-                    
+                    console.log(`[INSTANCE REJECTED] Phone ${currentSession.userPhone} linked to another instance.`);
                     connectionErrors.set(instanceKey, "This WhatsApp number is already connected to another instance.");
-                    setTimeout(() => {
-                        connectionErrors.delete(instanceKey);
-                    }, 15000);
+                    setTimeout(() => connectionErrors.delete(instanceKey), 15000);
 
-                    try {
-                        await sock.logout();
-                    } catch (e) {
-                        try {
-                            sock.terminate();
-                        } catch (err) {}
-                    }
+                    cleanupSocket(instanceKey);
                     sessions.delete(instanceKey);
-                    
-                    const sessionDir = getSessionPath(instanceKey);
                     if (fs.existsSync(sessionDir)) {
                         fs.rmSync(sessionDir, { recursive: true, force: true });
                     }
-                    
-                    await WhatsAppInstance.update({
-                        status: 'disconnected',
+
+                    await updateInstanceStatusSafely(instanceKey, 'disconnected', {
                         phone: null,
                         pushName: null,
                         profilePic: null
-                    }, { where: { instanceKey } });
-                    
-                    getIO().emit('disconnected', { 
-                        instanceKey, 
-                        error: "This WhatsApp number is already connected to another instance." 
+                    });
+
+                    getIO().emit('disconnected', {
+                        instanceKey,
+                        error: "This WhatsApp number is already connected to another instance."
                     });
                     return;
                 }
             }
 
-            // Fetch profile picture if possible
+            // Fetch profile picture safely
             let profilePic = null;
             try {
                 profilePic = await sock.profilePictureUrl(sock.user.id, 'image');
-            } catch (e) {
-                console.log("Could not fetch profile picture:", e.message);
-            }
+            } catch (e) { }
+            currentSession.profilePic = profilePic;
 
-            await WhatsAppInstance.update({
-                status: 'connected',
-                phone: sessionData.userPhone,
-                pushName: sessionData.pushName,
-                profilePic: profilePic,
+            await updateInstanceStatusSafely(instanceKey, 'connected', {
+                phone: currentSession.userPhone,
+                pushName: currentSession.pushName,
+                profilePic,
                 lastConnected: new Date()
-            }, { where: { instanceKey } });
+            });
 
             getIO().emit('connected', {
                 instanceKey,
-                phone: sessionData.userPhone,
-                pushName: sessionData.pushName,
-                profilePic: profilePic
+                phone: currentSession.userPhone,
+                pushName: currentSession.pushName,
+                profilePic
             });
         }
 
+        // Connecting State
         if (connection === 'connecting') {
-            sessionData.connectionStatus = 'connecting';
-            await WhatsAppInstance.update({ status: 'connecting' }, { where: { instanceKey } });
+            await updateInstanceStatusSafely(instanceKey, 'connecting');
         }
 
+        // Connection Closed
         if (connection === 'close') {
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
             console.log(`[INSTANCE] ${instanceKey} closed. Reason: ${statusCode}`);
 
+            cleanupSocket(instanceKey);
+
             if (statusCode !== DisconnectReason.loggedOut) {
-                sessionData.connectionStatus = 'connecting';
+                await updateInstanceStatusSafely(instanceKey, 'connecting');
                 getIO().emit('loading', { instanceKey, message: 'Reconnecting...' });
-                setTimeout(() => startSession(instanceKey), 5000);
+
+                // Bounded exponential backoff delay (min 5s, max 30s)
+                const attempts = (reconnectAttempts.get(instanceKey) || 0) + 1;
+                reconnectAttempts.set(instanceKey, attempts);
+                const delay = Math.min(5000 * Math.pow(1.5, attempts - 1), 30000);
+
+                console.log(`[RECONNECT] Scheduling reconnect for ${instanceKey} in ${Math.round(delay / 1000)}s (Attempt #${attempts})`);
+
+                const timer = setTimeout(() => {
+                    reconnectTimers.delete(instanceKey);
+                    startSession(instanceKey).catch(err => {
+                        console.error(`[RECONNECT FAILED] Instance ${instanceKey}:`, err.message);
+                    });
+                }, delay);
+
+                reconnectTimers.set(instanceKey, timer);
             } else {
-                sessionData.connectionStatus = 'disconnected';
-                sessionData.sock = null;
-                sessionData.qrCodeData = null;
-                sessionData.userPhone = null;
-                sessionData.pushName = null;
-                sessionData.profilePic = null;
+                reconnectAttempts.delete(instanceKey);
                 sessions.delete(instanceKey);
+                rulesCache.delete(instanceKey);
 
-                // Remove from DB entirely per user request
                 await WhatsAppInstance.destroy({ where: { instanceKey } });
-
                 if (fs.existsSync(sessionDir)) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
                 }
@@ -250,12 +339,11 @@ async function startSession(instanceKey) {
         }
     });
 
+    // Auto-reply message handler
     sock.ev.on('messages.upsert', async (m) => {
         if (m.type === 'notify') {
             for (const msg of m.messages) {
-                // Ignore messages sent by ourselves and group chats
                 if (!msg.key.fromMe && msg.key.remoteJid && !msg.key.remoteJid.endsWith('@g.us')) {
-                    // Extract text content from message
                     const text = msg.message?.conversation ||
                         msg.message?.extendedTextMessage?.text ||
                         msg.message?.imageMessage?.caption || "";
@@ -277,11 +365,10 @@ async function startSession(instanceKey) {
                             }
 
                             if (isMatch) {
-                                console.log(`[AUTO-REPLY] Matching keyword "${rule.keyword}" for instance ${instanceKey}. Replying to ${msg.key.remoteJid}: "${rule.replyText}"`);
+                                console.log(`[AUTO-REPLY] Match keyword "${rule.keyword}" for ${instanceKey}. Replying: "${rule.replyText}"`);
                                 try {
                                     await sock.sendMessage(msg.key.remoteJid, { text: rule.replyText });
 
-                                    // Log the auto-reply in the MessageLog table so it appears in the user dashboard logs and stats
                                     const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
                                     if (instance) {
                                         const cleanNumber = msg.key.remoteJid.split('@')[0];
@@ -290,14 +377,14 @@ async function startSession(instanceKey) {
                                             recipient: cleanNumber,
                                             messageType: 'text',
                                             status: 'sent',
-                                            errorMessage: 'Auto Reply' // Mark it so we know it was auto-reply
+                                            errorMessage: 'Auto Reply'
                                         });
                                         await WhatsAppInstance.increment('messageCount', { where: { id: instance.id } });
                                     }
                                 } catch (err) {
                                     console.error(`[AUTO-REPLY ERROR] Failed to send auto reply for ${instanceKey}:`, err);
                                 }
-                                break; // Only trigger first matching rule
+                                break;
                             }
                         }
                     }
@@ -312,7 +399,7 @@ async function startSession(instanceKey) {
 function getStatus(instanceKey) {
     const sessionData = sessions.get(instanceKey);
     const error = connectionErrors.get(instanceKey) || null;
-    
+
     if (!sessionData) {
         const exists = fs.existsSync(getSessionPath(instanceKey));
         return {
@@ -324,10 +411,9 @@ function getStatus(instanceKey) {
         };
     }
 
-    // Check if QR is expired (40 seconds)
     let currentQR = sessionData.qrCodeData;
     if (sessionData.qrTimestamp && (Date.now() - sessionData.qrTimestamp > 40000)) {
-        currentQR = null; // QR expired
+        currentQR = null;
     }
 
     return {
@@ -342,20 +428,16 @@ function getStatus(instanceKey) {
 }
 
 async function disconnect(instanceKey) {
-    const sessionData = sessions.get(instanceKey);
-    if (sessionData && sessionData.sock) {
-        try {
-            await sessionData.sock.logout();
-        } catch (e) { }
-    }
+    cleanupSocket(instanceKey);
     sessions.delete(instanceKey);
+    rulesCache.delete(instanceKey);
+    reconnectAttempts.delete(instanceKey);
 
     const sessionDir = getSessionPath(instanceKey);
     if (fs.existsSync(sessionDir)) {
         fs.rmSync(sessionDir, { recursive: true, force: true });
     }
 
-    // Remove from DB entirely per user request
     await WhatsAppInstance.destroy({ where: { instanceKey } });
     getIO().emit('disconnected', { instanceKey });
 }
