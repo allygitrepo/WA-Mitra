@@ -52,11 +52,12 @@ server.listen(PORT, async () => {
         });
 
         if (activeInstances.length > 0) {
-            // console.log(`Found ${activeInstances.length} active instance(s), attempting auto-reconnect...`);
+            console.log(`Found ${activeInstances.length} active instance(s), starting staggered auto-reconnect...`);
             for (const instance of activeInstances) {
-                // console.log(`Reconnecting instance: ${instance.instanceKey} (${instance.name})`);
                 try {
                     await startSession(instance.instanceKey);
+                    // Stagger connections by 1.5s to prevent startup concurrency load spikes
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                 } catch (error) {
                     console.error(`Failed to reconnect instance ${instance.instanceKey}:`, error.message);
                 }

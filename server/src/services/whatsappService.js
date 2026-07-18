@@ -27,6 +27,7 @@ const connectionErrors = new Map();     // Map<instanceKey, errorMessage>
 const connectingInFlight = new Map();   // Map<instanceKey, Promise> - Mutex for startSession
 const reconnectTimers = new Map();      // Map<instanceKey, Timeout> - Track pending reconnect timers
 const reconnectAttempts = new Map();    // Map<instanceKey, number> - Exponential backoff tracker
+const lastDbStateCache = new Map();     // Map<instanceKey, Object> - In-memory DB state cache
 const rulesCache = new Map();           // Map<instanceKey, Array> - In-memory auto-reply rules cache
 
 function getSessionPath(instanceKey) {
@@ -35,6 +36,7 @@ function getSessionPath(instanceKey) {
 
 /**
  * Safely updates instance database status ONLY if current status differs or additional data changed.
+ * Uses in-memory cache to eliminate preliminary SELECT queries and avoid SQL update storms.
  */
 async function updateInstanceStatusSafely(instanceKey, newStatus, updateFields = {}) {
     try {
@@ -43,23 +45,31 @@ async function updateInstanceStatusSafely(instanceKey, newStatus, updateFields =
             sessionData.connectionStatus = newStatus;
         }
 
-        const instance = await WhatsAppInstance.findOne({ where: { instanceKey } });
-        if (!instance) return;
+        const desiredState = { status: newStatus, ...updateFields };
+        const cachedState = lastDbStateCache.get(instanceKey);
 
-        // Check if anything actually changed to prevent database update storms
-        let hasChanges = instance.status !== newStatus;
-        for (const [key, value] of Object.entries(updateFields)) {
-            if (instance[key] !== value) {
-                hasChanges = true;
-                break;
+        if (cachedState) {
+            let hasChanges = false;
+            for (const [key, value] of Object.entries(desiredState)) {
+                if (cachedState[key] !== value) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+            if (!hasChanges) {
+                return; // State is identical - skip DB operation entirely!
             }
         }
 
-        if (hasChanges) {
-            await WhatsAppInstance.update(
-                { status: newStatus, ...updateFields },
-                { where: { instanceKey } }
-            );
+        await WhatsAppInstance.update(
+            desiredState,
+            { where: { instanceKey } }
+        );
+
+        if (!cachedState) {
+            lastDbStateCache.set(instanceKey, { ...desiredState });
+        } else {
+            Object.assign(cachedState, desiredState);
         }
     } catch (e) {
         console.error(`[DB STATUS UPDATE ERROR] Failed to update status for ${instanceKey}:`, e.message);
