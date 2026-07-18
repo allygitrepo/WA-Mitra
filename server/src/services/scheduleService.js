@@ -287,11 +287,34 @@ const processCycles = async () => {
   }
 };
 
+let isRunningSchedules = false;
+let isRunningCycles = false;
+
+const safeProcessSchedules = async () => {
+  if (isRunningSchedules) return;
+  isRunningSchedules = true;
+  try {
+    await processSchedules();
+  } finally {
+    isRunningSchedules = false;
+  }
+};
+
+const safeProcessCycles = async () => {
+  if (isRunningCycles) return;
+  isRunningCycles = true;
+  try {
+    await processCycles();
+  } finally {
+    isRunningCycles = false;
+  }
+};
+
 const initScheduler = () => {
   console.log('[Scheduler] Initializing backend message scheduler background worker...');
   setInterval(async () => {
-    await processSchedules();
-    await processCycles();
+    await safeProcessSchedules();
+    await safeProcessCycles();
   }, 10000);
 };
 

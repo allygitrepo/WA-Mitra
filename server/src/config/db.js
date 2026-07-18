@@ -11,10 +11,23 @@ const sequelize = new Sequelize(
         port: process.env.DB_PORT || 5432,
         logging: false, // disable SQL logs
         pool: {
-            max: 25,
-            min: 0,
+            max: 20,
+            min: 5,
             acquire: 30000,
-            idle: 10000
+            idle: 10000,
+            evict: 1000
+        },
+        retry: {
+            max: 3,
+            match: [
+                /SequelizeConnectionError/,
+                /SequelizeConnectionRefusedError/,
+                /SequelizeHostNotFoundError/,
+                /SequelizeHostNotReachableError/,
+                /SequelizeInvalidConnectionError/,
+                /SequelizeConnectionTimedOutError/,
+                /TimeoutError/
+            ]
         }
     }
 );
