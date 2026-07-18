@@ -25,12 +25,17 @@ server.listen(PORT, async () => {
         const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
         const forceAlter = process.env.DB_SYNC_ALTER === 'true';
 
-        if (isProduction && !forceAlter) {
-            console.log('Production environment detected. Syncing database safely (without alter)...');
+        if (isProduction || !forceAlter) {
+            console.log('Syncing database safely (without alter)...');
             await sequelize.sync();
         } else {
             console.log('Syncing database with alter: true...');
-            await sequelize.sync({ alter: true });
+            try {
+                await sequelize.sync({ alter: true });
+            } catch (alterErr) {
+                console.warn('Sync with alter failed (PostgreSQL lock limit exceeded), falling back to safe sync:', alterErr.message);
+                await sequelize.sync();
+            }
         }
         console.log('Database synced successfully');
         await seedAdmin();

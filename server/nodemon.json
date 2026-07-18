@@ -1,5 +1,8 @@
 {
     "ignore": [
-        "sessions/*"
+        "sessions/**",
+        "sessions/*",
+        "logs/**",
+        "uploads/**"
     ]
 }
