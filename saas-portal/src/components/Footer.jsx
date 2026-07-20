@@ -1,6 +1,5 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Share2, Send, Briefcase, Code2, Globe } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import useThemeStore from '../store/useThemeStore';
 import './Footer.css';
 

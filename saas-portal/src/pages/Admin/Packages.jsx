@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Trash2,
   Edit2,
-  Check,
   X,
-  Smartphone,
-  MessageSquare,
-  IndianRupee,
   Calendar,
   Layers,
-  Save,
   Shield,
-  Globe,
   Ban
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
@@ -52,11 +46,7 @@ const AdminPackages = () => {
 
   const [formData, setFormData] = useState(initialFormState);
 
-  useEffect(() => {
-    fetchPackages();
-  }, []);
-
-  const fetchPackages = async () => {
+  const fetchPackages = useCallback(async () => {
     try {
       const res = await API.get('/admin/packages');
       setPackages(res.data.packages || []);
@@ -65,7 +55,19 @@ const AdminPackages = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchPackages();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchPackages]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,7 +84,7 @@ const AdminPackages = () => {
       setEditingId(null);
       setFormData(initialFormState);
       fetchPackages();
-    } catch (err) {
+    } catch {
       toast.error("Failed to save package details", { id: loadingToast });
     }
   };
@@ -100,7 +102,7 @@ const AdminPackages = () => {
       await API.delete(`/admin/packages/${id}`);
       fetchPackages();
       toast.success("Package deleted successfully.", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete package", { id: loadingToast });
     }
   };

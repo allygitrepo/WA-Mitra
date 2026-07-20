@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { Calendar } from 'lucide-react';
 
 const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", className = "", style = {}, required = false, disabled = false }) => {
@@ -10,7 +10,7 @@ const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", classNam
     return `${day}/${month}/${year}`;
   };
 
-  const handleWrapperClick = (e) => {
+  const handleWrapperClick = () => {
     if (disabled) return;
     if (dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
       try {

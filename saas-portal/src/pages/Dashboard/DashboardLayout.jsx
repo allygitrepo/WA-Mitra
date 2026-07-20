@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Smartphone,
   Settings,
   LogOut,
-  Bell,
   Search,
-  User,
   ChevronRight,
   Menu,
   Send,
@@ -21,7 +19,6 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import { authService } from '../../api/services';
-import ThemeToggle from '../../components/ThemeToggle';
 import './Dashboard.css';
 import useThemeStore from '../../store/useThemeStore';
 import CustomModal from '../../components/CustomModal';
@@ -36,7 +33,7 @@ const DashboardLayout = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Handle responsive sidebar on resize
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 1024) {
         setIsSidebarOpen(false);
@@ -48,14 +45,20 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   // Close sidebar on mobile after navigation
-  React.useEffect(() => {
-    if (window.innerWidth <= 1024) {
-      setIsSidebarOpen(false);
-    }
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active && window.innerWidth <= 1024) {
+        setIsSidebarOpen(false);
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
   }, [location.pathname]);
 
   // Fetch latest user profile on mount to sync subscription details
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchProfile = async () => {
       try {
         const profileRes = await authService.getProfile();
@@ -135,7 +138,7 @@ const DashboardLayout = () => {
               const activeType = isMessagingActive ? (searchParams.get('type') || 'contact') : '';
 
               return (
-                <React.Fragment key={item.path}>
+                <Fragment key={item.path}>
                   <Link
                     to="/dashboard/messaging?type=contact"
                     className={`nav-item ${isMessagingActive ? 'active' : ''}`}
@@ -188,7 +191,7 @@ const DashboardLayout = () => {
                       </Link>
                     </div>
                   )}
-                </React.Fragment>
+                </Fragment>
               );
             }
             return (

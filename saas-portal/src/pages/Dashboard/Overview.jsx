@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Send,
   Activity,
-  TrendingUp,
-  Clock,
   CheckCircle2,
   AlertCircle,
-  Smartphone,
-  Users,
-  MessageSquare
+  Smartphone
 } from 'lucide-react';
 import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { instanceService, messageService } from '../../api/services';
@@ -22,13 +18,8 @@ const Overview = () => {
   const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [instRes, logsRes] = await Promise.all([
         instanceService.getInstances(),
@@ -38,10 +29,20 @@ const Overview = () => {
       setLogs(logsRes.data.logs || []);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchData();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchData]);
 
   const totalMessages = instances.reduce((acc, curr) => acc + (curr.messageCount || 0), 0);
   const activeSessions = instances.filter(i => i.liveStatus === 'connected').length;

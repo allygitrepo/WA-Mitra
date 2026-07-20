@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { tokenService } from '../../../api/services';
@@ -20,11 +20,7 @@ const Tokens = () => {
     onCancel: () => {}
   });
 
-  useEffect(() => {
-    fetchTokens();
-  }, []);
-
-  const fetchTokens = async () => {
+  const fetchTokens = useCallback(async () => {
     try {
       const res = await tokenService.getTokens();
       setTokens(res.data.tokens || []);
@@ -33,7 +29,19 @@ const Tokens = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchTokens();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchTokens]);
 
   const handleCreate = async () => {
     const loadingToast = toast.loading("Generating token...");
@@ -41,7 +49,7 @@ const Tokens = () => {
       await tokenService.createToken();
       fetchTokens();
       toast.success("Token generated successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate token", { id: loadingToast });
     }
   };
@@ -52,7 +60,7 @@ const Tokens = () => {
       await tokenService.deleteToken(id);
       fetchTokens();
       toast.success("Token revoked successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete token", { id: loadingToast });
     }
   };

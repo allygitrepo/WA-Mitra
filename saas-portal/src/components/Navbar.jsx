@@ -1,15 +1,13 @@
-import React from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import useThemeStore from '../store/useThemeStore';
-import ThemeToggle from './ThemeToggle';
 import './Navbar.css';
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { isAuthenticated } = useAuthStore();
-  const { theme } = useThemeStore();
 
   return (
     <nav className="landing-nav glass">

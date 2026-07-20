@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Trash2,
@@ -26,12 +26,7 @@ const AutoReplies = () => {
   const [filterInstance, setFilterInstance] = useState('All Instances');
   const [editingRule, setEditingRule] = useState(null);
 
-  // Load instances & rules
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchAllInstanceRules = async (fetchedInstances) => {
+  const fetchAllInstanceRules = useCallback(async (fetchedInstances) => {
     try {
       const rulesPromises = fetchedInstances.map(async (inst) => {
         try {
@@ -39,7 +34,7 @@ const AutoReplies = () => {
             params: { instanceKey: inst.instanceKey }
           });
           return rulesRes.data.rules || [];
-        } catch (e) {
+        } catch {
           return [];
         }
       });
@@ -49,9 +44,9 @@ const AutoReplies = () => {
       console.error(err);
       return [];
     }
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await instanceService.getInstances();
@@ -71,7 +66,20 @@ const AutoReplies = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchAllInstanceRules]);
+
+  // Load instances & rules
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchData();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchData]);
 
   // Sync function
   const syncWithBackend = async (instanceKey, instanceRules) => {
@@ -144,7 +152,7 @@ const AutoReplies = () => {
         setEditingRule(null);
         setShowAddModal(false);
         toast.success("Auto-reply rule updated successfully!", { id: loadingToast });
-      } catch (err) {
+      } catch {
         toast.error("Failed to update auto-reply rule.", { id: loadingToast });
       }
     } else {
@@ -171,7 +179,7 @@ const AutoReplies = () => {
         setReplyText('');
         setShowAddModal(false);
         toast.success("Auto-reply rule added successfully!", { id: loadingToast });
-      } catch (err) {
+      } catch {
         toast.error("Failed to add auto-reply rule.", { id: loadingToast });
       }
     }
@@ -186,7 +194,7 @@ const AutoReplies = () => {
       const dbRules = await fetchAllInstanceRules(instances);
       setRules(dbRules);
       toast.success("Rule deleted successfully.", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete rule.", { id: loadingToast });
     }
   };
@@ -205,7 +213,7 @@ const AutoReplies = () => {
       const dbRules = await fetchAllInstanceRules(instances);
       setRules(dbRules);
       toast.success("Rule status updated.", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to update rule status.", { id: loadingToast });
     }
   };

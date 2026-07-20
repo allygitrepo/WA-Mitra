@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus,
-  MoreVertical,
-  QrCode,
   Power,
   Trash2,
   MessageSquare,
-  Search,
-  CheckCircle2,
   AlertCircle,
   X
 } from 'lucide-react';
@@ -38,15 +34,9 @@ const Instances = () => {
     onConfirm: () => {},
     onCancel: () => {}
   });
-  const [toastedErrors, setToastedErrors] = useState({});
+  const toastedErrorsRef = useRef({});
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchInstances, 5000); // Auto refresh status
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [instRes, pkgsRes] = await Promise.all([
@@ -62,24 +52,20 @@ const Instances = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const fetchInstances = async () => {
+  const fetchInstances = useCallback(async () => {
     try {
       const res = await instanceService.getInstances();
       const fetched = res.data.instances || [];
 
       // Toast duplicate phone number / connection errors
       fetched.forEach(inst => {
-        if (inst.error && toastedErrors[inst.instanceKey] !== inst.error) {
+        if (inst.error && toastedErrorsRef.current[inst.instanceKey] !== inst.error) {
           toast.error(`${inst.name}: ${inst.error}`);
-          setToastedErrors(prev => ({ ...prev, [inst.instanceKey]: inst.error }));
-        } else if (!inst.error && toastedErrors[inst.instanceKey]) {
-          setToastedErrors(prev => {
-            const next = { ...prev };
-            delete next[inst.instanceKey];
-            return next;
-          });
+          toastedErrorsRef.current[inst.instanceKey] = inst.error;
+        } else if (!inst.error && toastedErrorsRef.current[inst.instanceKey]) {
+          delete toastedErrorsRef.current[inst.instanceKey];
         }
       });
 
@@ -87,7 +73,21 @@ const Instances = () => {
     } catch (err) {
       console.error("Fetch Instances Error:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchData();
+      }
+    }, 0);
+    const interval = setInterval(fetchInstances, 5000); // Auto refresh status
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [fetchData, fetchInstances]);
 
   const isLimitReached = currentPackage && 
                          currentPackage.instanceLimit !== -1 && 
@@ -123,7 +123,7 @@ const Instances = () => {
       await instanceService.deleteInstance(key);
       fetchInstances();
       toast.success("Instance deleted successfully.", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete instance", { id: loadingToast });
     }
   };
@@ -149,7 +149,7 @@ const Instances = () => {
       await instanceService.initiateSession(key);
       fetchInstances();
       toast.success("Session initiated! Ready to link.", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to initiate session", { id: loadingToast });
     }
   };

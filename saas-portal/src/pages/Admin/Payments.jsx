@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, CreditCard, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import API from '../../api/axiosConfig';
 import './Admin.css';
@@ -37,7 +37,15 @@ const AdminPayments = () => {
   const currentRows = filteredPayments.slice(indexOfFirstRow, indexOfLastRow);
 
   useEffect(() => {
-    setCurrentPage(1);
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        setCurrentPage(1);
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
   }, [searchQuery]);
 
   const getStatusColor = (status) => {

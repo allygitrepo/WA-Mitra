@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Search,
-  UserX,
-  UserCheck,
   Smartphone,
   MessageSquare,
-  Mail,
-  Building2,
   Calendar,
-  MoreVertical,
-  ShieldAlert,
   Trash2,
-  Shield,
-  ShieldCheck,
   Briefcase,
-  User as UserIcon,
   Plus,
   Package,
   ChevronDown,
@@ -22,7 +12,7 @@ import {
   ChevronRight,
   X as CloseIcon
 } from 'lucide-react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import API from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import '../Dashboard/Dashboard.css';
@@ -39,7 +29,6 @@ const AdminUsers = () => {
   const [assigningUser, setAssigningUser] = useState(null);
   const [extendingUser, setExtendingUser] = useState(null);
   const [expandedUserIds, setExpandedUserIds] = useState({});
-  const [expandedUsageUserIds, setExpandedUsageUserIds] = useState({});
   const [activeView, setActiveView] = useState('list'); // 'list' or 'usage'
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -53,25 +42,6 @@ const AdminUsers = () => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchPackages();
-  }, []);
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    const loadingToast = toast.loading("Creating admin account...");
-    try {
-      await API.post('/admin/users', formData);
-      setShowForm(false);
-      setFormData({ username: '', email: '', password: '', role: 'admin', packageId: '' });
-      fetchUsers();
-      toast.success("Admin created successfully!", { id: loadingToast });
-    } catch (err) {
-      toast.error("Failed to create admin account", { id: loadingToast });
-    }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -100,7 +70,7 @@ const AdminUsers = () => {
       await API.post('/admin/users/status', { userId, status: newStatus });
       setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       toast.success(`User status updated to ${newStatus}!`, { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to update user status", { id: loadingToast });
     }
   };
@@ -112,7 +82,7 @@ const AdminUsers = () => {
       setAssigningUser(null);
       fetchUsers();
       toast.success("Package assigned successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to assign package", { id: loadingToast });
     }
   };
@@ -124,8 +94,35 @@ const AdminUsers = () => {
       setExtendingUser(null);
       fetchUsers();
       toast.success("Expiration date updated successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to update expiration date", { id: loadingToast });
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchUsers();
+        fetchPackages();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    const loadingToast = toast.loading("Creating admin account...");
+    try {
+      await API.post('/admin/users', formData);
+      setShowForm(false);
+      setFormData({ username: '', email: '', password: '', role: 'admin', packageId: '' });
+      fetchUsers();
+      toast.success("Admin created successfully!", { id: loadingToast });
+    } catch {
+      toast.error("Failed to create admin account", { id: loadingToast });
     }
   };
 
@@ -143,7 +140,15 @@ const AdminUsers = () => {
   const currentRows = filteredUsers.slice(indexOfFirstRow, indexOfLastRow);
 
   useEffect(() => {
-    setCurrentPage(1);
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        setCurrentPage(1);
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
   }, [roleFilter, searchQuery]);
 
   const formatDate = (dateStr) => {
@@ -152,125 +157,14 @@ const AdminUsers = () => {
     return date.toLocaleDateString('en-GB');
   };
 
-  const AssignPackageModal = ({ user, onClose }) => {
-    const [selectedPkgId, setSelectedPkgId] = useState(user.packageId || '');
-    const [isSaving, setIsSaving] = useState(false);
-
-    const handleSave = async () => {
-      setIsSaving(true);
-      await handleAssignPackage(user.id, selectedPkgId);
-      onClose();
-    };
-
-    return (
-      <div className="modal-overlay animate-fade-in" onClick={onClose}>
-        <div className="assign-modal glass" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>Assign Package</h3>
-            <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
-          </div>
-
-          <div className="modal-body">
-            <p className="text-muted text-sm mb-6">
-              Assign a subscription tier to <b>{user.username}</b>. This will override their current restrictions.
-            </p>
-
-            <div className="form-group-modern">
-              <label>Select Package</label>
-              <div className="custom-select-wrapper">
-                <select
-                  value={selectedPkgId}
-                  onChange={(e) => setSelectedPkgId(e.target.value)}
-                  className="modern-select"
-                >
-                  <option value="">None / Remove Package</option>
-                  {packages.map(pkg => (
-                    <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} - ₹{pkg.price} ({pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="select-arrow" size={18} />
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer mt-8">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Assigning...' : 'Confirm Assignment'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const ExtendExpiryModal = ({ user, onClose }) => {
-    const getInitialDate = () => {
-      if (!user.expiresAt) return '';
-      const date = new Date(user.expiresAt);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const [selectedDate, setSelectedDate] = useState(getInitialDate());
-    const [isSaving, setIsSaving] = useState(false);
-
-    const handleSave = async (e) => {
-      e.preventDefault();
-      setIsSaving(true);
-      await handleExtendExpiry(user.id, selectedDate ? new Date(selectedDate) : null);
-      onClose();
-    };
-
-    return (
-      <div className="modal-overlay animate-fade-in" onClick={onClose}>
-        <div className="assign-modal glass" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>Extend Expiry Date</h3>
-            <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
-          </div>
-
-          <form onSubmit={handleSave}>
-            <div className="modal-body">
-              <p className="text-muted text-sm mb-6">
-                Set or extend the subscription expiry date for <b>{user.username}</b>.
-              </p>
-
-              <div className="form-group-modern">
-                <label>Expiry Date</label>
-                <CustomDateInput
-                  value={selectedDate}
-                  onChange={setSelectedDate}
-                  placeholder="Expiry Date"
-                />
-                <span className="text-[11px] text-muted mt-2 block">
-                  Leave blank to set the package as "Never Expires".
-                </span>
-              </div>
-            </div>
-
-            <div className="modal-footer mt-8">
-              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={isSaving}>
-                {isSaving ? 'Updating...' : 'Update Expiry'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="admin-users-container animate-fade-in">
       {assigningUser && (
         <AssignPackageModal
           user={assigningUser}
           onClose={() => setAssigningUser(null)}
+          packages={packages}
+          handleAssignPackage={handleAssignPackage}
         />
       )}
 
@@ -278,6 +172,7 @@ const AdminUsers = () => {
         <ExtendExpiryModal
           user={extendingUser}
           onClose={() => setExtendingUser(null)}
+          handleExtendExpiry={handleExtendExpiry}
         />
       )}
 
@@ -402,7 +297,6 @@ const AdminUsers = () => {
                 <tr><td colSpan="6" className="text-center py-10">No users found.</td></tr>
               ) : (
                 currentRows.map(user => {
-                  const totalMessages = user.instances?.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
                   return (
                     <React.Fragment key={user.id}>
                       <tr 
@@ -632,7 +526,7 @@ const AdminUsers = () => {
                     const uInstances = u.instances || [];
                     const connectedInstances = uInstances.filter(inst => inst.status === 'connected');
                     const uMessages = uInstances.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
-                    const isExpanded = !!expandedUsageUserIds[u.id];
+                    const isExpanded = !!expandedUserIds[u.id];
                     
                     return (
                       <React.Fragment key={u.id}>
@@ -696,7 +590,7 @@ const AdminUsers = () => {
                               className="action-btn-assign"
                               style={{ background: isExpanded ? 'rgba(0, 168, 132, 0.1)' : 'transparent', color: isExpanded ? 'var(--primary)' : 'var(--text-muted)' }}
                               title={isExpanded ? "Collapse Details" : "Expand Details"}
-                              onClick={() => setExpandedUsageUserIds(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                              onClick={() => setExpandedUserIds(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
                             >
                               <ChevronDown 
                                 size={16} 
@@ -772,6 +666,119 @@ const AdminUsers = () => {
           </table>
         </div>
       )}
+    </div>
+  );
+};
+
+const AssignPackageModal = ({ user, onClose, packages, handleAssignPackage }) => {
+  const [selectedPkgId, setSelectedPkgId] = useState(user.packageId || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await handleAssignPackage(user.id, selectedPkgId);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay animate-fade-in" onClick={onClose}>
+      <div className="assign-modal glass" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Assign Package</h3>
+          <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
+        </div>
+
+        <div className="modal-body">
+          <p className="text-muted text-sm mb-6">
+            Assign a subscription tier to <b>{user.username}</b>. This will override their current restrictions.
+          </p>
+
+          <div className="form-group-modern">
+            <label>Select Package</label>
+            <div className="custom-select-wrapper">
+              <select
+                value={selectedPkgId}
+                onChange={(e) => setSelectedPkgId(e.target.value)}
+                className="modern-select"
+              >
+                <option value="">None / Remove Package</option>
+                {packages.map(pkg => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.name} - ₹{pkg.price} ({pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="select-arrow" size={18} />
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer mt-8">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? 'Assigning...' : 'Confirm Assignment'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ExtendExpiryModal = ({ user, onClose, handleExtendExpiry }) => {
+  const getInitialDate = () => {
+    if (!user.expiresAt) return '';
+    const date = new Date(user.expiresAt);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getInitialDate());
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    await handleExtendExpiry(user.id, selectedDate ? new Date(selectedDate) : null);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay animate-fade-in" onClick={onClose}>
+      <div className="assign-modal glass" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Extend Expiry Date</h3>
+          <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSave}>
+          <div className="modal-body">
+            <p className="text-muted text-sm mb-6">
+              Set or extend the subscription expiry date for <b>{user.username}</b>.
+            </p>
+
+            <div className="form-group-modern">
+              <label>Expiry Date</label>
+              <CustomDateInput
+                value={selectedDate}
+                onChange={setSelectedDate}
+                placeholder="Expiry Date"
+              />
+              <span className="text-[11px] text-muted mt-2 block">
+                Leave blank to set the package as "Never Expires".
+              </span>
+            </div>
+          </div>
+
+          <div className="modal-footer mt-8">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={isSaving}>
+              {isSaving ? 'Updating...' : 'Update Expiry'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

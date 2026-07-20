@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Send, Users, FileUp, Image as ImageIcon, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
-import { useOutletContext, Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { instanceService, messageService, templateService, scheduleService, cycleService } from '../../../api/services';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -39,7 +39,6 @@ const SendMessage = () => {
   const [instances, setInstances] = useState([]);
   const [selectedInstance, setSelectedInstance] = useState('');
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null);
   const [progressData, setProgressData] = useState(null);
 
   const [singleData, setSingleData] = useState({
@@ -112,7 +111,6 @@ const SendMessage = () => {
     const local = localStorage.getItem('wa_mitra_scheduled_campaigns');
     return local ? JSON.parse(local) : [];
   });
-  const [timeTicker, setTimeTicker] = useState(0);
   const [scheduleShowSaveDialog, setScheduleShowSaveDialog] = useState(false);
   const [scheduleNewTemplateName, setScheduleNewTemplateName] = useState('');
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -137,8 +135,6 @@ const SendMessage = () => {
   const [cycleCustomType, setCycleCustomType] = useState('days'); // 'days' or 'dates'
   const [cycleCustomDays, setCycleCustomDays] = useState([]); // ['Monday', 'Wednesday']
   const [cycleCustomDates, setCycleCustomDates] = useState([]); // ['2026-06-01']
-  const [cycleCustomDateInput, setCycleCustomDateInput] = useState('');
-  const [cycleCalendarMonth, setCycleCalendarMonth] = useState(() => new Date());
   const [cycleSendTime, setCycleSendTime] = useState('');
   const [cycleMessage, setCycleMessage] = useState('');
   const [cycleFile, setCycleFile] = useState(null);
@@ -412,37 +408,12 @@ const SendMessage = () => {
     }
   };
 
-  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
-
-  const handleCalendarPrevMonth = () => {
-    setCycleCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  };
-
-  const handleCalendarNextMonth = () => {
-    setCycleCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
-
   const toggleCycleCustomDate = (dayNum) => {
     if (cycleCustomDates.includes(dayNum)) {
       setCycleCustomDates(prev => prev.filter(d => d !== dayNum));
     } else {
       setCycleCustomDates(prev => [...prev, dayNum].sort((a, b) => a - b));
     }
-  };
-
-  const addCycleCustomDate = () => {
-    if (!cycleCustomDateInput) return;
-    if (cycleCustomDates.includes(cycleCustomDateInput)) {
-      toast.error('Date already added');
-      return;
-    }
-    setCycleCustomDates(prev => [...prev, cycleCustomDateInput].sort());
-    setCycleCustomDateInput('');
-  };
-
-  const removeCycleCustomDate = (index) => {
-    setCycleCustomDates(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateCycleCampaign = async (e) => {
@@ -460,7 +431,7 @@ const SendMessage = () => {
       return;
     }
 
-    let recipientsList = [];
+    let recipientsList;
     if (cycleInputMethod === 'csv') {
       if (cycleCsvData.rows.length === 0) {
         toast.error('Please upload a valid CSV/Excel file first.');
@@ -580,14 +551,6 @@ const SendMessage = () => {
       }
     };
     loadSchedules();
-  }, []);
-
-  // Keep remaining time ticker updating every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeTicker(prev => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
   }, []);
 
   // Update media preview for scheduling
@@ -998,14 +961,12 @@ const SendMessage = () => {
       return;
     }
 
-    let recipientsCount = 0;
-    let numbersList = [];
+    let numbersList;
     if (scheduleInputMethod === 'csv') {
       if (scheduleCsvData.rows.length === 0) {
         toast.error('Please upload a valid CSV/Excel file first.');
         return;
       }
-      recipientsCount = scheduleCsvData.rows.length;
       numbersList = scheduleCsvData.rows.map(r => r._cleanPhone);
     } else {
       const filtered = scheduleNumbers.map(n => n.trim()).filter(n => n);
@@ -1013,7 +974,6 @@ const SendMessage = () => {
         toast.error('Please enter at least one recipient number.');
         return;
       }
-      recipientsCount = filtered.length;
       numbersList = filtered;
     }
 
@@ -1520,23 +1480,6 @@ const SendMessage = () => {
     }
   };
 
-  const getMismatchedPlaceholders = () => {
-    if (mode !== 'bulk' || bulkInputMethod !== 'csv' || !csvData.fileName) return [];
-    const message = bulkData.message;
-    if (!message) return [];
-
-    const placeholderRegex = /\{([^{}]+)\}/g;
-    const matches = [];
-    let match;
-    while ((match = placeholderRegex.exec(message)) !== null) {
-      matches.push(match[1]);
-    }
-
-    const uniqueMsgPlaceholders = [...new Set(matches)];
-    const csvHeadersLower = csvData.headers.map(h => h.toLowerCase());
-    return uniqueMsgPlaceholders.filter(p => !csvHeadersLower.includes(p.toLowerCase()));
-  };
-
   const executeSendSingle = async () => {
     const loadingToast = toast.loading('Sending message...');
     setLoading(true);
@@ -1639,7 +1582,7 @@ const SendMessage = () => {
           let compiledMessage = bulkData.message;
           // Substitute placeholders
           csvData.headers.forEach(header => {
-            const escapedHeader = header.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const escapedHeader = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`{${escapedHeader}}`, 'g');
             compiledMessage = compiledMessage.replace(regex, row[header] || '');
           });
@@ -1711,7 +1654,9 @@ const SendMessage = () => {
         try {
           const errorJson = JSON.parse(errorText);
           errorMsg = errorJson.message || errorMsg;
-        } catch (_) {}
+        } catch {
+          // Ignored
+        }
         throw new Error(errorMsg);
       }
 

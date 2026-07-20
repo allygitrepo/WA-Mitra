@@ -6,7 +6,6 @@ import {
   Box,
   Settings,
   LogOut,
-  Bell,
   Search,
   Menu,
   ChevronRight,
@@ -41,9 +40,17 @@ const AdminLayout = () => {
   }, []);
 
   React.useEffect(() => {
+    let active = true;
     if (window.innerWidth <= 1024) {
-      setIsSidebarOpen(false);
+      setTimeout(() => {
+        if (active) {
+          setIsSidebarOpen(false);
+        }
+      }, 0);
     }
+    return () => {
+      active = false;
+    };
   }, [location.pathname]);
 
   const handleLogout = () => {
