@@ -9,6 +9,12 @@ const adminController = {
   getAllUsers: async (req, res) => {
     try {
       const users = await User.findAll({
+        where: {
+          [Op.or]: [
+            { role: 'admin' },
+            { role: 'user', isVerified: true }
+          ]
+        },
         attributes: { exclude: ["password", "otp", "otpExpiry"] },
         include: [
           { model: Package, as: "package" },
@@ -235,13 +241,13 @@ const adminController = {
   // Stats
   getSystemStats: async (req, res) => {
     try {
-      const totalUsers = await User.count({ where: { role: { [Op.ne]: 'admin' } } });
+      const totalUsers = await User.count({ where: { role: { [Op.ne]: 'admin' }, isVerified: true } });
       const totalInstances = await WhatsAppInstance.count({
         include: [{
           model: User,
           as: 'user',
           required: true,
-          where: { role: { [Op.ne]: 'admin' } }
+          where: { role: { [Op.ne]: 'admin' }, isVerified: true }
         }]
       });
       const totalMessages = await MessageLog.count({
@@ -253,7 +259,7 @@ const adminController = {
             model: User,
             as: 'user',
             required: true,
-            where: { role: { [Op.ne]: 'admin' } }
+            where: { role: { [Op.ne]: 'admin' }, isVerified: true }
           }]
         }]
       });
@@ -319,7 +325,7 @@ const adminController = {
             as: 'user',
             attributes: [],
             required: true,
-            where: { role: { [Op.ne]: 'admin' } }
+            where: { role: { [Op.ne]: 'admin' }, isVerified: true }
           }]
         }],
         where: { createdAt: { [Op.gte]: startDate } },
@@ -338,7 +344,8 @@ const adminController = {
         ],
         where: {
           createdAt: { [Op.gte]: startDate },
-          role: { [Op.ne]: 'admin' }
+          role: { [Op.ne]: 'admin' },
+          isVerified: true
         },
         raw: true
       });
@@ -354,7 +361,7 @@ const adminController = {
           as: 'user',
           attributes: [],
           required: true,
-          where: { role: { [Op.ne]: 'admin' } }
+          where: { role: { [Op.ne]: 'admin' }, isVerified: true }
         }],
         where: { createdAt: { [Op.gte]: startDate } },
         group: [

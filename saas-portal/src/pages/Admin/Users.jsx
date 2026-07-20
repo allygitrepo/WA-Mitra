@@ -127,6 +127,8 @@ const AdminUsers = () => {
   };
 
   const filteredUsers = users.filter(u => {
+    if (u.role === 'user' && !u.isVerified) return false;
+
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     const matchesSearch = u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) ||
       u.email.toLowerCase().includes((searchQuery || '').toLowerCase());
@@ -506,7 +508,7 @@ const AdminUsers = () => {
               </tr>
             </thead>
             <tbody>
-              {users.filter(u => u.role === 'user').filter(u => 
+              {users.filter(u => u.role === 'user' && u.isVerified).filter(u => 
                 u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
                 u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
               ).length === 0 ? (
@@ -517,7 +519,7 @@ const AdminUsers = () => {
                 </tr>
               ) : (
                 users
-                  .filter(u => u.role === 'user')
+                  .filter(u => u.role === 'user' && u.isVerified)
                   .filter(u => 
                     u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
                     u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
