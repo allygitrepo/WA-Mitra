@@ -2,6 +2,7 @@ const { User, Package, WhatsAppInstance, MessageLog, Payment } = require("../mod
 const whatsappService = require("../services/whatsappService");
 const emailService = require("../services/emailService");
 const emailTemplates = require("../services/emailTemplate");
+const { Op } = require("sequelize");
 
 const adminController = {
   // User Management
@@ -234,9 +235,28 @@ const adminController = {
   // Stats
   getSystemStats: async (req, res) => {
     try {
-      const totalUsers = await User.count();
-      const totalInstances = await WhatsAppInstance.count();
-      const totalMessages = await MessageLog.count();
+      const totalUsers = await User.count({ where: { role: { [Op.ne]: 'admin' } } });
+      const totalInstances = await WhatsAppInstance.count({
+        include: [{
+          model: User,
+          as: 'user',
+          required: true,
+          where: { role: { [Op.ne]: 'admin' } }
+        }]
+      });
+      const totalMessages = await MessageLog.count({
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          required: true,
+          include: [{
+            model: User,
+            as: 'user',
+            required: true,
+            where: { role: { [Op.ne]: 'admin' } }
+          }]
+        }]
+      });
       const totalRevenue = await Payment.sum('amount', { where: { status: 'completed' } }) || 0;
 
       res.status(200).json({
@@ -254,7 +274,6 @@ const adminController = {
   getAllPayments: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const payments = await Payment.findAll({
         where: {
           amount: { [Op.gt]: 0 }
@@ -275,7 +294,6 @@ const adminController = {
   getDailyAnalytics: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const { range } = req.query;
 
       let days = 6;
@@ -291,7 +309,19 @@ const adminController = {
           [sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')), 'date'],
           [sequelize.col('instance.userId'), 'userId']
         ],
-        include: [{ model: WhatsAppInstance, as: 'instance', attributes: [], required: true }],
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          attributes: [],
+          required: true,
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: [],
+            required: true,
+            where: { role: { [Op.ne]: 'admin' } }
+          }]
+        }],
         where: { createdAt: { [Op.gte]: startDate } },
         group: [
           sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')),
@@ -306,19 +336,29 @@ const adminController = {
           [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
           ['id', 'userId']
         ],
-        where: { createdAt: { [Op.gte]: startDate } },
+        where: {
+          createdAt: { [Op.gte]: startDate },
+          role: { [Op.ne]: 'admin' }
+        },
         raw: true
       });
 
       // 3. New Instance creations
       const instanceCreations = await WhatsAppInstance.findAll({
         attributes: [
-          [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
+          [sequelize.fn('DATE', sequelize.col('WhatsAppInstance.createdAt')), 'date'],
           ['userId', 'userId']
         ],
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: [],
+          required: true,
+          where: { role: { [Op.ne]: 'admin' } }
+        }],
         where: { createdAt: { [Op.gte]: startDate } },
         group: [
-          sequelize.fn('DATE', sequelize.col('createdAt')),
+          sequelize.fn('DATE', sequelize.col('WhatsAppInstance.createdAt')),
           sequelize.col('userId')
         ],
         raw: true
@@ -376,7 +416,6 @@ const adminController = {
   getRevenueAnalytics: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const { range } = req.query;
 
       let days = 6;
@@ -445,7 +484,14 @@ const adminController = {
             model: WhatsAppInstance,
             as: 'instance',
             attributes: ['name'],
-            include: [{ model: User, as: 'user', attributes: ['username'] }]
+            required: true,
+            include: [{
+              model: User,
+              as: 'user',
+              attributes: ['username'],
+              required: true,
+              where: { role: { [Op.ne]: 'admin' } }
+            }]
           }
         ]
       });
