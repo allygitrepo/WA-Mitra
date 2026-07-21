@@ -1,4 +1,4 @@
-const { User, Package, WhatsAppInstance, MessageLog, Payment } = require("../models/associations");
+const { User, Package, WhatsAppInstance, MessageLog, Payment, AutoReplyRule, ApiToken, Template, Schedule, Cycle } = require("../models/associations");
 const whatsappService = require("../services/whatsappService");
 const emailService = require("../services/emailService");
 const emailTemplates = require("../services/emailTemplate");
@@ -83,7 +83,7 @@ const adminController = {
 
   updateUserStatus: async (req, res) => {
     try {
-      const { userId, status } = req.body; // 'active' or 'suspended'
+      const { userId, status, reason } = req.body; // 'active' or 'suspended', optional reason
       const user = await User.findByPk(userId);
 
       if (!user) {
@@ -91,19 +91,84 @@ const adminController = {
       }
 
       user.status = status;
-      await user.save();
-
       if (status === "suspended") {
+        user.suspendReason = reason || null;
         // Disconnect all active WhatsApp instances for this user
         const instances = await WhatsAppInstance.findAll({ where: { userId } });
         for (const instance of instances) {
+          try {
+            await whatsappService.disconnect(instance.instanceKey);
+          } catch (disconnectErr) {
+            console.error(`Error disconnecting instance ${instance.instanceKey} during user suspension:`, disconnectErr);
+          }
+        }
+      } else {
+        // Clear suspendReason when reactivating
+        user.suspendReason = null;
+      }
+      await user.save();
+
+      res.status(200).json({ 
+        message: `User status updated to ${status}`, 
+        suspendReason: user.suspendReason 
+      });
+    } catch (error) {
+      console.error("Update User Status Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  deleteUser: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await User.findByPk(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if trying to delete an admin
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: "Cannot delete admin accounts" });
+      }
+
+      // 1. Fetch all WhatsApp instances for this user
+      const instances = await WhatsAppInstance.findAll({ where: { userId: id } });
+      const instanceIds = instances.map(inst => inst.id);
+      const instanceKeys = instances.map(inst => inst.instanceKey);
+
+      // 2. Delete MessageLogs for these instances
+      if (instanceIds.length > 0) {
+        await MessageLog.destroy({ where: { instanceId: { [Op.in]: instanceIds } } });
+      }
+
+      // 3. Delete AutoReplyRules for these instances
+      if (instanceKeys.length > 0) {
+        await AutoReplyRule.destroy({ where: { instanceKey: { [Op.in]: instanceKeys } } });
+      }
+
+      // 4. Disconnect and delete sessions from Baileys & memory
+      for (const instance of instances) {
+        try {
           await whatsappService.disconnect(instance.instanceKey);
+        } catch (err) {
+          console.error(`Error disconnecting instance ${instance.instanceKey} during user delete:`, err);
         }
       }
 
-      res.status(200).json({ message: `User status updated to ${status}` });
+      // 5. Delete other associations
+      await ApiToken.destroy({ where: { userId: id } });
+      await Template.destroy({ where: { userId: id } });
+      await Schedule.destroy({ where: { userId: id } });
+      await Cycle.destroy({ where: { userId: id } });
+      await Payment.destroy({ where: { userId: id } });
+
+      // 6. Finally delete the user
+      await user.destroy();
+
+      res.status(200).json({ message: "User and all associated data deleted successfully" });
     } catch (error) {
-      console.error("Update User Status Error:", error);
+      console.error("Delete User Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   },

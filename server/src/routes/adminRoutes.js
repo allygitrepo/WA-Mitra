@@ -19,6 +19,7 @@ router.post("/users/create", adminController.createUser);
 router.post("/users/status", adminController.updateUserStatus);
 router.post("/users/assign-package", adminController.assignPackage);
 router.post("/users/extend-expiry", adminController.extendExpiry);
+router.delete("/users/:id", adminController.deleteUser);
 
 // Package Management
 router.get("/packages", adminController.getAllPackages);

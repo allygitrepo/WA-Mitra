@@ -123,6 +123,7 @@ const authController = {
           orgName: user.orgName,
           role: user.role,
           status: user.status,
+          suspendReason: user.suspendReason,
           packageId: user.packageId,
           expiresAt: user.expiresAt
         },
@@ -205,6 +206,7 @@ const authController = {
           orgName: user.orgName,
           role: user.role,
           status: user.status,
+          suspendReason: user.suspendReason,
           packageId: user.packageId,
           expiresAt: user.expiresAt
         },
@@ -273,6 +275,7 @@ const authController = {
           orgName: user.orgName,
           role: user.role,
           status: user.status,
+          suspendReason: user.suspendReason,
           packageId: user.packageId,
           expiresAt: user.expiresAt
         },
@@ -431,6 +434,7 @@ const authController = {
           orgName: user.orgName,
           role: user.role,
           status: user.status,
+          suspendReason: user.suspendReason,
           packageId: user.packageId,
           expiresAt: user.expiresAt
         }

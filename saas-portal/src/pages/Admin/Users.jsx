@@ -31,6 +31,8 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [assigningUser, setAssigningUser] = useState(null);
   const [extendingUser, setExtendingUser] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [suspendingUser, setSuspendingUser] = useState(null);
   const [expandedUserIds, setExpandedUserIds] = useState({});
   const [activeView, setActiveView] = useState('list'); // 'list' or 'usage'
   const [showForm, setShowForm] = useState(false);
@@ -66,15 +68,35 @@ const AdminUsers = () => {
     }
   };
 
-  const handleStatusChange = async (userId, currentStatus) => {
+  const handleStatusChange = async (userId, currentStatus, reason = null) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     const loadingToast = toast.loading("Updating user status...");
     try {
-      await API.post('/admin/users/status', { userId, status: newStatus });
-      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      await API.post('/admin/users/status', { userId, status: newStatus, reason });
+      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus, suspendReason: reason } : u));
       toast.success(`User status updated to ${newStatus}!`, { id: loadingToast });
     } catch {
       toast.error("Failed to update user status", { id: loadingToast });
+    }
+  };
+
+  const handleToggleStatus = (user) => {
+    if (user.status === 'active') {
+      setSuspendingUser(user);
+    } else {
+      handleStatusChange(user.id, 'suspended');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    const loadingToast = toast.loading("Deleting user and cleaning up data...");
+    try {
+      await API.delete(`/admin/users/${userId}`);
+      setUsers(users.filter(u => u.id !== userId));
+      toast.success("User deleted successfully!", { id: loadingToast });
+    } catch (err) {
+      const errMsg = err.response?.data?.message || "Failed to delete user";
+      toast.error(errMsg, { id: loadingToast });
     }
   };
 
@@ -178,6 +200,22 @@ const AdminUsers = () => {
           user={extendingUser}
           onClose={() => setExtendingUser(null)}
           handleExtendExpiry={handleExtendExpiry}
+        />
+      )}
+
+      {suspendingUser && (
+        <SuspendUserModal
+          user={suspendingUser}
+          onClose={() => setSuspendingUser(null)}
+          handleStatusChange={handleStatusChange}
+        />
+      )}
+
+      {deletingUser && (
+        <DeleteUserModal
+          user={deletingUser}
+          onClose={() => setDeletingUser(null)}
+          handleDeleteUser={handleDeleteUser}
         />
       )}
 
@@ -347,18 +385,38 @@ const AdminUsers = () => {
                           </td>
                           <td>
                             <div className="flex items-center">
-                              <label className="premium-switch">
-                                <input
-                                  type="checkbox"
-                                  checked={user.status === 'active'}
-                                  onChange={() => handleStatusChange(user.id, user.status)}
-                                  disabled={user.role === 'admin'}
-                                />
-                                <span className="premium-slider"></span>
-                              </label>
-                              <span className={`premium-switch-label ${user.status === 'active' ? 'active' : 'suspended'}`}>
-                                {user.status === 'active' ? 'Active' : 'Suspended'}
-                              </span>
+                              <div className="flex-col-left" style={{ gap: '4px' }}>
+                                <div className="flex items-center">
+                                  <label className="premium-switch">
+                                    <input
+                                      type="checkbox"
+                                      checked={user.status === 'active'}
+                                      onChange={() => handleToggleStatus(user)}
+                                      disabled={user.role === 'admin'}
+                                    />
+                                    <span className="premium-slider"></span>
+                                  </label>
+                                  <span className={`premium-switch-label ${user.status === 'active' ? 'active' : 'suspended'}`}>
+                                    {user.status === 'active' ? 'Active' : 'Suspended'}
+                                  </span>
+                                </div>
+                                {user.status === 'suspended' && user.suspendReason && (
+                                  <div 
+                                    className="user-suspend-reason" 
+                                    style={{ 
+                                      fontSize: '11px', 
+                                      color: '#ef4444', 
+                                      maxWidth: '180px', 
+                                      whiteSpace: 'nowrap', 
+                                      overflow: 'hidden', 
+                                      textOverflow: 'ellipsis' 
+                                    }} 
+                                    title={user.suspendReason}
+                                  >
+                                    Reason: {user.suspendReason}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td>
@@ -381,7 +439,11 @@ const AdminUsers = () => {
                                     <Calendar size={16} />
                                   </button>
 
-                                  <button className="premium-action-btn hover-danger" title="Delete User">
+                                  <button 
+                                    className="premium-action-btn hover-danger" 
+                                    title="Delete User"
+                                    onClick={() => setDeletingUser(user)}
+                                  >
                                     <Trash2 size={16} />
                                   </button>
                                 </>
@@ -781,6 +843,112 @@ const ExtendExpiryModal = ({ user, onClose, handleExtendExpiry }) => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const SuspendUserModal = ({ user, onClose, handleStatusChange }) => {
+  const [reason, setReason] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      toast.error("Please enter a reason for suspension");
+      return;
+    }
+    setIsSaving(true);
+    await handleStatusChange(user.id, 'active', reason);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay animate-fade-in" onClick={onClose}>
+      <div className="assign-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Suspend User</h3>
+          <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSave}>
+          <div className="modal-body">
+            <p className="text-muted text-sm mb-6">
+              Please enter the reason for suspending <b>{user.username}</b>.
+              Their active WhatsApp instances will be disconnected.
+            </p>
+
+            <div className="form-group-modern">
+              <label>Reason *</label>
+              <textarea
+                placeholder="Enter suspension reason..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  background: 'var(--surface-hover)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '8px', 
+                  color: 'var(--text-main)', 
+                  resize: 'vertical',
+                  fontSize: '0.9rem' 
+                }}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="modal-footer mt-8">
+            <button type="button" className="premium-btn-outline" onClick={onClose}>Cancel</button>
+            <button type="submit" className="premium-btn-primary" disabled={isSaving}>
+              {isSaving ? 'Suspending...' : 'Confirm Suspension'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const DeleteUserModal = ({ user, onClose, handleDeleteUser }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    await handleDeleteUser(user.id);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay animate-fade-in" onClick={onClose}>
+      <div className="assign-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 style={{ color: '#ef4444' }}>Delete User Account</h3>
+          <button className="close-btn" onClick={onClose}><CloseIcon size={20} /></button>
+        </div>
+
+        <div className="modal-body">
+          <p className="text-muted text-sm mb-4">
+            Are you sure you want to permanently delete user <b>{user.username}</b> ({user.email})?
+          </p>
+          <p className="text-sm mb-6" style={{ color: '#ef4444', fontWeight: 600 }}>
+            WARNING: This action is irreversible. All of the user's WhatsApp instances, messages, templates, and subscription logs will be permanently deleted.
+          </p>
+        </div>
+
+        <div className="modal-footer mt-8">
+          <button className="premium-btn-outline" onClick={onClose}>Cancel</button>
+          <button 
+            className="premium-btn-primary" 
+            style={{ background: '#ef4444', borderColor: '#ef4444' }}
+            onClick={handleConfirm} 
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+          </button>
+        </div>
       </div>
     </div>
   );

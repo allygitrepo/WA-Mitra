@@ -31,6 +31,16 @@ const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isMessagingExpanded, setIsMessagingExpanded] = useState(false);
+
+  // Sync messaging expanded state with route path
+  useEffect(() => {
+    if (location.pathname.startsWith('/dashboard/messaging')) {
+      setIsMessagingExpanded(true);
+    } else {
+      setIsMessagingExpanded(false);
+    }
+  }, [location.pathname]);
 
   // Handle responsive sidebar on resize
   useEffect(() => {
@@ -106,7 +116,7 @@ const DashboardLayout = () => {
             <h2>Account Suspended</h2>
             <p>Your access to WA-Mitra has been temporarily suspended by the administrator.</p>
             <div className="suspension-meta">
-              <span>Reason: Policy violation or pending payment</span>
+              <span>Reason: {user?.suspendReason || 'Policy violation or pending payment'}</span>
             </div>
             <button className="btn-primary mt-6" onClick={handleLogout}>
               <LogOut size={18} /> Logout
@@ -143,6 +153,14 @@ const DashboardLayout = () => {
                     to="/dashboard/messaging?type=contact"
                     className={`nav-item ${isMessagingActive ? 'active' : ''}`}
                     style={{ justifyContent: 'space-between' }}
+                    onClick={(e) => {
+                      if (isMessagingActive) {
+                        e.preventDefault();
+                        setIsMessagingExpanded(!isMessagingExpanded);
+                      } else {
+                        setIsMessagingExpanded(true);
+                      }
+                    }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {item.icon}
@@ -151,13 +169,13 @@ const DashboardLayout = () => {
                     <ChevronRight
                       size={16}
                       style={{
-                        transform: isMessagingActive ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transform: isMessagingExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s',
                         marginLeft: 'auto'
                       }}
                     />
                   </Link>
-                  {isMessagingActive && (
+                  {isMessagingExpanded && (
                     <div className="sidebar-submenu">
                       <Link
                         to="/dashboard/messaging?type=contact"

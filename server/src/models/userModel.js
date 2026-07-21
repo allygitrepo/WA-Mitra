@@ -47,6 +47,10 @@ const User = sequelize.define("User", {
     type: DataTypes.ENUM("active", "suspended"),
     defaultValue: "active",
   },
+  suspendReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   packageId: {
     type: DataTypes.INTEGER,
     allowNull: true,
