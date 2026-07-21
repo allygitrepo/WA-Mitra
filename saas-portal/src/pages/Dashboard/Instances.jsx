@@ -320,11 +320,25 @@ const Instances = () => {
               </div>
             </div>
 
-            {inst.qr && (
+            {inst.qr ? (
               <div className="qr-box animate-fade-in">
                 <img src={inst.qr} alt="Scan me" />
                 <p>Scan with WhatsApp</p>
               </div>
+            ) : (
+              inst.liveStatus === 'qr_ready' && (
+                <div className="qr-box expired-qr animate-fade-in" style={{ border: '1px dashed var(--border)', padding: '24px 16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '180px', background: 'var(--surface-hover)' }}>
+                  <AlertCircle size={32} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 12px 0', textTransform: 'none', fontWeight: '500' }}>QR Code Expired</p>
+                  <button 
+                    className="premium-btn-primary" 
+                    onClick={() => handleInitiate(inst.instanceKey)}
+                    style={{ fontSize: '12px', padding: '6px 14px', height: 'auto', borderRadius: '8px', cursor: 'pointer' }}
+                  >
+                    Regenerate QR
+                  </button>
+                </div>
+              )
             )}
 
             <div className="card-bottom">
@@ -333,7 +347,7 @@ const Instances = () => {
                 <span>{inst.messageCount || 0} sent</span>
               </div>
               <div className="card-actions">
-                {inst.liveStatus === 'disconnected' && !inst.qr && (
+                {(inst.liveStatus === 'disconnected' || (inst.liveStatus === 'qr_ready' && !inst.qr)) && (
                   <button className="btn-action-icon" title="Initialize" onClick={() => handleInitiate(inst.instanceKey)}>
                     <Power size={18} />
                   </button>
