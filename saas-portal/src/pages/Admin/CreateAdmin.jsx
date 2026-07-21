@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   User, 
   Mail, 
   Lock, 
   Eye, 
   EyeOff, 
-  UserPlus,
   ArrowLeft,
   ShieldCheck
 } from 'lucide-react';

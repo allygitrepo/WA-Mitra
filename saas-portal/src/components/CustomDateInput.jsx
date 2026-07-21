@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { Calendar } from 'lucide-react';
 
 const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", className = "", style = {}, required = false, disabled = false }) => {
@@ -10,7 +10,7 @@ const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", classNam
     return `${day}/${month}/${year}`;
   };
 
-  const handleWrapperClick = (e) => {
+  const handleWrapperClick = () => {
     if (disabled) return;
     if (dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
       try {
@@ -22,17 +22,17 @@ const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", classNam
   };
 
   return (
-    <div 
-      className={`custom-date-input-wrapper ${className}`} 
+    <div
+      className={`custom-date-input-wrapper ${className}`}
       style={{ position: 'relative', width: '100%', cursor: 'pointer', ...style }}
       onClick={handleWrapperClick}
     >
       <input
         type="text"
         className="auth-input custom-date-display"
-        style={{ 
-          width: '100%', 
-          cursor: 'pointer', 
+        style={{
+          width: '100%',
+          cursor: 'pointer',
           paddingRight: '40px',
           paddingLeft: '14px',
           background: 'transparent'
@@ -43,9 +43,9 @@ const CustomDateInput = ({ value, onChange, placeholder = "dd/mm/yyyy", classNam
         required={required}
         disabled={disabled}
       />
-      <Calendar 
-        size={18} 
-        className="custom-date-icon" 
+      <Calendar
+        size={18}
+        className="custom-date-icon"
         style={{
           position: 'absolute',
           right: '14px',

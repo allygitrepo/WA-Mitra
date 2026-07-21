@@ -430,3 +430,37 @@
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Subscription Plans Page Wrapper Grid Alignment */
+.user-plans-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 24px;
+  box-sizing: border-box;
+}
+
+.user-plans-wrapper .page-header {
+  margin-bottom: 8px;
+  padding: 0;
+  text-align: left;
+}
+
+.user-plans-wrapper .page-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.025em;
+  margin: 0 0 8px 0;
+}
+
+.user-plans-wrapper .page-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 600px;
+}

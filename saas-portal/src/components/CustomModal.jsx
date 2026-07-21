@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, HelpCircle, Info, X } from 'lucide-react';
 import './CustomModal.css';
 
@@ -18,18 +18,26 @@ const CustomModal = ({
   const inputRef = useRef(null);
 
   useEffect(() => {
+    let active = true;
     if (isOpen) {
-      setInputValue(defaultValue);
+      setTimeout(() => {
+        if (active) {
+          setInputValue(defaultValue);
+        }
+      }, 0);
       // Auto-focus on input if it is a prompt
       if (type === 'prompt') {
         setTimeout(() => {
-          if (inputRef.current) {
+          if (active && inputRef.current) {
             inputRef.current.focus();
             inputRef.current.select();
           }
         }, 50);
       }
     }
+    return () => {
+      active = false;
+    };
   }, [isOpen, type, defaultValue]);
 
   if (!isOpen) return null;

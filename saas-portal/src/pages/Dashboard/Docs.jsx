@@ -1,10 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { 
-  Book, Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft, 
-  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare 
+import {
+  Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft,
+  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare
 } from 'lucide-react';
 import './Docs.css';
+
+const CodeBlock = ({ code, id, copied, onCopy }) => {
+  return (
+    <div className="code-block-wrapper">
+      <button
+        className="copy-btn-code"
+        onClick={() => onCopy(code, id)}
+        title="Copy Code"
+      >
+        {copied === id ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+      <pre><code>{code}</code></pre>
+    </div>
+  );
+};
+
+const EndpointUrl = ({ method, url, id, copied, onCopy }) => {
+  return (
+    <div className="pm-header">
+      <span className={`pm-method method-${method.toLowerCase()}`}>{method}</span>
+      <span className="pm-url">{url}</span>
+      <button
+        className="copy-btn-api"
+        onClick={() => onCopy(url, id)}
+        title="Copy URL"
+      >
+        {copied === id ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </div>
+  );
+};
 
 const Docs = () => {
   const location = useLocation();
@@ -168,10 +199,13 @@ const Docs = () => {
                   </div>
 
                   <div className="postman-req">
-                    <div className="pm-header">
-                      <span className="pm-method method-post">POST</span>
-                      <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
-                    </div>
+                    <EndpointUrl
+                      method="POST"
+                      url={`${baseUrl}/api/v1/instance/initiate`}
+                      id="initiate_step1"
+                      copied={copied}
+                      onCopy={copyToClipboard}
+                    />
                     <div className="pm-section">
                       <span className="pm-section-title">Request Body (First Time)</span>
                       <div className="pm-val">{`{ "name" : "WA-Mitra Instance" // Optional custom name}`}</div>
@@ -187,10 +221,13 @@ const Docs = () => {
                   </div>
 
                   <div className="postman-req">
-                    <div className="pm-header">
-                      <span className="pm-method method-post">POST</span>
-                      <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
-                    </div>
+                    <EndpointUrl
+                      method="POST"
+                      url={`${baseUrl}/api/v1/instance/initiate`}
+                      id="initiate_step2"
+                      copied={copied}
+                      onCopy={copyToClipboard}
+                    />
                     <div className="pm-section">
                       <span className="pm-section-title">Request Body (Refresh)</span>
                       <div className="pm-val">{`{ 
@@ -270,10 +307,13 @@ const Docs = () => {
 
                 <h3 style={{ marginTop: '40px' }}>Refreshing/Polling QR Code</h3>
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-post">POST</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/instance/initiate`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/instance/initiate`}
+                    id="initiate_step3"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                   <div className="pm-section">
                     <span className="pm-section-title">Headers</span>
                     <div className="pm-row">
@@ -290,17 +330,24 @@ const Docs = () => {
                     <div className="pm-side-by-side">
                       <div className="pm-col">
                         <span className="pm-section-title" style={{ color: 'var(--primary)' }}>Case A: If Not Connected</span>
-                        <pre><code>{`{
+                        <CodeBlock
+                          id="case_a_resp"
+                          code={`{
   "success": true,
   "status": "qr_ready",
   "qr": "data:image/png;base64,...",
   "validinsecond": 40,
   "instanceKey": "inst_123..."
-}`}</code></pre>
+}`}
+                          copied={copied}
+                          onCopy={copyToClipboard}
+                        />
                       </div>
                       <div className="pm-col">
                         <span className="pm-section-title" style={{ color: 'var(--primary)' }}>Case B: If Already Connected</span>
-                        <pre><code>{`{
+                        <CodeBlock
+                          id="case_b_resp"
+                          code={`{
   "success": true,
   "status": "connected",
   "qr": "",
@@ -309,7 +356,10 @@ const Docs = () => {
   "profileImage": "data:image/jpeg;base64,...",
   "name": "Prashant Sarvaiya",
   "phone": "919316..."
-}`}</code></pre>
+}`}
+                          copied={copied}
+                          onCopy={copyToClipboard}
+                        />
                       </div>
                     </div>
                   </div>
@@ -318,19 +368,25 @@ const Docs = () => {
                 <h3 style={{ marginTop: '60px' }}>Fetching Instance Status</h3>
                 <p>Check the live status of any instance at any time without triggering a session restart.</p>
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-get">GET</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/instance/status?instanceKey=inst_123`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="GET"
+                    url={`${baseUrl}/api/v1/instance/status?instanceKey=inst_123`}
+                    id="status_step"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                 </div>
 
                 <h3 style={{ marginTop: '60px' }}>Disconnect & Delete Instance</h3>
                 <p>Permanently remove an instance from the database and clean up all session files. This is recommended for cleaning up unused keys to prevent server load.</p>
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-delete">DELETE</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/instance/delete?instanceKey=inst_123`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="DELETE"
+                    url={`${baseUrl}/api/v1/instance/delete?instanceKey=inst_123`}
+                    id="delete_step"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                   <div className="pm-section">
                     <span className="pm-section-title">Query Parameters</span>
                     <div className="pm-row">
@@ -340,10 +396,46 @@ const Docs = () => {
                   </div>
                   <div className="pm-section">
                     <span className="pm-section-title">Success Response</span>
-                    <pre><code>{`{
+                    <CodeBlock
+                      id="delete_resp"
+                      code={`{
   "success": true,
   "message": "Instance deleted successfully"
-}`}</code></pre>
+}`}
+                      copied={copied}
+                      onCopy={copyToClipboard}
+                    />
+                  </div>
+                </div>
+                <h3 style={{ marginTop: '60px' }}>Listing All Instances</h3>
+                <p>Fetch a list of all WhatsApp instances associated with your account.</p>
+                <div className="postman-req">
+                  <EndpointUrl
+                    method="GET"
+                    url={`${baseUrl}/api/v1/instance/list`}
+                    id="list_step"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
+                  <div className="pm-section">
+                    <span className="pm-section-title">Success Response</span>
+                    <CodeBlock
+                      id="list_resp"
+                      code={`{
+  "success": true,
+  "instances": [
+    {
+      "id": 1,
+      "name": "Support Line",
+      "instanceKey": "inst_123...",
+      "status": "connected",
+      "phone": "919876543210"
+    }
+  ]
+}`}
+                      copied={copied}
+                      onCopy={copyToClipboard}
+                    />
                   </div>
                 </div>
                 <h3 style={{ marginTop: '60px' }}>Listing All Instances</h3>
@@ -383,10 +475,13 @@ const Docs = () => {
                 <p>Dispatch a plain text message to any WhatsApp number. Use <code>application/json</code> for these requests.</p>
 
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-post">POST</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/messages/send`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/messages/send`}
+                    id="send_text_url"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                   <div className="pm-section">
                     <span className="pm-section-title">Body (JSON)</span>
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
@@ -415,10 +510,13 @@ const Docs = () => {
                 <p>Upload files like JPG, PNG, PDF, or DOCX. These requests must use <code>multipart/form-data</code>.</p>
 
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-post">POST</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/messages/send`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/messages/send`}
+                    id="send_media_url"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                   <div className="pm-section">
                     <span className="pm-section-title">Body (form-data)</span>
                     <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
@@ -452,19 +550,137 @@ const Docs = () => {
                 <p>Send high-volume messages in a single request. The server manages queuing automatically.</p>
 
                 <div className="postman-req">
-                  <div className="pm-header">
-                    <span className="pm-method method-post">POST</span>
-                    <span className="pm-url">{`${baseUrl}/api/v1/messages/bulk`}</span>
-                  </div>
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/messages/bulk`}
+                    id="send_bulk_url"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
                   <div className="pm-section">
                     <span className="pm-section-title">Body Structure</span>
-                    <pre><code>{`{
+                    <CodeBlock
+                      id="bulk_req_body"
+                      code={`{
   "instanceKey": "inst_123...",
   "messages": [
     { "number": "9100000001", "message": "Hello Customer 1" },
     { "number": "9100000002", "message": "Hello Customer 2" }
   ]
-}`}</code></pre>
+}`}
+                      copied={copied}
+                      onCopy={copyToClipboard}
+                    />
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '60px' }}>4. Scheduled Campaigns</h3>
+                <p>Schedule a message to be sent at a specific date and time in the future. Can handle text and media. Must use <code>multipart/form-data</code>.</p>
+
+                <div className="postman-req">
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/messages/schedule`}
+                    id="schedule_url"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
+                  <div className="pm-section">
+                    <span className="pm-section-title">Body (form-data)</span>
+                    <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
+                      <tbody>
+                        <tr>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Your connected instance key.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">name</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Name of the schedule.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">targetDate</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: YYYY-MM-DD.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">targetTime</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: HH:mm.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">recipients</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>JSON stringified array of numbers e.g., <code>["91987..."]</code>.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">message</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Message text or caption.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">file</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Media file to send.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '60px' }}>5. Recurring Cycle Campaigns</h3>
+                <p>Create a recurring drip campaign that sends messages repeatedly based on a frequency. Must use <code>multipart/form-data</code>.</p>
+
+                <div className="postman-req">
+                  <EndpointUrl
+                    method="POST"
+                    url={`${baseUrl}/api/v1/messages/cycle`}
+                    id="cycle_url"
+                    copied={copied}
+                    onCopy={copyToClipboard}
+                  />
+                  <div className="pm-section">
+                    <span className="pm-section-title">Body (form-data)</span>
+                    <table className="param-table" style={{ margin: 0, background: 'transparent' }}>
+                      <tbody>
+                        <tr>
+                          <td><code className="code-key orange-key">instanceKey</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Your connected instance key.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">name</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Name of the cycle.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">frequency</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td><code>daily</code>, <code>weekly</code>, <code>monthly</code>, etc.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">sendTime</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Format: HH:mm.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">recipients</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>JSON stringified array of numbers.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">message</code></td>
+                          <td><span className="badge badge-req">Required</span></td>
+                          <td>Message text or caption.</td>
+                        </tr>
+                        <tr>
+                          <td><code className="code-key orange-key">file</code></td>
+                          <td><span className="badge badge-opt">Optional</span></td>
+                          <td>Media file to send.</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -689,8 +905,8 @@ const Docs = () => {
                     { num: 3, label: '3. QR Scan & Link', desc: 'Scan QR Code' },
                     { num: 4, label: '4. Send API Message', desc: 'POST /messages/send' }
                   ].map((step) => (
-                    <div 
-                      key={step.num} 
+                    <div
+                      key={step.num}
                       className={`modal-step-tab ${activeStep === step.num ? 'active' : ''}`}
                       onClick={() => { setActiveStep(step.num); setIsPlaying(false); }}
                     >
@@ -833,16 +1049,16 @@ const Docs = () => {
                     {isPlaying ? <Pause size={14} /> : <Play size={14} />}
                     <span>{isPlaying ? 'Pause' : 'Play'}</span>
                   </button>
-                  <button 
-                    className="text-btn" 
-                    disabled={activeStep === 1} 
+                  <button
+                    className="text-btn"
+                    disabled={activeStep === 1}
                     onClick={() => { setActiveStep(prev => prev - 1); setIsPlaying(false); }}
                   >
                     Previous
                   </button>
-                  <button 
-                    className="text-btn" 
-                    disabled={activeStep === 4} 
+                  <button
+                    className="text-btn"
+                    disabled={activeStep === 4}
                     onClick={() => { setActiveStep(prev => prev + 1); setIsPlaying(false); }}
                   >
                     Next

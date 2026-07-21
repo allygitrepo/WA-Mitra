@@ -38,6 +38,29 @@ server.listen(PORT, async () => {
             }
         }
         console.log('Database synced successfully');
+
+        // Ensure suspendReason column exists
+        try {
+            const dialect = sequelize.getDialect();
+            if (dialect === 'postgres') {
+                await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "suspendReason" TEXT;');
+            } else if (dialect === 'mysql') {
+                const [results] = await sequelize.query("SHOW COLUMNS FROM `Users` LIKE 'suspendReason';");
+                if (results.length === 0) {
+                    await sequelize.query("ALTER TABLE `Users` ADD COLUMN `suspendReason` TEXT;");
+                }
+            } else if (dialect === 'sqlite') {
+                const [results] = await sequelize.query("PRAGMA table_info(Users);");
+                const hasCol = results.some(r => r.name === 'suspendReason');
+                if (!hasCol) {
+                    await sequelize.query("ALTER TABLE Users ADD COLUMN suspendReason TEXT;");
+                }
+            }
+            console.log('Database schema: suspendReason column verified/migrated.');
+        } catch (colErr) {
+            console.error('Failed to auto-migrate suspendReason column:', colErr.message);
+        }
+
         await seedAdmin();
         initScheduler();
     } catch (error) {

@@ -1,13 +1,20 @@
-const { User, Package, WhatsAppInstance, MessageLog, Payment } = require("../models/associations");
+const { User, Package, WhatsAppInstance, MessageLog, Payment, AutoReplyRule, ApiToken, Template, Schedule, Cycle } = require("../models/associations");
 const whatsappService = require("../services/whatsappService");
 const emailService = require("../services/emailService");
 const emailTemplates = require("../services/emailTemplate");
+const { Op } = require("sequelize");
 
 const adminController = {
   // User Management
   getAllUsers: async (req, res) => {
     try {
       const users = await User.findAll({
+        where: {
+          [Op.or]: [
+            { role: 'admin' },
+            { role: 'user', isVerified: true }
+          ]
+        },
         attributes: { exclude: ["password", "otp", "otpExpiry"] },
         include: [
           { model: Package, as: "package" },
@@ -76,7 +83,7 @@ const adminController = {
 
   updateUserStatus: async (req, res) => {
     try {
-      const { userId, status } = req.body; // 'active' or 'suspended'
+      const { userId, status, reason } = req.body; // 'active' or 'suspended', optional reason
       const user = await User.findByPk(userId);
 
       if (!user) {
@@ -84,19 +91,84 @@ const adminController = {
       }
 
       user.status = status;
-      await user.save();
-
       if (status === "suspended") {
+        user.suspendReason = reason || null;
         // Disconnect all active WhatsApp instances for this user
         const instances = await WhatsAppInstance.findAll({ where: { userId } });
         for (const instance of instances) {
+          try {
+            await whatsappService.disconnect(instance.instanceKey);
+          } catch (disconnectErr) {
+            console.error(`Error disconnecting instance ${instance.instanceKey} during user suspension:`, disconnectErr);
+          }
+        }
+      } else {
+        // Clear suspendReason when reactivating
+        user.suspendReason = null;
+      }
+      await user.save();
+
+      res.status(200).json({
+        message: `User status updated to ${status}`,
+        suspendReason: user.suspendReason
+      });
+    } catch (error) {
+      console.error("Update User Status Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  deleteUser: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await User.findByPk(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if trying to delete an admin
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: "Cannot delete admin accounts" });
+      }
+
+      // 1. Fetch all WhatsApp instances for this user
+      const instances = await WhatsAppInstance.findAll({ where: { userId: id } });
+      const instanceIds = instances.map(inst => inst.id);
+      const instanceKeys = instances.map(inst => inst.instanceKey);
+
+      // 2. Delete MessageLogs for these instances
+      if (instanceIds.length > 0) {
+        await MessageLog.destroy({ where: { instanceId: { [Op.in]: instanceIds } } });
+      }
+
+      // 3. Delete AutoReplyRules for these instances
+      if (instanceKeys.length > 0) {
+        await AutoReplyRule.destroy({ where: { instanceKey: { [Op.in]: instanceKeys } } });
+      }
+
+      // 4. Disconnect and delete sessions from Baileys & memory
+      for (const instance of instances) {
+        try {
           await whatsappService.disconnect(instance.instanceKey);
+        } catch (err) {
+          console.error(`Error disconnecting instance ${instance.instanceKey} during user delete:`, err);
         }
       }
 
-      res.status(200).json({ message: `User status updated to ${status}` });
+      // 5. Delete other associations
+      await ApiToken.destroy({ where: { userId: id } });
+      await Template.destroy({ where: { userId: id } });
+      await Schedule.destroy({ where: { userId: id } });
+      await Cycle.destroy({ where: { userId: id } });
+      await Payment.destroy({ where: { userId: id } });
+
+      // 6. Finally delete the user
+      await user.destroy();
+
+      res.status(200).json({ message: "User and all associated data deleted successfully" });
     } catch (error) {
-      console.error("Update User Status Error:", error);
+      console.error("Delete User Error:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
@@ -234,9 +306,28 @@ const adminController = {
   // Stats
   getSystemStats: async (req, res) => {
     try {
-      const totalUsers = await User.count();
-      const totalInstances = await WhatsAppInstance.count();
-      const totalMessages = await MessageLog.count();
+      const totalUsers = await User.count({ where: { role: { [Op.ne]: 'admin' }, isVerified: true } });
+      const totalInstances = await WhatsAppInstance.count({
+        include: [{
+          model: User,
+          as: 'user',
+          required: true,
+          where: { role: { [Op.ne]: 'admin' }, isVerified: true }
+        }]
+      });
+      const totalMessages = await MessageLog.count({
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          required: true,
+          include: [{
+            model: User,
+            as: 'user',
+            required: true,
+            where: { role: { [Op.ne]: 'admin' }, isVerified: true }
+          }]
+        }]
+      });
       const totalRevenue = await Payment.sum('amount', { where: { status: 'completed' } }) || 0;
 
       res.status(200).json({
@@ -254,7 +345,6 @@ const adminController = {
   getAllPayments: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const payments = await Payment.findAll({
         where: {
           amount: { [Op.gt]: 0 }
@@ -275,7 +365,6 @@ const adminController = {
   getDailyAnalytics: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const { range } = req.query;
 
       let days = 6;
@@ -291,7 +380,19 @@ const adminController = {
           [sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')), 'date'],
           [sequelize.col('instance.userId'), 'userId']
         ],
-        include: [{ model: WhatsAppInstance, as: 'instance', attributes: [], required: true }],
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          attributes: [],
+          required: true,
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: [],
+            required: true,
+            where: { role: { [Op.ne]: 'admin' }, isVerified: true }
+          }]
+        }],
         where: { createdAt: { [Op.gte]: startDate } },
         group: [
           sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')),
@@ -306,19 +407,30 @@ const adminController = {
           [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
           ['id', 'userId']
         ],
-        where: { createdAt: { [Op.gte]: startDate } },
+        where: {
+          createdAt: { [Op.gte]: startDate },
+          role: { [Op.ne]: 'admin' },
+          isVerified: true
+        },
         raw: true
       });
 
       // 3. New Instance creations
       const instanceCreations = await WhatsAppInstance.findAll({
         attributes: [
-          [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
+          [sequelize.fn('DATE', sequelize.col('WhatsAppInstance.createdAt')), 'date'],
           ['userId', 'userId']
         ],
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: [],
+          required: true,
+          where: { role: { [Op.ne]: 'admin' }, isVerified: true }
+        }],
         where: { createdAt: { [Op.gte]: startDate } },
         group: [
-          sequelize.fn('DATE', sequelize.col('createdAt')),
+          sequelize.fn('DATE', sequelize.col('WhatsAppInstance.createdAt')),
           sequelize.col('userId')
         ],
         raw: true
@@ -376,7 +488,6 @@ const adminController = {
   getRevenueAnalytics: async (req, res) => {
     try {
       const sequelize = require("../config/db");
-      const { Op } = require("sequelize");
       const { range } = req.query;
 
       let days = 6;
@@ -445,7 +556,14 @@ const adminController = {
             model: WhatsAppInstance,
             as: 'instance',
             attributes: ['name'],
-            include: [{ model: User, as: 'user', attributes: ['username'] }]
+            required: true,
+            include: [{
+              model: User,
+              as: 'user',
+              attributes: ['username'],
+              required: true,
+              where: { role: { [Op.ne]: 'admin' } }
+            }]
           }
         ]
       });

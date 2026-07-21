@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   User,
   Palette,
@@ -15,7 +15,8 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import useAuthStore from '../../store/useAuthStore';
 import useThemeStore from '../../store/useThemeStore';
 import API from '../../api/axiosConfig';
@@ -40,44 +41,27 @@ const Settings = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let active = true;
     if (user) {
-      setProfileForm({
-        username: user.username || '',
-        orgName: user.orgName || '',
-        phone: user.phone || ''
-      });
+      setTimeout(() => {
+        if (active) {
+          setProfileForm({
+            username: user.username || '',
+            orgName: user.orgName || '',
+            phone: user.phone || ''
+          });
+        }
+      }, 0);
     }
+    return () => {
+      active = false;
+    };
   }, [user]);
 
-  const handleSaveProfile = async () => {
-    if (!profileForm.username.trim()) {
-      toast.error("Username cannot be empty.");
-      return;
-    }
-    setSavingProfile(true);
-    const loadingToast = toast.loading("Updating profile...");
-    try {
-      const res = await API.put('/auth/profile', profileForm);
-      updateUser(res.data.user);
-      setIsEditing(false);
-      toast.success("Profile updated successfully!", { id: loadingToast });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile", { id: loadingToast });
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'subscription') {
-      fetchSubscriptionData();
-    }
-  }, [activeTab]);
-
-  const fetchSubscriptionData = async () => {
+  const fetchSubscriptionData = useCallback(async () => {
     try {
       setLoadingPkg(true);
-      const [pkgsRes, instRes, logsRes, profileRes] = await Promise.all([
+      const [pkgsRes, instRes, , profileRes] = await Promise.all([
         API.get('/plans/all'),
         instanceService.getInstances(),
         messageService.getLogs(),
@@ -102,6 +86,39 @@ const Settings = () => {
       console.error(err);
     } finally {
       setLoadingPkg(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (activeTab === 'subscription') {
+      setTimeout(() => {
+        if (active) {
+          fetchSubscriptionData();
+        }
+      }, 0);
+    }
+    return () => {
+      active = false;
+    };
+  }, [activeTab, fetchSubscriptionData]);
+
+  const handleSaveProfile = async () => {
+    if (!profileForm.username.trim()) {
+      toast.error("Username cannot be empty.");
+      return;
+    }
+    setSavingProfile(true);
+    const loadingToast = toast.loading("Updating profile...");
+    try {
+      const res = await API.put('/auth/profile', profileForm);
+      updateUser(res.data.user);
+      setIsEditing(false);
+      toast.success("Profile updated successfully!", { id: loadingToast });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update profile", { id: loadingToast });
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -301,11 +318,15 @@ const Settings = () => {
                     </button> */}
                   </div>
                 ) : (
-                  <div className="no-plan-card glass p-8 text-center">
-                    <AlertCircle size={48} className="mx-auto text-muted mb-4" />
-                    <h3>No Active Plan</h3>
-                    <p className="text-muted mt-2">You haven't subscribed to any plan yet. Subscribe now to start using the gateway.</p>
-                    <button className="btn-primary mx-auto mt-6" onClick={() => navigate('/dashboard/plans')}>
+                  <div className="no-plan-card-premium" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center' }}>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                      <AlertCircle size={32} />
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: '0 0 8px 0' }}>No Active Plan</h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+                      You haven't subscribed to any plan yet. Subscribe now to start using the gateway.
+                    </p>
+                    <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ width: '160px', height: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                       Browse Plans
                     </button>
                   </div>

@@ -296,6 +296,7 @@
         box-shadow: 0 0 10px var(--primary), 0 0 5px rgba(0, 168, 132, 0.5);
         transform: translateX(-50%) scale(1);
     }
+
     100% {
         box-shadow: 0 0 25px var(--primary), 0 0 15px rgba(0, 168, 132, 0.8);
         transform: translateX(-50%) scale(1.05);
@@ -314,4 +315,66 @@
     color: white;
     cursor: default;
     opacity: 0.9;
+}
+
+/* Custom Plan Support Card Alignment Styles */
+.plan-support-card-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 3rem;
+}
+
+.plan-support-card-modern {
+    width: 100%;
+    max-width: 1200px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2.5rem;
+    text-align: center;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.plan-support-card-modern h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 0.5rem 0;
+}
+
+.plan-support-card-modern p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0 auto 1.5rem auto;
+    max-width: 480px;
+}
+
+/* Sibling matching rule to dynamically restrict support card width to match packages-grid layout widths */
+.grid-row-1 + .plan-support-card-container .plan-support-card-modern {
+    max-width: 400px;
+}
+
+.grid-row-2 + .plan-support-card-container .plan-support-card-modern {
+    max-width: 900px;
+}
+
+.grid-row-3 + .plan-support-card-container .plan-support-card-modern {
+    max-width: 1200px;
+}
+
+.grid-row-4 + .plan-support-card-container .plan-support-card-modern {
+    max-width: 1500px;
+}
+
+.grid-row-5 + .plan-support-card-container .plan-support-card-modern {
+    max-width: 1700px;
+}
+
+.grid-multi + .plan-support-card-container .plan-support-card-modern {
+    max-width: 1200px;
 }

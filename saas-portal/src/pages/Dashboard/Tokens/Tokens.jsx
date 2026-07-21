@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Key, Plus, Trash2, Copy, CheckCircle2, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { tokenService } from '../../../api/services';
@@ -16,15 +16,11 @@ const Tokens = () => {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
-    onCancel: () => {}
+    onConfirm: () => { },
+    onCancel: () => { }
   });
 
-  useEffect(() => {
-    fetchTokens();
-  }, []);
-
-  const fetchTokens = async () => {
+  const fetchTokens = useCallback(async () => {
     try {
       const res = await tokenService.getTokens();
       setTokens(res.data.tokens || []);
@@ -33,7 +29,19 @@ const Tokens = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchTokens();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchTokens]);
 
   const handleCreate = async () => {
     const loadingToast = toast.loading("Generating token...");
@@ -41,7 +49,7 @@ const Tokens = () => {
       await tokenService.createToken();
       fetchTokens();
       toast.success("Token generated successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate token", { id: loadingToast });
     }
   };
@@ -52,7 +60,7 @@ const Tokens = () => {
       await tokenService.deleteToken(id);
       fetchTokens();
       toast.success("Token revoked successfully!", { id: loadingToast });
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete token", { id: loadingToast });
     }
   };
@@ -85,7 +93,7 @@ const Tokens = () => {
     }));
   };
 
-  const filteredTokens = tokens.filter(t => 
+  const filteredTokens = tokens.filter(t =>
     (t.token?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
@@ -117,7 +125,7 @@ const Tokens = () => {
             <p>{searchQuery ? "No matching tokens found." : "No tokens found. Generate one to start using the External API."}</p>
           </div>
         )}
-        
+
         {filteredTokens.map((token) => (
           <div key={token.id} className="token-card glass">
             <div className="token-meta">
@@ -128,7 +136,7 @@ const Tokens = () => {
                   <code className="token-value">
                     {visibleTokens[token.id] ? token.token : '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
                   </code>
-                  <button 
+                  <button
                     type="button"
                     className="btn-toggle-visibility"
                     onClick={() => toggleVisibility(token.id)}
@@ -139,10 +147,10 @@ const Tokens = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="token-actions">
-              <button 
-                className="btn-icon-text" 
+              <button
+                className="btn-icon-text"
                 onClick={() => copyToClipboard(token.token, token.id)}
               >
                 {copiedId === token.id ? (

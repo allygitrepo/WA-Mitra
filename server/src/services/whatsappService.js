@@ -239,7 +239,6 @@ async function _internalStartSession(instanceKey) {
 
         // Connection Opened
         if (connection === 'open') {
-            console.log(`[INSTANCE] ${instanceKey} connected!`);
             reconnectAttempts.delete(instanceKey);
             currentSession.qrCodeData = null;
             currentSession.qrTimestamp = null;
@@ -312,7 +311,7 @@ async function _internalStartSession(instanceKey) {
         // Connection Closed
         if (connection === 'close') {
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-            console.log(`[INSTANCE] ${instanceKey} closed. Reason: ${statusCode}`);
+            cleanupSocket(instanceKey);
 
             cleanupSocket(instanceKey);
 
@@ -324,9 +323,6 @@ async function _internalStartSession(instanceKey) {
                 const attempts = (reconnectAttempts.get(instanceKey) || 0) + 1;
                 reconnectAttempts.set(instanceKey, attempts);
                 const delay = Math.min(5000 * Math.pow(1.5, attempts - 1), 30000);
-
-                console.log(`[RECONNECT] Scheduling reconnect for ${instanceKey} in ${Math.round(delay / 1000)}s (Attempt #${attempts})`);
-
                 const timer = setTimeout(() => {
                     reconnectTimers.delete(instanceKey);
                     startSession(instanceKey).catch(err => {

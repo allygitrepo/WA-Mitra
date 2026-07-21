@@ -99,6 +99,9 @@
 .status-badge[data-status="connecting"] { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 .status-badge[data-status="connecting"] .dot { background: #f59e0b; }
 
+.status-badge[data-status="qr_ready"] { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.status-badge[data-status="qr_ready"] .dot { background: #3b82f6; }
+
 .status-badge[data-status="disconnected"] { background: var(--surface-hover); color: var(--text-muted); }
 .status-badge[data-status="disconnected"] .dot { background: var(--text-muted); }
 
