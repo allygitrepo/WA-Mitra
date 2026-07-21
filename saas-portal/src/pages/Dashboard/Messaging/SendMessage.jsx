@@ -9,6 +9,7 @@ import CustomModal from '../../../components/CustomModal';
 import CustomDateInput from '../../../components/CustomDateInput';
 import useAuthStore from '../../../store/useAuthStore';
 import { createPortal } from 'react-dom';
+import { io } from 'socket.io-client';
 
 const SendMessage = () => {
   const { searchQuery } = useOutletContext();
@@ -40,6 +41,62 @@ const SendMessage = () => {
   const [selectedInstance, setSelectedInstance] = useState('');
   const [loading, setLoading] = useState(false);
   const [progressData, setProgressData] = useState(null);
+
+  useEffect(() => {
+    if (!selectedInstance) return;
+
+    const socketUrl = import.meta.env.VITE_API_BASE_URL.split('/wa-mitra')[0];
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+      socket.emit('join_room', selectedInstance);
+    });
+
+    socket.on('bulk_progress', (data) => {
+      console.log('Socket bulk progress:', data);
+      if (data.type === 'start') {
+        setProgressData({
+          total: data.total,
+          sent: 0,
+          failed: 0,
+          currentNumber: '',
+          status: 'sending'
+        });
+      } else if (data.type === 'progress') {
+        setProgressData({
+          total: data.total,
+          sent: data.sent,
+          failed: data.failed,
+          currentNumber: data.currentNumber,
+          status: 'sending'
+        });
+      } else if (data.type === 'pause') {
+        setProgressData(prev => ({
+          ...prev,
+          status: 'paused',
+          message: data.message || 'Taking a 15-second break...'
+        }));
+      } else if (data.type === 'done') {
+        setProgressData(prev => ({
+          ...prev,
+          sent: data.results.sent,
+          failed: data.results.failed,
+          status: 'done'
+        }));
+        
+        if (data.results.failed === 0) {
+          toast.success(`Sent all ${data.results.sent} messages successfully!`, { id: 'bulk-campaign-toast', duration: 5000 });
+        } else {
+          toast.success(`Process complete: ${data.results.sent} sent, ${data.results.failed} failed.`, { id: 'bulk-campaign-toast', duration: 6000 });
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [selectedInstance]);
 
   const [singleData, setSingleData] = useState({
     number: '',
@@ -4064,6 +4121,11 @@ const SendMessage = () => {
                 <div className="text-error font-bold flex items-center justify-center gap-2">
                   <AlertCircle size={18} />
                   {progressData.errorMsg}
+                </div>
+              ) : progressData.status === 'paused' ? (
+                <div className="text-warning font-bold flex flex-col items-center justify-center gap-1" style={{ color: '#f59e0b', fontSize: '0.9rem' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  <div>{progressData.message || 'Taking a 15-second break...'}</div>
                 </div>
               ) : (
                 <div className="text-muted text-sm flex items-center justify-center gap-2">

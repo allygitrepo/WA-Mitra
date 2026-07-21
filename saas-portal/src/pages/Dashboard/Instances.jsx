@@ -14,6 +14,7 @@ import useAuthStore from '../../store/useAuthStore';
 import API from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import CustomModal from '../../components/CustomModal';
+import { io } from 'socket.io-client';
 import './Instances.css';
 
 const Instances = () => {
@@ -100,6 +101,69 @@ const Instances = () => {
       clearInterval(interval);
     };
   }, [fetchData, fetchInstances]);
+
+  useEffect(() => {
+    const socketUrl = import.meta.env.VITE_API_BASE_URL.split('/wa-mitra')[0];
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+      console.log('Instances socket connected:', socket.id);
+      instances.forEach(inst => {
+        socket.emit('join_room', inst.instanceKey);
+      });
+    });
+
+    const updateInstance = (instanceKey, updates) => {
+      setInstances(prev => prev.map(inst => {
+        if (inst.instanceKey === instanceKey) {
+          return { ...inst, ...updates };
+        }
+        return inst;
+      }));
+    };
+
+    socket.on('qr', (data) => {
+      console.log('Socket qr event:', data);
+      updateInstance(data.instanceKey, {
+        liveStatus: 'qr_ready',
+        qr: data.qr,
+        error: null
+      });
+    });
+
+    socket.on('connected', (data) => {
+      console.log('Socket connected event:', data);
+      updateInstance(data.instanceKey, {
+        liveStatus: 'connected',
+        qr: null,
+        pushName: data.pushName,
+        phone: data.phone,
+        profilePic: data.profilePic,
+        error: null
+      });
+    });
+
+    socket.on('disconnected', (data) => {
+      console.log('Socket disconnected event:', data);
+      updateInstance(data.instanceKey, {
+        liveStatus: 'disconnected',
+        qr: null,
+        error: data.error || null
+      });
+    });
+
+    socket.on('loading', (data) => {
+      console.log('Socket loading event:', data);
+      updateInstance(data.instanceKey, {
+        liveStatus: 'connecting',
+        qr: null
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [instances.length]);
 
   const isLimitReached = currentPackage && 
                          currentPackage.instanceLimit !== -1 && 
