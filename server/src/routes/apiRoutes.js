@@ -5,6 +5,7 @@ const scheduleController = require("../controllers/scheduleController");
 const cycleController = require("../controllers/cycleController");
 const apiAuthMiddleware = require("../middleware/apiAuthMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+const { apiLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.delete("/instance/delete", instanceController.deleteInstance); // Added d
 router.delete("/instance/:instanceKey", instanceController.deleteInstance); // Support both query and param if needed
 
 // Messaging (External)
-router.post("/messages/send", upload.single('file'), messageController.sendMessage);
-router.post("/messages/bulk", messageController.sendBulkMessage);
+router.post("/messages/send", apiLimiter, upload.single('file'), messageController.sendMessage);
+router.post("/messages/bulk", apiLimiter, messageController.sendBulkMessage);
 router.post("/messages/schedule", upload.single('file'), scheduleController.createSchedule);
 router.post("/messages/cycle", upload.single('file'), cycleController.createCycle);
 
