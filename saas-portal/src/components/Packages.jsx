@@ -192,6 +192,14 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
             </div>
           ))}
         </div>
+
+        <div className="plan-support-card-container">
+          <div className="plan-support-card-modern">
+            <h3>Need a custom plan?</h3>
+            <p>If our standard plans don't fit your needs, contact our sales team for a tailored solution.</p>
+            <button type="button" className="premium-btn-outline" onClick={() => window.open('mailto:support@wa-mitra.com')}>Contact Sales</button>
+          </div>
+        </div>
       </div>
     </section>
   );

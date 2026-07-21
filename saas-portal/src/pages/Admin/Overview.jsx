@@ -116,7 +116,7 @@ const AdminOverview = () => {
         <div className="dashboard-card glass">
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className="stat-icon-sm" style={{ color: 'var(--primary)', background: 'var(--primary)15', padding: '6px', borderRadius: '8px' }}>
+              <div className="stat-icon-sm" style={{ color: 'var(--primary)', background: '#00a88415' }}>
                 <Activity size={18} />
               </div>
               <div>
@@ -140,7 +140,7 @@ const AdminOverview = () => {
             </div>
           </div>
 
-          <div className="card-body" style={{ height: '300px', padding: '16px' }}>
+          <div className="card-body" style={{ height: '300px', padding: '16px 0 0 0' }}>
             {chartLoading ? (
               <div className="flex items-center justify-center h-full"><div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Updating...</div></div>
             ) : (
@@ -173,7 +173,7 @@ const AdminOverview = () => {
         <div className="dashboard-card glass">
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className="stat-icon-sm" style={{ color: '#8b5cf6', background: '#8b5cf615', padding: '6px', borderRadius: '8px' }}>
+              <div className="stat-icon-sm" style={{ color: '#8b5cf6', background: '#8b5cf615' }}>
                 <IndianRupee size={18} />
               </div>
               <div>
@@ -197,7 +197,7 @@ const AdminOverview = () => {
             </div>
           </div>
 
-          <div className="card-body" style={{ height: '300px', padding: '16px' }}>
+          <div className="card-body" style={{ height: '300px', padding: '16px 0 0 0' }}>
             {revChartLoading ? (
               <div className="flex items-center justify-center h-full"><div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Updating...</div></div>
             ) : (

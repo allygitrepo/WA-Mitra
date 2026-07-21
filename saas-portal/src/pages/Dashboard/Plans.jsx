@@ -1,10 +1,9 @@
-
 import Packages from '../../components/Packages';
 import './Dashboard.css';
 
 const UserPlans = () => {
   return (
-    <div className="user-plans-container animate-fade-in">
+    <div className="user-plans-wrapper animate-fade-in">
       <div className="page-header">
         <div>
           <h1 className="page-title">Subscription Plans</h1>
@@ -13,13 +12,7 @@ const UserPlans = () => {
       </div>
 
       <div className="mt-8">
-        <Packages showButtons={false} />
-      </div>
-
-      <div className="plan-support-card glass mt-12 p-8 text-center">
-        <h3>Need a custom plan?</h3>
-        <p className="text-muted mt-2">If our standard plans don't fit your needs, contact our sales team for a tailored solution.</p>
-        <button className="btn-outline-pill mt-6">Contact Sales</button>
+        <Packages showButtons={false} hideHeader={true} />
       </div>
     </div>
   );

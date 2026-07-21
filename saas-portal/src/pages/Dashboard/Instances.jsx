@@ -25,6 +25,8 @@ const Instances = () => {
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const [currentPackage, setCurrentPackage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [modalConfig, setModalConfig] = useState({
@@ -35,6 +37,16 @@ const Instances = () => {
     onCancel: () => {}
   });
   const toastedErrorsRef = useRef({});
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowStatusDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -174,21 +186,74 @@ const Instances = () => {
           <h1 className="page-title">WhatsApp Instances</h1>
           <p className="page-subtitle">Manage your linked WhatsApp accounts and their status.</p>
         </div>
-        <div className="header-actions">
-          <select 
-            className="filter-select" 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option>All Status</option>
-            <option>Connected</option>
-            <option>Disconnected</option>
-          </select>
+        <div className="header-actions" style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
+          <div className="custom-dropdown-container" ref={dropdownRef} style={{ position: 'relative' }}>
+            <button 
+              type="button"
+              className="premium-select"
+              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+              style={{ height: '42px', padding: '0 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '135px', justifyContent: 'space-between', background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-main)' }}
+            >
+              <span>{statusFilter}</span>
+              <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
+            </button>
+            {showStatusDropdown && (
+              <div 
+                className="premium-dropdown-list animate-slide-down" 
+                style={{ 
+                  position: 'absolute', 
+                  top: '48px', 
+                  right: 0, 
+                  background: 'var(--card-bg)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '10px', 
+                  boxShadow: 'var(--shadow-lg)', 
+                  zIndex: 100, 
+                  minWidth: '150px', 
+                  padding: '6px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '4px' 
+                }}
+              >
+                {['All Status', 'Connected', 'Disconnected'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(status);
+                      setShowStatusDropdown(false);
+                    }}
+                    className="premium-dropdown-item"
+                    style={{
+                      background: statusFilter === status ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                      color: statusFilter === status ? '#10B981' : 'var(--text-main)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: statusFilter === status ? '600' : '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 150ms ease'
+                    }}
+                  >
+                    <span>{status}</span>
+                    {statusFilter === status && <span style={{ color: '#10B981', fontSize: '12px' }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button 
-            className={`btn-primary ${isLimitReached ? 'disabled' : ''}`} 
+            className={`premium-btn-primary ${isLimitReached ? 'disabled' : ''}`} 
             onClick={() => !isLimitReached && setShowAddModal(true)}
             disabled={isLimitReached}
             title={isLimitReached ? "Instance limit reached for your current plan" : ""}
+            style={{ height: '42px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
           >
             <Plus size={18} /> New Instance
           </button>
@@ -205,7 +270,15 @@ const Instances = () => {
 
       <div className="instances-grid">
         {filteredInstances.length === 0 && !loading && (
-          <div className="empty-state">No instances matching your criteria found.</div>
+          <div className="no-plan-card-premium" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 32px', textAlign: 'center', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '18px', boxShadow: 'var(--shadow-sm)', marginTop: '24px' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+              <MessageSquare size={32} />
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: '0 0 8px 0' }}>No WhatsApp Instances</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0', lineHeight: '1.5' }}>
+              No instances matching your criteria found. Link a new WhatsApp account to start sending messages.
+            </p>
+          </div>
         )}
         {filteredInstances.map((inst) => (
           <div key={inst.instanceKey} className="instance-card glass">
@@ -279,7 +352,7 @@ const Instances = () => {
       {/* Modal Mockup */}
       {showAddModal && (
         <div className="modal-overlay">
-          <form className="modal-content glass animate-fade-in" onSubmit={handleCreate}>
+          <form className="modal-content animate-fade-in" onSubmit={handleCreate}>
             <div className="modal-header">
               <h3>Create New Instance</h3>
               <button type="button" className="close-btn" onClick={() => setShowAddModal(false)}><X size={20} /></button>
@@ -300,9 +373,9 @@ const Instances = () => {
               </div>
               <p className="modal-hint">A unique instance key will be generated automatically.</p>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={creating}>
+            <div className="modal-footer" style={{ borderTop: '1px solid var(--border)' }}>
+              <button type="button" className="premium-btn-outline" onClick={() => setShowAddModal(false)} style={{ width: '120px', height: '40px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>Cancel</button>
+              <button type="submit" className="premium-btn-primary" disabled={creating} style={{ width: '150px', height: '40px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginLeft: '12px' }}>
                 {creating ? 'Creating...' : 'Create & Link'}
               </button>
             </div>

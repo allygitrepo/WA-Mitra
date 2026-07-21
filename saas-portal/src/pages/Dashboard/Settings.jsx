@@ -318,11 +318,15 @@ const Settings = () => {
                     </button> */}
                   </div>
                 ) : (
-                  <div className="no-plan-card glass p-8 text-center">
-                    <AlertCircle size={48} className="mx-auto text-muted mb-4" />
-                    <h3>No Active Plan</h3>
-                    <p className="text-muted mt-2">You haven't subscribed to any plan yet. Subscribe now to start using the gateway.</p>
-                    <button className="btn-primary mx-auto mt-6" onClick={() => navigate('/dashboard/plans')}>
+                  <div className="no-plan-card-premium" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center' }}>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                      <AlertCircle size={32} />
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: '0 0 8px 0' }}>No Active Plan</h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+                      You haven't subscribed to any plan yet. Subscribe now to start using the gateway.
+                    </p>
+                    <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ width: '160px', height: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                       Browse Plans
                     </button>
                   </div>

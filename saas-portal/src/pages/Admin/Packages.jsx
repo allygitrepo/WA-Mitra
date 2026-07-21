@@ -141,8 +141,8 @@ const AdminPackages = () => {
       </div>
 
       {showForm && (
-        <div className="package-form-modern glass animate-slide-down mb-32 p-8">
-          <div className="form-header-modern mb-8">
+        <div className="package-form-modern animate-slide-down mb-32">
+          <div className="form-header-modern">
             <h2 className="text-xl font-bold">{editingId ? 'Edit Package' : 'Create New Package'}</h2>
             <button className="close-btn" onClick={() => { setShowForm(false); setEditingId(null); setFormData(initialFormState); }}>
               <X size={26} />
@@ -230,9 +230,10 @@ const AdminPackages = () => {
             <br></br>
             <br></br>
             {/* Section: Feature Permissions & Status */}
+            {/* Section: Feature Permissions & Status */}
             <div className="form-section mb-12">
               <div className="section-title">FEATURE PERMISSIONS & STATUS</div>
-              <div className="toggles-row-container" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '16px', alignItems: 'center' }}>
+              <div className="toggles-row-container" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
                 <div
                   className={`feature-toggle-card-small ${formData.isOneTime ? 'active' : ''}`}
                   onClick={() => setFormData({ ...formData, isOneTime: !formData.isOneTime })}
@@ -276,126 +277,125 @@ const AdminPackages = () => {
                     <div className="feature-desc-small">Published</div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-5 ml-auto pl-6 border-l border-white/10" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', marginLeft: '180px' }}>
-                  <button
-                    type="submit"
-                    className="btn-primary shadow-glow"
-                    style={{
-                      width: '160px',
-                      height: '44px',
-                      padding: '0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.9rem',
-                      fontWeight: 'bold',
-                      marginRight: '16px'
-                    }}
-                  >
-                    {editingId ? 'Update' : 'Publish Plan'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-outline-pill"
-                    onClick={() => { setShowForm(false); setEditingId(null); setFormData(initialFormState); }}
-                    style={{ width: '160px', height: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
+            </div>
+
+            <div className="form-footer-modern" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: '16px', flexWrap: 'nowrap', marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+              <button
+                type="submit"
+                className="premium-btn-primary"
+                style={{
+                  width: '160px',
+                  height: '44px',
+                  padding: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold'
+                }}
+              >
+                {editingId ? 'Update' : 'Publish Plan'}
+              </button>
+              <button
+                type="button"
+                className="premium-btn-outline"
+                onClick={() => { setShowForm(false); setEditingId(null); setFormData(initialFormState); }}
+                style={{ width: '160px', height: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
-      <div className="glass mt-4 overflow-hidden">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Package Details</th>
-              <th>Pricing</th>
-              <th>Restrictions</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="5" className="text-center py-20">Loading plans...</td></tr>
-            ) : filteredPackages.map(pkg => (
-              <tr key={pkg.id} className={!pkg.isActive ? 'inactive-row' : ''}>
-                <td>
-                  <div className="font-bold text-lg">{pkg.name}</div>
-                </td>
-                <td>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 font-bold text-base">
-                      <Layers size={14} className="text-muted" />
-                      <span>₹{pkg.price}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted">
-                      <Calendar size={14} />
-                      <span>{pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`}</span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div className="flex flex-col gap-2">
-                    <div className="view-limits-trigger">
-                      <div className="flex items-center gap-4">
-                        <Shield size={14} className="text-primary" />
-                        <span className="text-sm font-semibold cursor-pointer hover:text-primary transition-colors">  View Limits</span>
-                      </div>
-                      <div className="limits-tooltip glass">
-                        <div className="tooltip-item">
-                          <span>Instances:</span>
-                          <strong>{pkg.instanceLimit}</strong>
-                        </div>
-                        <div className="tooltip-item">
-                          <span>Messages:</span>
-                          <strong>{pkg.messageLimit.toLocaleString()}</strong>
-                        </div>
-                        <div className="tooltip-item">
-                          <span>Daily Cap:</span>
-                          <strong>{pkg.dailyMessageLimit}</strong>
-                        </div>
-                        <div className="tooltip-item">
-                          <span>Media:</span>
-                          <strong>{pkg.canSendMedia ? 'YES' : 'NO'}</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span className={`status-pill ${pkg.isActive ? 'enabled' : 'disabled'}`}>
-                      {pkg.isActive ? 'Enabled' : 'Disabled'}
-                    </span>
-                    <span className={`status-pill ${pkg.isPublic ? 'enabled' : 'disabled'}`} style={{ fontSize: '0.7rem' }}>
-                      {pkg.isPublic ? '🌐 Public' : '🔒 Private'}
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                    <button className="icon-btn-action ban" title="Deactivate">
-                      <Ban size={16} />
-                    </button>
-                    <button className="icon-btn-action edit" onClick={() => handleEdit(pkg)} title="Edit">
-                      <Edit2 size={16} />
-                    </button>
-                    <button className="icon-btn-action delete" onClick={() => handleDelete(pkg.id)} title="Delete">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+      <div className="premium-table-card animate-fade-in">
+        <div className="premium-table-wrapper">
+          <table className="premium-table">
+            <thead>
+              <tr>
+                <th>Package Details</th>
+                <th>Pricing</th>
+                <th>Restrictions</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="5" className="text-center py-20">Loading plans...</td></tr>
+              ) : filteredPackages.map(pkg => (
+                <tr key={pkg.id} className={!pkg.isActive ? 'inactive-row' : ''}>
+                  <td>
+                    <div className="premium-username" style={{ fontSize: '15px' }}>{pkg.name}</div>
+                  </td>
+                  <td>
+                    <div className="flex-col-left">
+                      <div className="text-sm font-semibold" style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ marginRight: '4px', color: 'var(--text-secondary)' }}>₹</span>
+                        <span>{pkg.price}</span>
+                      </div>
+                      <div className="text-xs text-muted" style={{ marginTop: '2px' }}>
+                        {pkg.isOneTime ? 'One-Time' : pkg.duration === -1 ? 'Lifetime' : `${pkg.duration} Days`}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="flex flex-col gap-2">
+                      <div className="view-limits-trigger">
+                        <div className="flex-row-center-gap-8" style={{ color: 'var(--primary)', cursor: 'pointer' }}>
+                          <Shield size={14} />
+                          <span className="text-sm font-semibold">View Limits</span>
+                        </div>
+                        <div className="limits-tooltip glass">
+                          <div className="tooltip-item">
+                            <span>Instances:</span>
+                            <strong>{pkg.instanceLimit === -1 ? 'Unlimited' : pkg.instanceLimit}</strong>
+                          </div>
+                          <div className="tooltip-item">
+                            <span>Messages:</span>
+                            <strong>{pkg.messageLimit === -1 ? 'Unlimited' : pkg.messageLimit.toLocaleString()}</strong>
+                          </div>
+                          <div className="tooltip-item">
+                            <span>Daily Cap:</span>
+                            <strong>{pkg.dailyMessageLimit === -1 ? 'Unlimited' : pkg.dailyMessageLimit}</strong>
+                          </div>
+                          <div className="tooltip-item">
+                            <span>Media:</span>
+                            <strong>{pkg.canSendMedia ? 'YES' : 'NO'}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                      <div className={`premium-role-badge ${pkg.isActive ? 'business-owner' : 'suspended-badge'}`} style={{ height: '24px', padding: '0 10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '600' }}>{pkg.isActive ? 'Active' : 'Disabled'}</span>
+                      </div>
+                      <div className="premium-package-badge" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                        <span>{pkg.isPublic ? '🌐 Public' : '🔒 Private'}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                      <button className="premium-action-btn hover-warning" title="Deactivate">
+                        <Ban size={16} />
+                      </button>
+                      <button className="premium-action-btn hover-success" onClick={() => handleEdit(pkg)} title="Edit">
+                        <Edit2 size={16} />
+                      </button>
+                      <button className="premium-action-btn hover-danger" onClick={() => handleDelete(pkg.id)} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <CustomModal
         isOpen={modalConfig.isOpen}
