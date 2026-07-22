@@ -84,7 +84,7 @@ const SendMessage = () => {
           failed: data.results.failed,
           status: 'done'
         }));
-        
+
         if (data.results.failed === 0) {
           toast.success(`Sent all ${data.results.sent} messages successfully!`, { id: 'bulk-campaign-toast', duration: 5000 });
         } else {
@@ -1292,7 +1292,7 @@ const SendMessage = () => {
         setGroups(fetchedGroups);
         setScheduleGroups(fetchedGroups);
         setCycleGroups(fetchedGroups);
-        
+
         // Reset selections when switching active instance key
         setSelectedGroups([]);
         setScheduleSelectedGroups([]);
@@ -4486,27 +4486,27 @@ const SendMessage = () => {
         <div className="progress-modal-overlay">
           <div className="progress-modal-content glass animate-scale-up" onClick={e => e.stopPropagation()}>
             <h3 className="progress-modal-title">Bulk Message Campaign</h3>
-            
+
             <div className="progress-status-container">
               <div className="progress-circle-wrapper">
                 <svg className="progress-ring" width="120" height="120">
-                  <circle 
-                    className="progress-ring__circle-bg" 
-                    stroke="rgba(255, 255, 255, 0.05)" 
-                    strokeWidth="8" 
-                    fill="transparent" 
-                    r="50" 
-                    cx="60" 
-                    cy="60" 
+                  <circle
+                    className="progress-ring__circle-bg"
+                    stroke="rgba(255, 255, 255, 0.05)"
+                    strokeWidth="8"
+                    fill="transparent"
+                    r="50"
+                    cx="60"
+                    cy="60"
                   />
-                  <circle 
-                    className="progress-ring__circle" 
-                    stroke="var(--primary)" 
-                    strokeWidth="8" 
-                    fill="transparent" 
-                    r="50" 
-                    cx="60" 
-                    cy="60" 
+                  <circle
+                    className="progress-ring__circle"
+                    stroke="var(--primary)"
+                    strokeWidth="8"
+                    fill="transparent"
+                    r="50"
+                    cx="60"
+                    cy="60"
                     strokeDasharray={`${2 * Math.PI * 50}`}
                     strokeDashoffset={`${2 * Math.PI * 50 * (1 - (progressData.sent + progressData.failed) / progressData.total)}`}
                     style={{ transition: 'stroke-dashoffset 0.35s', transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
@@ -4516,7 +4516,7 @@ const SendMessage = () => {
                   {Math.round(((progressData.sent + progressData.failed) / progressData.total) * 100)}%
                 </div>
               </div>
-              
+
               <div className="progress-stats">
                 <div className="progress-stat-item">
                   <span className="label">Total Recipient(s)</span>
@@ -4536,7 +4536,7 @@ const SendMessage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="progress-current-action">
               {progressData.status === 'done' ? (
                 <div className="text-success font-bold flex items-center justify-center gap-2">
@@ -4562,9 +4562,9 @@ const SendMessage = () => {
             </div>
 
             <div className="progress-modal-actions">
-              <button 
-                className="btn-primary" 
-                disabled={progressData.status !== 'done' && progressData.status !== 'error'} 
+              <button
+                className="btn-primary"
+                disabled={progressData.status !== 'done' && progressData.status !== 'error'}
                 onClick={() => setProgressData(null)}
                 style={{ minWidth: '120px' }}
               >

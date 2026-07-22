@@ -264,8 +264,7 @@ const messageController = {
             emitSocket('bulk_progress', {
                 type: 'done',
                 results
-            }) + '\n';
-            res.end();
+            });
 
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

@@ -13,16 +13,16 @@ const VerifyOtpPage = () => {
   const [error, setError] = useState('');
   const inputRefs = useRef([]);
   const lastSubmittedCode = useRef('');
-  
+
   const location = useLocation();
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
-  
+
   const email = location.state?.email || '';
 
   const handleChange = (value, index) => {
     if (value && isNaN(value)) return;
-    
+
     const singleVal = value.slice(-1);
     const newOtp = [...otp];
     newOtp[index] = singleVal;
@@ -111,15 +111,15 @@ const VerifyOtpPage = () => {
   // Framer Motion Variants
   const cardVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
+    visible: {
+      opacity: 1,
+      y: 0,
       scale: 1,
-      transition: { 
-        type: "spring", 
-        stiffness: 260, 
-        damping: 22 
-      } 
+      transition: {
+        type: "spring",
+        stiffness: 260,
+        damping: 22
+      }
     }
   };
 
@@ -136,14 +136,14 @@ const VerifyOtpPage = () => {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 15 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { 
-        type: "spring", 
-        stiffness: 260, 
-        damping: 20 
-      } 
+      transition: {
+        type: "spring",
+        stiffness: 260,
+        damping: 20
+      }
     }
   };
 
@@ -159,21 +159,21 @@ const VerifyOtpPage = () => {
 
   const inputCellVariants = {
     hidden: { opacity: 0, scale: 0.7, y: 10 },
-    visible: { 
-      opacity: 1, 
-      scale: 1, 
+    visible: {
+      opacity: 1,
+      scale: 1,
       y: 0,
-      transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 18 
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 18
       }
     }
   };
 
   return (
     <div className="auth-container">
-      <motion.div 
+      <motion.div
         className="auth-card"
         variants={cardVariants}
         initial="hidden"
@@ -195,7 +195,7 @@ const VerifyOtpPage = () => {
 
           <AnimatePresence mode="wait">
             {error && (
-              <motion.div 
+              <motion.div
                 className="auth-error-msg"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -208,7 +208,7 @@ const VerifyOtpPage = () => {
           </AnimatePresence>
 
           <form onSubmit={handleVerify}>
-            <motion.div 
+            <motion.div
               className="otp-inputs"
               variants={inputContainerVariants}
               animate={error ? { x: [-8, 8, -8, 8, -4, 4, 0] } : { x: 0 }}
@@ -229,24 +229,24 @@ const VerifyOtpPage = () => {
                   required
                   variants={inputCellVariants}
                   animate={data ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-                  whileFocus={{ 
+                  whileFocus={{
                     scale: 1.08,
                     borderColor: "var(--primary)",
                     boxShadow: "0 0 10px rgba(0, 168, 132, 0.25)"
                   }}
-                  transition={{ 
+                  transition={{
                     type: "spring",
                     stiffness: 300,
                     damping: 15,
-                    scale: { duration: 0.15 } 
+                    scale: { duration: 0.15 }
                   }}
                 />
               ))}
             </motion.div>
 
-            <motion.button 
-              type="submit" 
-              className="btn-auth" 
+            <motion.button
+              type="submit"
+              className="btn-auth"
               disabled={loading}
               variants={itemVariants}
               whileHover={{ scale: 1.02 }}
@@ -274,9 +274,9 @@ const VerifyOtpPage = () => {
               Resend Code
             </button>
           </motion.div>
-          
-          <motion.div style={{textAlign: 'center', marginTop: '1rem'}} variants={itemVariants}>
-            <Link to="/register" style={{display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: 'var(--text-muted)'}}>
+
+          <motion.div style={{ textAlign: 'center', marginTop: '1rem' }} variants={itemVariants}>
+            <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <ArrowLeft size={14} /> Back to register
             </Link>
           </motion.div>

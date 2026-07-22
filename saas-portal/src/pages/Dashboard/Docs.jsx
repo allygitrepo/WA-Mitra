@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { 
-  Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft, 
-  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare 
+import {
+  Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft,
+  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare
 } from 'lucide-react';
 import './Docs.css';
 
@@ -905,8 +905,8 @@ const Docs = () => {
                     { num: 3, label: '3. QR Scan & Link', desc: 'Scan QR Code' },
                     { num: 4, label: '4. Send API Message', desc: 'POST /messages/send' }
                   ].map((step) => (
-                    <div 
-                      key={step.num} 
+                    <div
+                      key={step.num}
                       className={`modal-step-tab ${activeStep === step.num ? 'active' : ''}`}
                       onClick={() => { setActiveStep(step.num); setIsPlaying(false); }}
                     >
@@ -1049,16 +1049,16 @@ const Docs = () => {
                     {isPlaying ? <Pause size={14} /> : <Play size={14} />}
                     <span>{isPlaying ? 'Pause' : 'Play'}</span>
                   </button>
-                  <button 
-                    className="text-btn" 
-                    disabled={activeStep === 1} 
+                  <button
+                    className="text-btn"
+                    disabled={activeStep === 1}
                     onClick={() => { setActiveStep(prev => prev - 1); setIsPlaying(false); }}
                   >
                     Previous
                   </button>
-                  <button 
-                    className="text-btn" 
-                    disabled={activeStep === 4} 
+                  <button
+                    className="text-btn"
+                    disabled={activeStep === 4}
                     onClick={() => { setActiveStep(prev => prev + 1); setIsPlaying(false); }}
                   >
                     Next

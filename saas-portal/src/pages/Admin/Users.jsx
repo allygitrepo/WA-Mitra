@@ -341,7 +341,7 @@ const AdminUsers = () => {
                   currentRows.map(user => {
                     return (
                       <React.Fragment key={user.id}>
-                        <tr 
+                        <tr
                           className={expandedUserIds[user.id] ? 'user-expanded-row' : ''}
                         >
                           <td>
@@ -401,16 +401,16 @@ const AdminUsers = () => {
                                   </span>
                                 </div>
                                 {user.status === 'suspended' && user.suspendReason && (
-                                  <div 
-                                    className="user-suspend-reason" 
-                                    style={{ 
-                                      fontSize: '11px', 
-                                      color: '#ef4444', 
-                                      maxWidth: '180px', 
-                                      whiteSpace: 'nowrap', 
-                                      overflow: 'hidden', 
-                                      textOverflow: 'ellipsis' 
-                                    }} 
+                                  <div
+                                    className="user-suspend-reason"
+                                    style={{
+                                      fontSize: '11px',
+                                      color: '#ef4444',
+                                      maxWidth: '180px',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}
                                     title={user.suspendReason}
                                   >
                                     Reason: {user.suspendReason}
@@ -439,8 +439,8 @@ const AdminUsers = () => {
                                     <Calendar size={16} />
                                   </button>
 
-                                  <button 
-                                    className="premium-action-btn hover-danger" 
+                                  <button
+                                    className="premium-action-btn hover-danger"
                                     title="Delete User"
                                     onClick={() => setDeletingUser(user)}
                                   >
@@ -572,8 +572,8 @@ const AdminUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.filter(u => u.role === 'user' && u.isVerified).filter(u => 
-                  u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+                {users.filter(u => u.role === 'user' && u.isVerified).filter(u =>
+                  u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) ||
                   u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
                 ).length === 0 ? (
                   <tr>
@@ -584,8 +584,8 @@ const AdminUsers = () => {
                 ) : (
                   users
                     .filter(u => u.role === 'user' && u.isVerified)
-                    .filter(u => 
-                      u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+                    .filter(u =>
+                      u.username.toLowerCase().includes((searchQuery || '').toLowerCase()) ||
                       u.email.toLowerCase().includes((searchQuery || '').toLowerCase())
                     )
                     .map(u => {
@@ -593,7 +593,7 @@ const AdminUsers = () => {
                       const connectedInstances = uInstances.filter(inst => inst.status === 'connected');
                       const uMessages = uInstances.reduce((sum, inst) => sum + (inst.messageCount || 0), 0) || 0;
                       const isExpanded = !!expandedUserIds[u.id];
-                      
+
                       return (
                         <React.Fragment key={u.id}>
                           <tr className={isExpanded ? 'user-expanded-row' : ''}>
@@ -620,7 +620,7 @@ const AdminUsers = () => {
                             </td>
                             <td>
                               <div className="text-sm font-semibold flex-center-gap-6">
-                                <Smartphone size={14} className="text-primary" />
+                                <Smartphone size={14} classNsame="text-primary" />
                                 <span>{connectedInstances.length} Instance{connectedInstances.length !== 1 ? 's' : ''}</span>
                               </div>
                             </td>
@@ -634,10 +634,10 @@ const AdminUsers = () => {
                               {u.package ? (
                                 <div className="flex-col-gap-2">
                                   <div className="progress-bar-bg" style={{ margin: '0' }}>
-                                    <div 
-                                      className="progress-bar-fill" 
-                                      style={{ 
-                                        width: u.package.messageLimit === -1 ? '100%' : `${Math.min(100, (uMessages / u.package.messageLimit) * 100)}%` 
+                                    <div
+                                      className="progress-bar-fill"
+                                      style={{
+                                        width: u.package.messageLimit === -1 ? '100%' : `${Math.min(100, (uMessages / u.package.messageLimit) * 100)}%`
                                       }}
                                     ></div>
                                   </div>
@@ -656,9 +656,9 @@ const AdminUsers = () => {
                                 title={isExpanded ? "Collapse Details" : "Expand Details"}
                                 onClick={() => setExpandedUserIds(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
                               >
-                                <ChevronDown 
-                                  size={16} 
-                                  style={{ 
+                                <ChevronDown
+                                  size={16}
+                                  style={{
                                     transform: isExpanded ? 'rotate(180deg)' : 'none',
                                     transition: 'transform 0.2s ease'
                                   }}
@@ -885,15 +885,15 @@ const SuspendUserModal = ({ user, onClose, handleStatusChange }) => {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                style={{ 
-                  width: '100%', 
-                  padding: '12px', 
-                  background: 'var(--surface-hover)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '8px', 
-                  color: 'var(--text-main)', 
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'var(--surface-hover)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--text-main)',
                   resize: 'vertical',
-                  fontSize: '0.9rem' 
+                  fontSize: '0.9rem'
                 }}
                 required
               />
@@ -940,10 +940,10 @@ const DeleteUserModal = ({ user, onClose, handleDeleteUser }) => {
 
         <div className="modal-footer mt-8">
           <button className="premium-btn-outline" onClick={onClose}>Cancel</button>
-          <button 
-            className="premium-btn-primary" 
+          <button
+            className="premium-btn-primary"
             style={{ background: '#ef4444', borderColor: '#ef4444' }}
-            onClick={handleConfirm} 
+            onClick={handleConfirm}
             disabled={isDeleting}
           >
             {isDeleting ? 'Deleting...' : 'Delete Permanently'}

@@ -31,13 +31,6 @@ const AutoReplies = () => {
   const instanceDropdownRef = useRef(null);
   const [editingRule, setEditingRule] = useState(null);
   const modalRef = useRef(null);
-  const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-    onCancel: () => {}
-  });
 
   // Click outside for instance filter dropdown
   useEffect(() => {
@@ -133,11 +126,7 @@ const AutoReplies = () => {
           const rulesRes = await API.get('/whatsapp/auto-reply/rules', {
             params: { instanceKey: inst.instanceKey }
           });
-          const rawRules = rulesRes.data.rules || [];
-          return rawRules.map((r, idx) => ({
-            ...r,
-            _clientKey: r.id || `${inst.instanceKey}_${r.keyword}_${idx}`
-          }));
+          return rulesRes.data.rules || [];
         } catch {
           return [];
         }
@@ -156,7 +145,7 @@ const AutoReplies = () => {
       const res = await instanceService.getInstances();
       const fetchedInstances = res.data.instances || [];
       setInstances(fetchedInstances);
-      
+
       // Auto select first instance if available
       if (fetchedInstances.length > 0) {
         setSelectedInstance(fetchedInstances[0].instanceKey);
@@ -243,7 +232,7 @@ const AutoReplies = () => {
       const loadingToast = toast.loading("Updating auto-reply rule...");
       try {
         await syncWithBackend(selectedInstance, updatedRules.filter(r => r.instanceKey === selectedInstance));
-        
+
         if (editingRule.instanceKey !== selectedInstance) {
           await syncWithBackend(editingRule.instanceKey, updatedRules.filter(r => r.instanceKey === editingRule.instanceKey));
         }
@@ -275,7 +264,7 @@ const AutoReplies = () => {
       const loadingToast = toast.loading("Adding auto-reply rule...");
       try {
         await syncWithBackend(selectedInstance, updatedInstRules);
-        
+
         const dbRules = await fetchAllInstanceRules(instances);
         setRules(dbRules);
 
@@ -370,8 +359,8 @@ const AutoReplies = () => {
           <p className="page-subtitle">Configure auto-responses to incoming WhatsApp messages based on keyword matches.</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
-          <div className="custom-dropdown-container" ref={instanceDropdownRef}>
-            <button 
+          <div className="custom-dropdown-container" ref={instanceDropdownRef} style={{ position: 'relative' }}>
+            <button
               type="button"
               className="custom-dropdown-trigger"
               onClick={() => setShowInstanceDropdown(!showInstanceDropdown)}
@@ -380,7 +369,24 @@ const AutoReplies = () => {
               <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
             </button>
             {showInstanceDropdown && (
-              <div className="custom-dropdown-menu animate-slide-down">
+              <div
+                className="premium-dropdown-list animate-slide-down"
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  right: 0,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 100,
+                  minWidth: '180px',
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -409,8 +415,8 @@ const AutoReplies = () => {
               </div>
             )}
           </div>
-          <button 
-            className="premium-btn-primary" 
+          <button
+            className="premium-btn-primary"
             onClick={handleOpenAddModal}
             style={{ height: '42px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
           >
@@ -455,9 +461,9 @@ const AutoReplies = () => {
               <div className="card-top">
                 <span className="instance-badge">{getInstanceName(rule.instanceKey)}</span>
                 <div className="card-actions">
-                  <button 
-                    className="icon-btn-sm" 
-                    onClick={() => handleToggleRule(rule)}
+                  <button
+                    className="icon-btn-sm"
+                    onClick={() => handleToggleRule(rule.id, rule.instanceKey)}
                     title={rule.isActive ? "Deactivate" : "Activate"}
                   >
                     {rule.isActive ? (
@@ -466,16 +472,16 @@ const AutoReplies = () => {
                       <ToggleLeft size={24} style={{ color: 'var(--text-muted)' }} />
                     )}
                   </button>
-                  <button 
-                    className="icon-btn-sm" 
+                  <button
+                    className="icon-btn-sm"
                     onClick={() => handleOpenEditModal(rule)}
                     title="Edit Rule"
                   >
                     <Edit2 size={16} style={{ color: 'var(--text-muted)' }} />
                   </button>
-                  <button 
-                    className="icon-btn-sm" 
-                    onClick={() => handleDeleteRule(rule)}
+                  <button
+                    className="icon-btn-sm"
+                    onClick={() => handleDeleteRule(rule.id, rule.instanceKey)}
                     title="Delete Rule"
                   >
                     <Trash2 size={18} className="text-error" />
@@ -506,8 +512,8 @@ const AutoReplies = () => {
 
       {/* Add Rule Modal */}
       {showAddModal && createPortal(
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onClick={handleOverlayClick}
           role="dialog"
           aria-modal="true"
@@ -554,10 +560,10 @@ const AutoReplies = () => {
                   <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748B', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Match Type</label>
                   <div className="radio-group" style={{ display: 'flex', gap: '20px', marginTop: '4px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-main)', fontSize: '14px', fontWeight: '500' }}>
-                      <input 
-                        type="radio" 
-                        name="matchType" 
-                        value="exact" 
+                      <input
+                        type="radio"
+                        name="matchType"
+                        value="exact"
                         checked={matchType === 'exact'}
                         onChange={() => setMatchType('exact')}
                         style={{ width: '18px', height: '18px', accentColor: '#10B981', cursor: 'pointer' }}
@@ -565,10 +571,10 @@ const AutoReplies = () => {
                       Exact Match
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-main)', fontSize: '14px', fontWeight: '500' }}>
-                      <input 
-                        type="radio" 
-                        name="matchType" 
-                        value="contains" 
+                      <input
+                        type="radio"
+                        name="matchType"
+                        value="contains"
                         checked={matchType === 'contains'}
                         onChange={() => setMatchType('contains')}
                         style={{ width: '18px', height: '18px', accentColor: '#10B981', cursor: 'pointer' }}

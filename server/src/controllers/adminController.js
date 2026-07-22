@@ -108,9 +108,9 @@ const adminController = {
       }
       await user.save();
 
-      res.status(200).json({ 
-        message: `User status updated to ${status}`, 
-        suspendReason: user.suspendReason 
+      res.status(200).json({
+        message: `User status updated to ${status}`,
+        suspendReason: user.suspendReason
       });
     } catch (error) {
       console.error("Update User Status Error:", error);

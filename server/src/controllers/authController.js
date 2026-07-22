@@ -341,7 +341,7 @@ const authController = {
         attributes: { exclude: ['password', 'otp', 'otpExpiry'] },
         include: [{ model: Package, as: 'package' }]
       });
-      
+
       const clientTimezone = req.headers['x-user-timezone'];
       if (clientTimezone && user && user.timezone !== clientTimezone) {
         user.timezone = clientTimezone;

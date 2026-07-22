@@ -34,8 +34,8 @@ const Instances = () => {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
-    onCancel: () => {}
+    onConfirm: () => { },
+    onCancel: () => { }
   });
   const toastedErrorsRef = useRef({});
 
@@ -165,9 +165,9 @@ const Instances = () => {
     };
   }, [instances.length]);
 
-  const isLimitReached = currentPackage && 
-                         currentPackage.instanceLimit !== -1 && 
-                         instances.length >= currentPackage.instanceLimit;
+  const isLimitReached = currentPackage &&
+    currentPackage.instanceLimit !== -1 &&
+    instances.length >= currentPackage.instanceLimit;
 
   const handleCreate = async (e) => {
     if (e) e.preventDefault();
@@ -176,10 +176,10 @@ const Instances = () => {
     try {
       const res = await instanceService.createInstance({ name: newName });
       const newKey = res.data.instance.instanceKey;
-      
+
       // Immediately start the session so the QR code appears
       await instanceService.initiateSession(newKey);
-      
+
       fetchInstances();
       setStatusFilter('All Status'); // Ensure the new instance is visible
       setNewName('');
@@ -251,8 +251,8 @@ const Instances = () => {
           <p className="page-subtitle">Manage your linked WhatsApp accounts and their status.</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
-          <div className="custom-dropdown-container" ref={dropdownRef}>
-            <button 
+          <div className="custom-dropdown-container" ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
               type="button"
               className="custom-dropdown-trigger"
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
@@ -261,7 +261,24 @@ const Instances = () => {
               <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
             </button>
             {showStatusDropdown && (
-              <div className="custom-dropdown-menu animate-slide-down">
+              <div
+                className="premium-dropdown-list animate-slide-down"
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  right: 0,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 100,
+                  minWidth: '150px',
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
                 {['All Status', 'Connected', 'Disconnected'].map((status) => (
                   <button
                     key={status}
@@ -279,8 +296,8 @@ const Instances = () => {
               </div>
             )}
           </div>
-          <button 
-            className={`premium-btn-primary ${isLimitReached ? 'disabled' : ''}`} 
+          <button
+            className={`premium-btn-primary ${isLimitReached ? 'disabled' : ''}`}
             onClick={() => !isLimitReached && setShowAddModal(true)}
             disabled={isLimitReached}
             title={isLimitReached ? "Instance limit reached for your current plan" : ""}
@@ -325,7 +342,7 @@ const Instances = () => {
 
             <div className="card-middle">
               <h3 className="inst-name" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '12px' }}>{inst.name}</h3>
-              
+
               {inst.liveStatus === 'connected' ? (
                 <div className="profile-section animate-fade-in">
                   <div className={`profile-avatar ${inst.profilePic ? 'clickable' : ''}`} onClick={() => inst.profilePic && setPreviewImage(inst.profilePic)}>
@@ -361,8 +378,8 @@ const Instances = () => {
                 <div className="qr-box expired-qr animate-fade-in" style={{ border: '1px dashed var(--border)', padding: '24px 16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '180px', background: 'var(--surface-hover)' }}>
                   <AlertCircle size={32} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 12px 0', textTransform: 'none', fontWeight: '500' }}>QR Code Expired</p>
-                  <button 
-                    className="premium-btn-primary" 
+                  <button
+                    className="premium-btn-primary"
                     onClick={() => handleInitiate(inst.instanceKey)}
                     style={{ fontSize: '12px', padding: '6px 14px', height: 'auto', borderRadius: '8px', cursor: 'pointer' }}
                   >
