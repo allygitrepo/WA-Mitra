@@ -13,6 +13,7 @@ import {
 import { instanceService } from '../../api/services';
 import API from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
+import CustomModal from '../../components/CustomModal';
 import './AutoReplies.css';
 
 const AutoReplies = () => {
@@ -29,6 +30,13 @@ const AutoReplies = () => {
   const instanceDropdownRef = useRef(null);
   const [editingRule, setEditingRule] = useState(null);
   const modalRef = useRef(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   // Click outside for instance filter dropdown
   useEffect(() => {
@@ -213,6 +221,10 @@ const AutoReplies = () => {
     }
 
     if (editingRule) {
+      if (!editingRule.id) {
+        toast.error("Invalid rule ID.");
+        return;
+      }
       // EDIT MODE
       const updatedRules = rules.map(r => {
         if (r.id === editingRule.id) {
@@ -276,7 +288,26 @@ const AutoReplies = () => {
     }
   };
 
-  const handleDeleteRule = async (ruleId, instanceKey) => {
+  const handleDeleteRule = (ruleId, instanceKey) => {
+    if (!ruleId) {
+      toast.error("Cannot delete rule: Rule ID is missing.");
+      return;
+    }
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Auto-Reply Rule?',
+      message: 'Are you sure you want to delete this auto-reply rule? This action cannot be undone.',
+      onConfirm: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        executeDeleteRule(ruleId, instanceKey);
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const executeDeleteRule = async (ruleId, instanceKey) => {
     const loadingToast = toast.loading("Deleting rule...");
     try {
       const instRules = rules.filter(r => r.instanceKey === instanceKey && r.id !== ruleId);
@@ -291,6 +322,10 @@ const AutoReplies = () => {
   };
 
   const handleToggleRule = async (ruleId, instanceKey) => {
+    if (!ruleId) {
+      toast.error("Cannot update rule status: Rule ID is missing.");
+      return;
+    }
     const loadingToast = toast.loading("Updating rule status...");
     try {
       const instRules = rules.filter(r => r.instanceKey === instanceKey).map(r => {
@@ -597,6 +632,16 @@ const AutoReplies = () => {
         </div>,
         document.body
       )}
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+        okText="Delete Rule"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

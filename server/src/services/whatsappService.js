@@ -110,10 +110,9 @@ async function syncInstanceRules(instanceKey, rules) {
                 isActive: rule.isActive !== undefined ? rule.isActive : true
             }));
             await AutoReplyRule.bulkCreate(rulesToCreate);
-            rulesCache.set(instanceKey, rulesToCreate);
-        } else {
-            rulesCache.set(instanceKey, []);
         }
+        const updatedRules = await AutoReplyRule.findAll({ where: { instanceKey } });
+        rulesCache.set(instanceKey, updatedRules);
     } catch (e) {
         console.error("Error syncing instance rules to DB:", e);
     }
