@@ -4,6 +4,7 @@ const fs = require('fs');
 const WhatsAppInstance = require('../models/instanceModel');
 const MessageLog = require('../models/messageLogModel');
 const { Package } = require('../models/associations');
+const { getIO } = require('../config/socket');
 
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
     try {
@@ -91,7 +92,13 @@ const messageController = {
             res.setHeader('Cache-Control', 'no-cache');
             res.setHeader('Connection', 'keep-alive');
 
-            const QUEUE_INTERVAL_MS = 1000;
+            // Sockets helper
+            const io = getIO();
+            const emitSocket = (eventName, payload) => {
+                io.to(instanceKey).emit(eventName, payload);
+                io.emit(eventName, { ...payload, instanceKey }); // fallback broadcast for simple filtering
+            };
+
             const results = {
                 total: parsedMessages.length,
                 sent: 0,
@@ -99,7 +106,17 @@ const messageController = {
                 errors: []
             };
 
+            emitSocket('bulk_progress', {
+                type: 'start',
+                total: parsedMessages.length,
+                sent: 0,
+                failed: 0
+            });
+
             let index = 0;
+            let batchCounter = 0;
+            let nextBatchThreshold = Math.floor(Math.random() * 6) + 15; // 15 to 20
+
             for (const msg of parsedMessages) {
                 const { number, message } = msg;
                 let status = 'failed';
@@ -135,8 +152,35 @@ const messageController = {
                                 error: errorMsg
                             }) + '\n');
 
-                            if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
-                                await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
+                            emitSocket('bulk_progress', {
+                                type: 'progress',
+                                index,
+                                total: results.total,
+                                sent: results.sent,
+                                failed: results.failed,
+                                currentNumber: number,
+                                status: 'failed',
+                                error: errorMsg
+                            });
+
+                            // Delay calculation inside check-failed path
+                            batchCounter++;
+                            if (index < parsedMessages.length) {
+                                if (batchCounter >= nextBatchThreshold) {
+                                    emitSocket('bulk_progress', {
+                                        type: 'pause',
+                                        message: `Taking a 15-second pause to prevent rate limiting...`,
+                                        nextBatchSize: nextBatchThreshold,
+                                        sent: results.sent,
+                                        failed: results.failed
+                                    });
+                                    await new Promise(resolve => setTimeout(resolve, 15000));
+                                    batchCounter = 0;
+                                    nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
+                                } else {
+                                    const delay = Math.floor(Math.random() * 7000) + 1000;
+                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                }
                             }
                             continue;
                         }
@@ -179,8 +223,35 @@ const messageController = {
                     error: errorMsg
                 }) + '\n');
 
-                if (parsedMessages.indexOf(msg) < parsedMessages.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, QUEUE_INTERVAL_MS));
+                emitSocket('bulk_progress', {
+                    type: 'progress',
+                    index,
+                    total: results.total,
+                    sent: results.sent,
+                    failed: results.failed,
+                    currentNumber: number,
+                    status,
+                    error: errorMsg
+                });
+
+                // Delay calculation inside standard path
+                batchCounter++;
+                if (index < parsedMessages.length) {
+                    if (batchCounter >= nextBatchThreshold) {
+                        emitSocket('bulk_progress', {
+                            type: 'pause',
+                            message: `Taking a 15-second pause to prevent rate limiting...`,
+                            nextBatchSize: nextBatchThreshold,
+                            sent: results.sent,
+                            failed: results.failed
+                        });
+                        await new Promise(resolve => setTimeout(resolve, 15000));
+                        batchCounter = 0;
+                        nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
+                    } else {
+                        const delay = Math.floor(Math.random() * 7000) + 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
                 }
             }
 
@@ -188,6 +259,12 @@ const messageController = {
                 type: 'done',
                 results
             }) + '\n');
+            res.end();
+
+            emitSocket('bulk_progress', {
+                type: 'done',
+                results
+            }) + '\n';
             res.end();
 
         } catch (error) {

@@ -6,7 +6,6 @@ import {
   Box,
   Settings,
   LogOut,
-  Bell,
   Search,
   Menu,
   ChevronRight,
@@ -19,10 +18,12 @@ import useThemeStore from '../../store/useThemeStore';
 import '../Dashboard/Dashboard.css';
 import './Admin.css';
 import '../Dashboard/Overview.css'; // Reuse common layout styles
+import CustomModal from '../../components/CustomModal';
 
 const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const { theme } = useThemeStore();
   const location = useLocation();
@@ -41,13 +42,22 @@ const AdminLayout = () => {
   }, []);
 
   React.useEffect(() => {
+    let active = true;
     if (window.innerWidth <= 1024) {
-      setIsSidebarOpen(false);
+      setTimeout(() => {
+        if (active) {
+          setIsSidebarOpen(false);
+        }
+      }, 0);
     }
+    return () => {
+      active = false;
+    };
   }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
+    setIsLogoutModalOpen(false);
     navigate('/login');
   };
 
@@ -93,7 +103,7 @@ const AdminLayout = () => {
             </Link>
           ))}
 
-          <button onClick={handleLogout} className="nav-item text-error mt-auto">
+          <button onClick={() => setIsLogoutModalOpen(true)} className="nav-item text-error mt-auto">
             <LogOut size={20} />
             <span>Logout</span>
           </button>
@@ -134,6 +144,16 @@ const AdminLayout = () => {
           <Outlet context={{ searchQuery }} />
         </div>
       </main>
+      <CustomModal
+        isOpen={isLogoutModalOpen}
+        type="confirm"
+        title="Logout Confirmation"
+        message="Are you sure you want to log out of your session?"
+        okText="Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        onCancel={() => setIsLogoutModalOpen(false)}
+      />
     </div>
   );
 };

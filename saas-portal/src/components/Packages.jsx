@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Zap, Smartphone, MessageSquare, Shield, Layers, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, Zap, Smartphone, Layers, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import useAuthStore from '../store/useAuthStore';
@@ -13,16 +13,6 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
   const [processingId, setProcessingId] = useState(null);
   const { user, updateUser } = useAuthStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await fetchPackages();
-      if (user) await fetchAvailability();
-      setLoading(false);
-    };
-    loadData();
-  }, [user]);
 
   const fetchPackages = async () => {
     try {
@@ -41,6 +31,16 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
       console.error("Fetch Availability Error:", err);
     }
   };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await fetchPackages();
+      if (user) await fetchAvailability();
+      setLoading(false);
+    };
+    loadData();
+  }, [user]);
 
   const handleActivate = async (pkg) => {
     if (!user) {
@@ -80,7 +80,7 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
             updateUser({ packageId: verifyRes.data.packageId });
             toast.success("Payment successful! Your package is now active.", { id: verificationToast });
             navigate('/dashboard');
-          } catch (err) {
+          } catch {
             toast.error("Payment verification failed. Please contact support.", { id: verificationToast });
           }
         },
@@ -191,6 +191,14 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="plan-support-card-container">
+          <div className="plan-support-card-modern">
+            <h3>Need a custom plan?</h3>
+            <p>If our standard plans don't fit your needs, contact our sales team for a tailored solution.</p>
+            <button type="button" className="premium-btn-outline" onClick={() => window.open('mailto:support@wa-mitra.com')}>Contact Sales</button>
+          </div>
         </div>
       </div>
     </section>

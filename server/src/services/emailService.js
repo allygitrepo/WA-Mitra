@@ -20,7 +20,6 @@ const emailService = {
         subject: template.subject,
         html: template.html,
       });
-      console.log("Email sent: %s", info.messageId);
       return true;
     } catch (error) {
       console.error("Error sending email:", error);

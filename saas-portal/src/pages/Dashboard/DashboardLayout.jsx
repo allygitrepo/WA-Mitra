@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Smartphone,
   Settings,
   LogOut,
-  Bell,
   Search,
-  User,
   ChevronRight,
   Menu,
   Send,
@@ -34,9 +32,19 @@ const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isMessagingExpanded, setIsMessagingExpanded] = useState(false);
+
+  // Sync messaging expanded state with route path
+  useEffect(() => {
+    if (location.pathname.startsWith('/dashboard/messaging')) {
+      setIsMessagingExpanded(true);
+    } else {
+      setIsMessagingExpanded(false);
+    }
+  }, [location.pathname]);
 
   // Handle responsive sidebar on resize
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 1024) {
         setIsSidebarOpen(false);
@@ -48,26 +56,33 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   // Close sidebar on mobile after navigation
-  React.useEffect(() => {
-    if (window.innerWidth <= 1024) {
-      setIsSidebarOpen(false);
-    }
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active && window.innerWidth <= 1024) {
+        setIsSidebarOpen(false);
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
   }, [location.pathname]);
 
-  // Sync profile and timezone on dashboard mount
-  React.useEffect(() => {
-    const syncProfileTimezone = async () => {
+  // Fetch latest user profile on mount to sync subscription details
+  useEffect(() => {
+    const fetchProfile = async () => {
       try {
-        const res = await authService.getProfile();
-        if (res.data?.user) {
-          useAuthStore.getState().updateUser(res.data.user);
+        const profileRes = await authService.getProfile();
+        if (profileRes.data.user) {
+          useAuthStore.getState().updateUser(profileRes.data.user);
         }
       } catch (err) {
-        console.error('Failed to sync profile/timezone:', err);
+        console.error("Failed to load user profile:", err);
       }
     };
-    syncProfileTimezone();
+    fetchProfile();
   }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -102,7 +117,7 @@ const DashboardLayout = () => {
             <h2>Account Suspended</h2>
             <p>Your access to WA-Mitra has been temporarily suspended by the administrator.</p>
             <div className="suspension-meta">
-              <span>Reason: Policy violation or pending payment</span>
+              <span>Reason: {user?.suspendReason || 'Policy violation or pending payment'}</span>
             </div>
             <button className="btn-primary mt-6" onClick={handleLogout}>
               <LogOut size={18} /> Logout
@@ -134,11 +149,19 @@ const DashboardLayout = () => {
               const activeType = isMessagingActive ? (searchParams.get('type') || 'contact') : '';
 
               return (
-                <React.Fragment key={item.path}>
+                <Fragment key={item.path}>
                   <Link
                     to="/dashboard/messaging?type=contact"
                     className={`nav-item ${isMessagingActive ? 'active' : ''}`}
                     style={{ justifyContent: 'space-between' }}
+                    onClick={(e) => {
+                      if (isMessagingActive) {
+                        e.preventDefault();
+                        setIsMessagingExpanded(!isMessagingExpanded);
+                      } else {
+                        setIsMessagingExpanded(true);
+                      }
+                    }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {item.icon}
@@ -147,13 +170,13 @@ const DashboardLayout = () => {
                     <ChevronRight
                       size={16}
                       style={{
-                        transform: isMessagingActive ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transform: isMessagingExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s',
                         marginLeft: 'auto'
                       }}
                     />
                   </Link>
-                  {isMessagingActive && (
+                  {isMessagingExpanded && (
                     <div className="sidebar-submenu">
                       <Link
                         to="/dashboard/messaging?type=contact"
@@ -187,7 +210,7 @@ const DashboardLayout = () => {
                       </Link>
                     </div>
                   )}
-                </React.Fragment>
+                </Fragment>
               );
             }
             return (

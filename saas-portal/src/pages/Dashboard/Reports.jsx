@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, Calendar, Smartphone, MessageSquare, Download, Filter, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Calendar, Smartphone, Download, AlertCircle } from 'lucide-react';
 import { messageService } from '../../api/services';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,11 +14,7 @@ const Reports = () => {
   const [toDate, setToDate] = useState('');
   const [expandedInstance, setExpandedInstance] = useState(null); // { date, instanceId }
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       const [repRes, logsRes] = await Promise.all([
         messageService.getReports(),
@@ -31,7 +27,19 @@ const Reports = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        fetchReports();
+      }
+    }, 0);
+    return () => {
+      active = false;
+    };
+  }, [fetchReports]);
 
   // Filtered reports based on dates
   const filteredReports = reports.filter(item => {
