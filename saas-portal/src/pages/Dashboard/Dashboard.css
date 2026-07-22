@@ -433,13 +433,13 @@
 
 /* Subscription Plans Page Wrapper Grid Alignment */
 .user-plans-wrapper {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  padding: 40px 24px;
+  gap: 24px;
+  padding: 24px;
   box-sizing: border-box;
 }
 
@@ -463,4 +463,89 @@
   line-height: 1.6;
   margin: 0;
   max-width: 600px;
+}
+
+/* Universal Custom Dropdown Styling for Light and Dark Modes */
+.custom-dropdown-container {
+  position: relative;
+}
+
+.custom-dropdown-trigger {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 140px;
+  justify-content: space-between;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  color: var(--text-main, #0f172a);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.custom-dropdown-trigger:hover {
+  border-color: #10B981;
+  box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.15);
+}
+
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.08) !important;
+  z-index: 1000 !important;
+  min-width: 170px;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-theme='dark'] .custom-dropdown-menu {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme='dark'] .custom-dropdown-trigger {
+  background: #18181b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.custom-dropdown-item {
+  background: transparent;
+  color: var(--text-main, #334155);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 150ms ease;
+  width: 100%;
+}
+
+.custom-dropdown-item:hover {
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: #10B981 !important;
+}
+
+.custom-dropdown-item.active {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10B981 !important;
+  font-weight: 700 !important;
 }

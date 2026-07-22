@@ -176,104 +176,162 @@
 /* Subscription Page Styles */
 .current-plan-card {
   padding: 32px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, rgba(0, 168, 132, 0.05) 0%, rgba(0, 168, 132, 0.1) 100%);
-  border: 1px solid rgba(0, 168, 132, 0.2);
+  border-radius: 20px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.04);
 }
 
 .plan-badge {
   position: absolute;
   top: 24px;
   right: 24px;
-  background: var(--primary);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 800;
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: #ffffff;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .current-plan-card h2 {
   font-size: 2rem;
   font-weight: 800;
-  margin-bottom: 8px;
+  color: var(--text-main);
+  margin-bottom: 6px;
 }
 
 .plan-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 40px;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: var(--radius-lg);
+  gap: 20px;
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: var(--surface-hover, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 16px;
 }
 
 .plan-stat {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+}
+
+.stat-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .plan-stat .label {
   display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748B);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
 }
 
 .plan-stat .value {
   display: block;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--text-main);
 }
 
 .usage-progress-bars {
-  margin-top: 48px;
+  margin-top: 32px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .usage-item {
   width: 100%;
 }
 
-.usage-item .flex {
+.usage-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-.usage-item span {
-  font-size: 0.95rem;
-  font-weight: 500;
+.usage-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.usage-count {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .progress-bar-bg {
   height: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--border, rgba(0, 0, 0, 0.08));
   border-radius: 10px;
   overflow: hidden;
+  position: relative;
 }
 
 .progress-bar-fill {
   height: 100%;
-  background: var(--primary);
+  background: linear-gradient(90deg, #10B981, #059669);
   border-radius: 10px;
-  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 15px var(--primary);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (max-width: 768px) {
   .plan-stats-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
   }
+}
+
+/* Dark Theme Overrides for Settings Subscription */
+[data-theme='dark'] .current-plan-card {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] .current-plan-card h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .plan-stats-grid {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme='dark'] .plan-stat .value {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .usage-label {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .usage-count {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .progress-bar-bg {
+  background: rgba(255, 255, 255, 0.1) !important;
 }

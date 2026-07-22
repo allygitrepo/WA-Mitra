@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, Zap, Smartphone, Layers, Loader2 } from 'lucide-react';
+import { Check, Zap, Smartphone, Layers, Loader2, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import useAuthStore from '../store/useAuthStore';
@@ -130,74 +130,98 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
         )}
 
         <div className={`packages-grid ${getGridClass()}`}>
-          {packages.map((pkg, index) => (
-            <div key={pkg.id} className={`package-card glass animate-fade-in delay-${index} ${user?.packageId === pkg.id ? 'active-pkg' : ''}`}>
-              {user?.packageId === pkg.id && <div className="active-badge">Active Plan</div>}
-              <div className="package-header">
-                <div className="pkg-icon">
-                  {pkg.instanceLimit > 10 ? <Layers size={24} /> : pkg.instanceLimit > 1 ? <Zap size={24} /> : <Smartphone size={24} />}
-                </div>
-                <h3 className="package-name">{pkg.name}</h3>
-                <div className="package-price">
-                  <span className="currency">₹</span>
-                  <span className="amount">{pkg.price}</span>
-                  <span className="period">{pkg.duration === -1 ? '/ Lifetime' : `/ ${pkg.duration} Days`}</span>
-                </div>
-              </div>
+          {packages.map((pkg, index) => {
+            const isActive = user?.packageId === pkg.id;
+            const isAlreadyPurchased = pkg.isOneTime && purchasedIds.includes(pkg.id);
+            const numPrice = Number(pkg.price) || 0;
+            const formattedPrice = numPrice === 0 ? '0' : numPrice.toLocaleString('en-IN');
 
-              <div className="package-features">
-                <div className="feature-item">
-                  <Check size={18} className="text-success" />
-                  <span>{pkg.instanceLimit === -1 ? 'Unlimited' : pkg.instanceLimit} WhatsApp Instances</span>
+            return (
+              <div key={pkg.id} className={`package-card glass animate-fade-in delay-${index} ${isActive ? 'active-pkg' : ''}`}>
+                {isActive && <div className="active-badge">Active Plan</div>}
+                <div className="package-header">
+                  <div className="pkg-icon">
+                    {pkg.instanceLimit > 10 ? <Layers size={24} /> : pkg.instanceLimit > 1 ? <Zap size={24} /> : <Smartphone size={24} />}
+                  </div>
+                  <h3 className="package-name">{pkg.name}</h3>
+                  <div className="package-price">
+                    <span className="currency">₹</span>
+                    <span className="amount">{formattedPrice}</span>
+                    <span className="period">{pkg.duration === -1 ? '/ Lifetime' : `/ ${pkg.duration} Days`}</span>
+                  </div>
                 </div>
-                <div className="feature-item">
-                  <Check size={18} className="text-success" />
-                  <span>{pkg.messageLimit === -1 ? 'Unlimited' : pkg.messageLimit.toLocaleString()} Total Messages</span>
-                </div>
-                <div className="feature-item">
-                  <Check size={18} className="text-success" />
-                  <span>{pkg.dailyMessageLimit === -1 ? 'Unlimited' : pkg.dailyMessageLimit} Daily Messages</span>
-                </div>
-                <div className="feature-item">
-                  {pkg.canSendMedia ? (
-                    <Check size={18} className="text-success" />
-                  ) : (
-                    <span className="no-check">×</span>
-                  )}
-                  <span className={!pkg.canSendMedia ? 'text-muted' : ''}>Media Files (Images, PDF)</span>
-                </div>
-                <div className="feature-item">
-                  <Check size={18} className="text-success" />
-                  <span>API Access & Webhooks</span>
-                </div>
-              </div>
 
-              {showButtons && (
-                <button
-                  className={`pkg-btn ${index === 1 ? 'btn-primary' : 'btn-outline'} ${processingId === pkg.id ? 'loading' : ''}`}
-                  onClick={() => handleActivate(pkg)}
-                  disabled={processingId === pkg.id || user?.packageId === pkg.id || (pkg.isOneTime && purchasedIds.includes(pkg.id))}
-                >
-                  {processingId === pkg.id ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : user?.packageId === pkg.id ? (
-                    'Active'
-                  ) : (pkg.isOneTime && purchasedIds.includes(pkg.id)) ? (
-                    'Already Used'
-                  ) : (
-                    pkg.price === 0 ? 'Activate Free' : 'Get Started'
-                  )}
-                </button>
-              )}
-            </div>
-          ))}
+                <div className="package-features">
+                  <div className="feature-item">
+                    <div className="feature-icon-box">
+                      <Check size={13} />
+                    </div>
+                    <span><strong>{pkg.instanceLimit === -1 ? 'Unlimited' : pkg.instanceLimit}</strong> WhatsApp Instance{pkg.instanceLimit !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className="feature-icon-box">
+                      <Check size={13} />
+                    </div>
+                    <span><strong>{pkg.messageLimit === -1 ? 'Unlimited' : pkg.messageLimit.toLocaleString('en-IN')}</strong> Total Messages</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className="feature-icon-box">
+                      <Check size={13} />
+                    </div>
+                    <span><strong>{pkg.dailyMessageLimit === -1 ? 'Unlimited' : pkg.dailyMessageLimit.toLocaleString('en-IN')}</strong> Daily Messages</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className={`feature-icon-box ${!pkg.canSendMedia ? 'disabled' : ''}`}>
+                      {pkg.canSendMedia ? <Check size={13} /> : <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✕</span>}
+                    </div>
+                    <span className={!pkg.canSendMedia ? 'text-muted' : ''}>Media Files (Images, Documents)</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className="feature-icon-box">
+                      <Check size={13} />
+                    </div>
+                    <span>API Access & Webhooks</span>
+                  </div>
+                </div>
+
+                {showButtons && (
+                  <button
+                    className={`pkg-btn ${isActive ? 'btn-active' : index === 1 ? 'btn-primary' : 'btn-outline'} ${processingId === pkg.id ? 'loading' : ''}`}
+                    onClick={() => handleActivate(pkg)}
+                    disabled={processingId === pkg.id || isActive || isAlreadyPurchased}
+                  >
+                    {processingId === pkg.id ? (
+                      <Loader2 className="animate-spin" size={18} />
+                    ) : isActive ? (
+                      <>
+                        <Check size={16} /> Active Plan
+                      </>
+                    ) : isAlreadyPurchased ? (
+                      'Already Purchased'
+                    ) : (
+                      pkg.price === 0 ? 'Activate Free' : 'Get Started'
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="plan-support-card-container">
           <div className="plan-support-card-modern">
-            <h3>Need a custom plan?</h3>
-            <p>If our standard plans don't fit your needs, contact our sales team for a tailored solution.</p>
-            <button type="button" className="premium-btn-outline" onClick={() => window.open('mailto:support@wa-mitra.com')}>Contact Sales</button>
+            <div>
+              <h3>Need a custom enterprise plan?</h3>
+              <p>If our standard plans don't fit your scale, contact our team for a custom tailored solution.</p>
+            </div>
+            <button 
+              type="button" 
+              className="premium-btn-primary" 
+              onClick={() => window.open(`https://wa.me/919023960106?text=${encodeURIComponent('Hello! I am interested in a custom enterprise plan for WA-Mitra.')}`, '_blank')} 
+              style={{ height: '42px', padding: '0 24px', whiteSpace: 'nowrap', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <MessageSquare size={16} /> Contact Sales
+            </button>
           </div>
         </div>
       </div>

@@ -8,7 +8,8 @@ import {
   Bot,
   ToggleLeft,
   ToggleRight,
-  Edit2
+  Edit2,
+  MessageSquare
 } from 'lucide-react';
 import { instanceService } from '../../api/services';
 import API from '../../api/axiosConfig';
@@ -132,7 +133,11 @@ const AutoReplies = () => {
           const rulesRes = await API.get('/whatsapp/auto-reply/rules', {
             params: { instanceKey: inst.instanceKey }
           });
-          return rulesRes.data.rules || [];
+          const rawRules = rulesRes.data.rules || [];
+          return rawRules.map((r, idx) => ({
+            ...r,
+            _clientKey: r.id || `${inst.instanceKey}_${r.keyword}_${idx}`
+          }));
         } catch {
           return [];
         }
@@ -221,13 +226,9 @@ const AutoReplies = () => {
     }
 
     if (editingRule) {
-      if (!editingRule.id) {
-        toast.error("Invalid rule ID.");
-        return;
-      }
       // EDIT MODE
       const updatedRules = rules.map(r => {
-        if (r.id === editingRule.id) {
+        if (r._clientKey === editingRule._clientKey) {
           return {
             ...r,
             instanceKey: selectedInstance,
@@ -288,18 +289,15 @@ const AutoReplies = () => {
     }
   };
 
-  const handleDeleteRule = (ruleId, instanceKey) => {
-    if (!ruleId) {
-      toast.error("Cannot delete rule: Rule ID is missing.");
-      return;
-    }
+  const handleDeleteRule = (ruleToDelete) => {
+    if (!ruleToDelete) return;
     setModalConfig({
       isOpen: true,
       title: 'Delete Auto-Reply Rule?',
-      message: 'Are you sure you want to delete this auto-reply rule? This action cannot be undone.',
+      message: `Are you sure you want to delete the auto-reply rule for keyword "${ruleToDelete.keyword}"? This action cannot be undone.`,
       onConfirm: () => {
         setModalConfig(prev => ({ ...prev, isOpen: false }));
-        executeDeleteRule(ruleId, instanceKey);
+        executeDeleteRule(ruleToDelete);
       },
       onCancel: () => {
         setModalConfig(prev => ({ ...prev, isOpen: false }));
@@ -307,11 +305,13 @@ const AutoReplies = () => {
     });
   };
 
-  const executeDeleteRule = async (ruleId, instanceKey) => {
+  const executeDeleteRule = async (ruleToDelete) => {
     const loadingToast = toast.loading("Deleting rule...");
     try {
-      const instRules = rules.filter(r => r.instanceKey === instanceKey && r.id !== ruleId);
-      await syncWithBackend(instanceKey, instRules);
+      const instRules = rules.filter(r => 
+        r.instanceKey === ruleToDelete.instanceKey && r._clientKey !== ruleToDelete._clientKey
+      );
+      await syncWithBackend(ruleToDelete.instanceKey, instRules);
 
       const dbRules = await fetchAllInstanceRules(instances);
       setRules(dbRules);
@@ -321,20 +321,18 @@ const AutoReplies = () => {
     }
   };
 
-  const handleToggleRule = async (ruleId, instanceKey) => {
-    if (!ruleId) {
-      toast.error("Cannot update rule status: Rule ID is missing.");
-      return;
-    }
+  const handleToggleRule = async (ruleToToggle) => {
     const loadingToast = toast.loading("Updating rule status...");
     try {
-      const instRules = rules.filter(r => r.instanceKey === instanceKey).map(r => {
-        if (r.id === ruleId) {
-          return { ...r, isActive: !r.isActive };
-        }
-        return r;
-      });
-      await syncWithBackend(instanceKey, instRules);
+      const instRules = rules
+        .filter(r => r.instanceKey === ruleToToggle.instanceKey)
+        .map(r => {
+          if (r._clientKey === ruleToToggle._clientKey) {
+            return { ...r, isActive: !r.isActive };
+          }
+          return r;
+        });
+      await syncWithBackend(ruleToToggle.instanceKey, instRules);
 
       const dbRules = await fetchAllInstanceRules(instances);
       setRules(dbRules);
@@ -363,61 +361,33 @@ const AutoReplies = () => {
     <div className="autoreplies-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Auto Replies</h1>
+          <div className="header-title-group">
+            <h1 className="page-title">Auto Replies</h1>
+            {filteredRules.length > 0 && (
+              <span className="count-badge">{filteredRules.length} Active Rule{filteredRules.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
           <p className="page-subtitle">Configure auto-responses to incoming WhatsApp messages based on keyword matches.</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
-          <div className="custom-dropdown-container" ref={instanceDropdownRef} style={{ position: 'relative' }}>
+          <div className="custom-dropdown-container" ref={instanceDropdownRef}>
             <button 
               type="button"
-              className="premium-select"
+              className="custom-dropdown-trigger"
               onClick={() => setShowInstanceDropdown(!showInstanceDropdown)}
-              style={{ height: '42px', padding: '0 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '150px', justifyContent: 'space-between', background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', cursor: 'pointer' }}
             >
               <span>{filterInstance === 'All Instances' ? 'All Instances' : getInstanceName(filterInstance)}</span>
               <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
             </button>
             {showInstanceDropdown && (
-              <div 
-                className="premium-dropdown-list animate-slide-down" 
-                style={{ 
-                  position: 'absolute', 
-                  top: '48px', 
-                  right: 0, 
-                  background: 'var(--card-bg)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '10px', 
-                  boxShadow: 'var(--shadow-lg)', 
-                  zIndex: 100, 
-                  minWidth: '180px', 
-                  padding: '6px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '4px' 
-                }}
-              >
+              <div className="custom-dropdown-menu animate-slide-down">
                 <button
                   type="button"
                   onClick={() => {
                     setFilterInstance('All Instances');
                     setShowInstanceDropdown(false);
                   }}
-                  className="premium-dropdown-item"
-                  style={{
-                    background: filterInstance === 'All Instances' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                    color: filterInstance === 'All Instances' ? '#10B981' : 'var(--text-main)',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    textAlign: 'left',
-                    fontSize: '13px',
-                    fontWeight: filterInstance === 'All Instances' ? '600' : '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    transition: 'all 150ms ease'
-                  }}
+                  className={`custom-dropdown-item ${filterInstance === 'All Instances' ? 'active' : ''}`}
                 >
                   <span>All Instances</span>
                   {filterInstance === 'All Instances' && <span style={{ color: '#10B981', fontSize: '12px' }}>✓</span>}
@@ -430,22 +400,7 @@ const AutoReplies = () => {
                       setFilterInstance(inst.instanceKey);
                       setShowInstanceDropdown(false);
                     }}
-                    className="premium-dropdown-item"
-                    style={{
-                      background: filterInstance === inst.instanceKey ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                      color: filterInstance === inst.instanceKey ? '#10B981' : 'var(--text-main)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: filterInstance === inst.instanceKey ? '600' : '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 150ms ease'
-                    }}
+                    className={`custom-dropdown-item ${filterInstance === inst.instanceKey ? 'active' : ''}`}
                   >
                     <span>{inst.name}</span>
                     {filterInstance === inst.instanceKey && <span style={{ color: '#10B981', fontSize: '12px' }}>✓</span>}
@@ -472,25 +427,37 @@ const AutoReplies = () => {
       )}
 
       {loading ? (
-        <div className="empty-state">Loading auto-reply rules...</div>
+        <div className="autoreplies-empty-container">
+          <div className="empty-icon-wrapper">
+            <div className="empty-icon-inner">
+              <Bot size={36} className="empty-bot-icon" />
+            </div>
+          </div>
+          <h3 className="empty-title">Loading Auto-Reply Rules...</h3>
+          <p className="empty-description">Fetching configured keyword responders from server.</p>
+        </div>
       ) : filteredRules.length === 0 ? (
-        <div className="empty-state">
-          <Bot size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-          <p>No auto-reply rules configured yet.</p>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-            Click "New Rule" above to create your first keyword-based responder.
+        <div className="autoreplies-empty-container animate-fade-in">
+          <div className="empty-icon-wrapper">
+            <div className="empty-icon-inner">
+              <Bot size={36} className="empty-bot-icon" />
+            </div>
+          </div>
+          <h3 className="empty-title">No Auto-Reply Rules Configured</h3>
+          <p className="empty-description" style={{ margin: 0 }}>
+            Set up automated responses to instantly reply to incoming customer WhatsApp messages when specific keywords match.
           </p>
         </div>
       ) : (
         <div className="rules-grid">
           {filteredRules.map((rule) => (
-            <div key={rule.id} className="rule-card glass animate-fade-in" data-active={rule.isActive}>
+            <div key={rule._clientKey} className="rule-card glass animate-fade-in" data-active={rule.isActive}>
               <div className="card-top">
                 <span className="instance-badge">{getInstanceName(rule.instanceKey)}</span>
                 <div className="card-actions">
                   <button 
                     className="icon-btn-sm" 
-                    onClick={() => handleToggleRule(rule.id, rule.instanceKey)}
+                    onClick={() => handleToggleRule(rule)}
                     title={rule.isActive ? "Deactivate" : "Activate"}
                   >
                     {rule.isActive ? (
@@ -508,7 +475,7 @@ const AutoReplies = () => {
                   </button>
                   <button 
                     className="icon-btn-sm" 
-                    onClick={() => handleDeleteRule(rule.id, rule.instanceKey)}
+                    onClick={() => handleDeleteRule(rule)}
                     title="Delete Rule"
                   >
                     <Trash2 size={18} className="text-error" />
@@ -518,15 +485,17 @@ const AutoReplies = () => {
 
               <div className="card-middle">
                 <div className="rule-info-row">
-                  <span className="info-label">Keyword:</span>
+                  <span className="info-label">Keyword</span>
                   <code className="keyword-code">{rule.keyword}</code>
                 </div>
                 <div className="rule-info-row">
-                  <span className="info-label">Match Type:</span>
-                  <span className="match-type-badge">{rule.matchType === 'exact' ? 'Exact Match' : 'Contains'}</span>
+                  <span className="info-label">Match Type</span>
+                  <span className="match-type-badge">{rule.matchType === 'exact' ? 'Exact Match' : 'Contains Keyword'}</span>
                 </div>
                 <div className="rule-message-box">
-                  <p className="message-label">Response Text:</p>
+                  <p className="message-label">
+                    <MessageSquare size={12} /> Response Message
+                  </p>
                   <p className="message-content">{rule.replyText}</p>
                 </div>
               </div>

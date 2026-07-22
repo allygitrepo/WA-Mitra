@@ -251,35 +251,17 @@ const Instances = () => {
           <p className="page-subtitle">Manage your linked WhatsApp accounts and their status.</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
-          <div className="custom-dropdown-container" ref={dropdownRef} style={{ position: 'relative' }}>
+          <div className="custom-dropdown-container" ref={dropdownRef}>
             <button 
               type="button"
-              className="premium-select"
+              className="custom-dropdown-trigger"
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              style={{ height: '42px', padding: '0 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '135px', justifyContent: 'space-between', background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-main)' }}
             >
               <span>{statusFilter}</span>
               <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
             </button>
             {showStatusDropdown && (
-              <div 
-                className="premium-dropdown-list animate-slide-down" 
-                style={{ 
-                  position: 'absolute', 
-                  top: '48px', 
-                  right: 0, 
-                  background: 'var(--card-bg)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '10px', 
-                  boxShadow: 'var(--shadow-lg)', 
-                  zIndex: 100, 
-                  minWidth: '150px', 
-                  padding: '6px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '4px' 
-                }}
-              >
+              <div className="custom-dropdown-menu animate-slide-down">
                 {['All Status', 'Connected', 'Disconnected'].map((status) => (
                   <button
                     key={status}
@@ -288,22 +270,7 @@ const Instances = () => {
                       setStatusFilter(status);
                       setShowStatusDropdown(false);
                     }}
-                    className="premium-dropdown-item"
-                    style={{
-                      background: statusFilter === status ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                      color: statusFilter === status ? '#10B981' : 'var(--text-main)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: statusFilter === status ? '600' : '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 150ms ease'
-                    }}
+                    className={`custom-dropdown-item ${statusFilter === status ? 'active' : ''}`}
                   >
                     <span>{status}</span>
                     {statusFilter === status && <span style={{ color: '#10B981', fontSize: '12px' }}>✓</span>}

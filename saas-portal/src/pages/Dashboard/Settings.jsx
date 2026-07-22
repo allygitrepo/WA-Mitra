@@ -251,41 +251,51 @@ const Settings = () => {
                     <p className="mt-4 text-muted">Fetching subscription details...</p>
                   </div>
                 ) : currentPackage ? (
-                  <div className="current-plan-card glass animate-pulse-slow">
+                  <div className="current-plan-card glass animate-fade-in">
                     <div className="plan-badge">CURRENT PLAN</div>
                     <h2>{currentPackage.name}</h2>
-                    <p className="opacity-60">{`Subscription valid until ${currentPackage.duration === -1 ? 'Lifetime' : formatDate(user?.expiresAt)}`}</p>
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                      Subscription valid until <strong>{currentPackage.duration === -1 ? 'Lifetime' : formatDate(user?.expiresAt)}</strong>
+                    </p>
 
-                    <div className="plan-stats-grid mt-6">
+                    <div className="plan-stats-grid">
                       <div className="plan-stat">
-                        <Smartphone size={20} className="text-primary" />
+                        <div className="stat-icon-box">
+                          <Smartphone size={20} />
+                        </div>
                         <div>
                           <span className="label">Instances</span>
                           <span className="value">{currentPackage.instanceLimit === -1 ? 'Unlimited' : `${usage.instances} / ${currentPackage.instanceLimit}`}</span>
                         </div>
                       </div>
                       <div className="plan-stat">
-                        <MessageSquare size={20} className="text-primary" />
+                        <div className="stat-icon-box">
+                          <MessageSquare size={20} />
+                        </div>
                         <div>
                           <span className="label">Message Quota</span>
-                          <span className="value">{currentPackage.messageLimit === -1 ? 'Unlimited' : `${usage.messages.toLocaleString()} / ${currentPackage.messageLimit.toLocaleString()}`}</span>
+                          <span className="value">{currentPackage.messageLimit === -1 ? 'Unlimited' : `${usage.messages.toLocaleString('en-IN')} / ${currentPackage.messageLimit.toLocaleString('en-IN')}`}</span>
                         </div>
                       </div>
                       <div className="plan-stat">
-                        <Zap size={20} className="text-primary" />
+                        <div className="stat-icon-box">
+                          <Zap size={20} />
+                        </div>
                         <div>
                           <span className="label">Status</span>
-                          <span className="value text-success">Active</span>
+                          <span className="value text-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span> Active
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="usage-progress-bars mt-8">
+                    <div className="usage-progress-bars">
                       {currentPackage.messageLimit !== -1 && (
-                        <div className="usage-item mb-6">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span className="text-muted">Message Quota Usage</span>
-                            <span className="font-bold">{usage.messages.toLocaleString()} / {currentPackage.messageLimit.toLocaleString()}</span>
+                        <div className="usage-item">
+                          <div className="usage-item-header">
+                            <span className="usage-label">Message Quota Usage</span>
+                            <span className="usage-count">{usage.messages.toLocaleString('en-IN')} / {currentPackage.messageLimit.toLocaleString('en-IN')}</span>
                           </div>
                           <div className="progress-bar-bg">
                             <div
@@ -298,9 +308,9 @@ const Settings = () => {
 
                       {currentPackage.instanceLimit !== -1 && (
                         <div className="usage-item">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span className="text-muted">Instance Connection Usage</span>
-                            <span className="font-bold">{usage.instances} / {currentPackage.instanceLimit}</span>
+                          <div className="usage-item-header">
+                            <span className="usage-label">Instance Connection Usage</span>
+                            <span className="usage-count">{usage.instances} / {currentPackage.instanceLimit}</span>
                           </div>
                           <div className="progress-bar-bg">
                             <div
@@ -311,11 +321,12 @@ const Settings = () => {
                         </div>
                       )}
                     </div>
-                    <br />
-                    <br />
-                    {/* <button className="btn-primary w-full mt-8" onClick={() => navigate('/dashboard/plans')}>
-                      Upgrade My Plan
-                    </button> */}
+
+                    <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border, rgba(0,0,0,0.08))', display: 'flex', justifyContent: 'flex-end' }}>
+                      <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ height: '42px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                        <Zap size={16} /> Upgrade Plan
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="no-plan-card-premium" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center' }}>

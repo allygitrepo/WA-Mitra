@@ -1,24 +1,128 @@
+.tokens-container {
+  padding: 28px 32px;
+  animation: fadeIn 0.4s ease forwards;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .tokens-container {
+    padding: 16px;
+  }
+}
+
+.tokens-header-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tokens-count-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Security Info Banner */
 .token-info-banner {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px;
-  border-radius: var(--radius-md);
-  margin-bottom: 32px;
-  border: 1px solid var(--border);
+  padding: 18px 24px;
+  border-radius: 16px;
+  margin-bottom: 28px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  box-shadow: 0 4px 16px -4px rgba(239, 68, 68, 0.05);
+}
+
+.banner-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .token-info-banner h4 {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 2px;
+  color: var(--text-main);
+  margin: 0 0 2px 0;
 }
 
 .token-info-banner p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
 }
 
+/* Empty State Container */
+.tokens-empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--card-bg, #ffffff);
+  border: 1px dashed var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 24px;
+  margin-top: 8px;
+  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.03);
+}
+
+.tokens-empty-icon-inner {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10B981;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2);
+}
+
+.tokens-empty-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.01em;
+}
+
+.tokens-empty-description {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 460px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.tokens-empty-btn {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+/* Tokens List & Cards */
 .tokens-list {
   display: flex;
   flex-direction: column;
@@ -26,72 +130,106 @@
 }
 
 .token-card {
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border-radius: 18px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  background: var(--card-bg, #ffffff);
+  box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.token-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.08);
 }
 
 .token-meta {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.token-key-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .token-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0; /* Allow container to shrink */
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
 }
 
 .token-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748B);
   text-transform: uppercase;
-}
-
-.token-value {
-  font-family: monospace;
-  font-size: 1.1rem;
-  color: var(--text-main);
-  background: var(--surface);
-  padding: 4px 12px;
-  border-radius: 6px;
-  word-break: break-all; /* Prevent overflow on small screens */
-  line-height: 1.5;
+  letter-spacing: 0.06em;
 }
 
 .token-value-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  max-width: 100%;
+}
+
+.token-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  padding: 6px 14px;
+  border-radius: 10px;
+  word-break: break-all;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
 }
 
 .btn-toggle-visibility {
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
   cursor: pointer;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  padding: 6px;
-  border-radius: 6px;
-  transition: var(--transition);
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .btn-toggle-visibility:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  color: #10B981;
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .token-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  margin-left: 16px;
 }
 
 .btn-icon-text {
@@ -99,22 +237,76 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
   font-weight: 600;
-  transition: var(--transition);
+  transition: all 0.2s ease;
   color: var(--text-secondary);
+  background: var(--surface-hover, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  cursor: pointer;
 }
 
 .btn-icon-text:hover {
-  background: var(--surface);
-  color: var(--text-main);
+  background: rgba(16, 185, 129, 0.08);
+  color: #10B981;
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
-.text-success { color: var(--success) !important; }
-.text-error { color: var(--error) !important; }
+.btn-icon-text.text-error:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #EF4444 !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
 
 @media (max-width: 768px) {
-  .token-card { flex-direction: column; gap: 20px; align-items: flex-start; }
-  .token-actions { width: 100%; justify-content: flex-end; }
+  .token-card {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .token-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* Dark Theme Overrides for Tokens */
+[data-theme='dark'] .tokens-empty-container {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme='dark'] .tokens-empty-title {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .tokens-empty-description {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .token-card {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] .token-info-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+[data-theme='dark'] .token-info-banner h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .token-info-banner p {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .token-value {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
 }

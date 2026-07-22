@@ -101,70 +101,93 @@ const Tokens = () => {
     <div className="tokens-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Master API Tokens</h1>
-          <p className="page-subtitle">Manage tokens for external integration with your custom apps.</p>
+          <div className="tokens-header-group">
+            <h1 className="page-title">Master API Tokens</h1>
+            {tokens.length > 0 && (
+              <span className="tokens-count-badge">{tokens.length} Token{tokens.length !== 1 ? 's' : ''} Active</span>
+            )}
+          </div>
+          <p className="page-subtitle">Manage master authentication tokens for external integrations and custom apps.</p>
         </div>
-        {!loading && tokens.length === 0 && (
-          <button className="btn-primary" onClick={handleCreate}>
+        {!loading && (
+          <button className="premium-btn-primary" onClick={handleCreate} style={{ height: '42px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
             <Plus size={18} /> Generate New Token
           </button>
         )}
       </div>
 
-      <div className="token-info-banner glass">
-        <ShieldAlert size={24} className="text-error" />
+      <div className="token-info-banner">
+        <div className="banner-icon-box">
+          <ShieldAlert size={22} />
+        </div>
         <div>
           <h4>Security Warning</h4>
-          <p>Treat your API tokens like passwords. Never share them or commit them to public repositories.</p>
+          <p>Treat your Master API tokens like passwords. Never share them or commit them to public code repositories.</p>
         </div>
       </div>
 
       <div className="tokens-list">
-        {filteredTokens.length === 0 && !loading && (
-          <div className="empty-state glass">
-            <p>{searchQuery ? "No matching tokens found." : "No tokens found. Generate one to start using the External API."}</p>
+        {loading ? (
+          <div className="tokens-empty-container">
+            <div className="tokens-empty-icon-inner">
+              <Key size={36} />
+            </div>
+            <h3 className="tokens-empty-title">Loading API Tokens...</h3>
+            <p className="tokens-empty-description">Fetching active master keys from secure vault.</p>
           </div>
-        )}
-        
-        {filteredTokens.map((token) => (
-          <div key={token.id} className="token-card glass">
-            <div className="token-meta">
-              <Key size={20} className="text-muted" />
-              <div className="token-details">
-                <span className="token-label">Master API Token</span>
-                <div className="token-value-container">
-                  <code className="token-value">
-                    {visibleTokens[token.id] ? token.token : '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
-                  </code>
-                  <button 
-                    type="button"
-                    className="btn-toggle-visibility"
-                    onClick={() => toggleVisibility(token.id)}
-                    title={visibleTokens[token.id] ? "Hide Token" : "Show Token"}
-                  >
-                    {visibleTokens[token.id] ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+        ) : filteredTokens.length === 0 ? (
+          <div className="tokens-empty-container animate-fade-in">
+            <div className="tokens-empty-icon-inner">
+              <Key size={36} />
+            </div>
+            <h3 className="tokens-empty-title">{searchQuery ? "No Matching Tokens Found" : "No Master API Tokens Active"}</h3>
+            <p className="tokens-empty-description" style={{ margin: 0 }}>
+              {searchQuery ? `No API tokens matching "${searchQuery}".` : "Generate an API token to securely authenticate external systems, webhooks, and custom applications."}
+            </p>
+          </div>
+        ) : (
+          filteredTokens.map((token) => (
+            <div key={token.id} className="token-card glass animate-fade-in">
+              <div className="token-meta">
+                <div className="token-key-icon-box">
+                  <Key size={20} />
+                </div>
+                <div className="token-details">
+                  <span className="token-label">Master API Token</span>
+                  <div className="token-value-container">
+                    <code className="token-value">
+                      {visibleTokens[token.id] ? token.token : '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+                    </code>
+                    <button 
+                      type="button"
+                      className="btn-toggle-visibility"
+                      onClick={() => toggleVisibility(token.id)}
+                      title={visibleTokens[token.id] ? "Hide Token" : "Show Token"}
+                    >
+                      {visibleTokens[token.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
+              
+              <div className="token-actions">
+                <button 
+                  className="btn-icon-text" 
+                  onClick={() => copyToClipboard(token.token, token.id)}
+                >
+                  {copiedId === token.id ? (
+                    <><CheckCircle2 size={16} className="text-success" /> Copied</>
+                  ) : (
+                    <><Copy size={16} /> Copy</>
+                  )}
+                </button>
+                <button className="btn-icon-text text-error" onClick={() => handleDelete(token.id)}>
+                  <Trash2 size={16} /> Revoke
+                </button>
+              </div>
             </div>
-            
-            <div className="token-actions">
-              <button 
-                className="btn-icon-text" 
-                onClick={() => copyToClipboard(token.token, token.id)}
-              >
-                {copiedId === token.id ? (
-                  <><CheckCircle2 size={18} className="text-success" /> Copied</>
-                ) : (
-                  <><Copy size={18} /> Copy</>
-                )}
-              </button>
-              <button className="btn-icon-text text-error" onClick={() => handleDelete(token.id)}>
-                <Trash2 size={18} /> Revoke
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
       <CustomModal
         isOpen={modalConfig.isOpen}
