@@ -1634,3 +1634,49 @@ code {
 [data-theme='dark'] .step-text p {
   color: #94a3b8 !important;
 }
+
+/* Comprehensive Mobile Responsiveness for API Docs */
+@media (max-width: 1024px) {
+  .docs-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .docs-container {
+    padding: 0 !important;
+  }
+
+  .docs-section {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .endpoint-body-table,
+  .param-table,
+  .code-block-wrapper,
+  .docs-section table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .endpoint-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .endpoint-url {
+    font-size: 0.82rem !important;
+    word-break: break-all !important;
+  }
+
+  pre {
+    padding: 12px !important;
+    font-size: 0.8rem !important;
+    overflow-x: auto !important;
+  }
+}

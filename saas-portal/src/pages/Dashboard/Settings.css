@@ -164,13 +164,62 @@
 }
 
 @media (max-width: 992px) {
-  .settings-grid { grid-template-columns: 1fr; }
-  .settings-nav { flex-direction: row; overflow-x: auto; padding: 8px; }
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .settings-nav {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding: 6px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .s-nav-item {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 10px 16px !important;
+    font-size: 0.9rem !important;
+  }
 }
 
 @media (max-width: 768px) {
-  .theme-selection-grid { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
+  .settings-card {
+    padding: 20px 16px !important;
+  }
+
+  .theme-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .form-actions {
+    flex-direction: column !important;
+  }
+
+  .form-actions button {
+    width: 100% !important;
+  }
+
+  .current-plan-card {
+    padding: 20px 16px !important;
+  }
+
+  .plan-badge {
+    position: static !important;
+    display: inline-block !important;
+    margin-bottom: 12px !important;
+  }
 }
 
 /* Subscription Page Styles */

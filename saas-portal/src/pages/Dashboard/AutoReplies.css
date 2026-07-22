@@ -334,3 +334,21 @@
 [data-theme='dark'] .message-content {
   color: #f8fafc !important;
 }
+
+/* Mobile Responsiveness for AutoReplies */
+@media (max-width: 768px) {
+  .autoreplies-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .autoreplies-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .rule-card {
+    padding: 16px !important;
+  }
+}

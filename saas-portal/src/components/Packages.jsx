@@ -134,75 +134,92 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
             const isActive = user?.packageId === pkg.id;
             const isNextScheduled = user?.nextPackageId === pkg.id;
             const isAlreadyPurchased = pkg.isOneTime && purchasedIds.includes(pkg.id);
+            const isPopular = packages.length >= 4 ? index === 2 : index === 1;
             const numPrice = Number(pkg.price) || 0;
             const formattedPrice = numPrice === 0 ? '0' : numPrice.toLocaleString('en-IN');
 
             return (
-              <div key={pkg.id} className={`package-card glass animate-fade-in delay-${index} ${isActive ? 'active-pkg' : ''} ${isNextScheduled ? 'scheduled-pkg' : ''}`}>
+              <div 
+                key={pkg.id} 
+                className={`package-card animate-fade-in delay-${index} ${isPopular ? 'popular-card' : ''} ${isActive ? 'active-pkg' : ''} ${isNextScheduled ? 'scheduled-pkg' : ''}`}
+              >
+                {isPopular && !isActive && <div className="popular-badge">⭐ MOST POPULAR</div>}
                 {isActive && <div className="active-badge">Active Plan</div>}
-                {isNextScheduled && <div className="active-badge" style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>Scheduled Next</div>}
+                {isNextScheduled && !isActive && <div className="active-badge scheduled-badge">Scheduled Next</div>}
+                
                 <div className="package-header">
-                  <div className="pkg-icon">
+                  <div className="pkg-icon-circle">
                     {pkg.instanceLimit > 10 ? <Layers size={24} /> : pkg.instanceLimit > 1 ? <Zap size={24} /> : <Smartphone size={24} />}
                   </div>
                   <h3 className="package-name">{pkg.name}</h3>
-                  <div className="package-price">
-                    <span className="currency">₹</span>
-                    <span className="amount">{formattedPrice}</span>
-                    <span className="period">{pkg.duration === -1 ? '/ Lifetime' : `/ ${pkg.duration} Days`}</span>
+                  <div className="package-price-wrap">
+                    <div className="package-price">
+                      <span className="currency">₹</span>
+                      <span className="amount">{formattedPrice}</span>
+                      <span className="period">{pkg.duration === -1 ? '/ lifetime' : `/ ${pkg.duration} Days`}</span>
+                    </div>
+                    <span className="billing-subtext">{pkg.duration === -1 ? 'One-time billing' : 'Billed per month'}</span>
                   </div>
                 </div>
 
+                <div className="price-divider"></div>
+
                 <div className="package-features">
                   <div className="feature-item">
-                    <div className="feature-icon-box">
-                      <Check size={13} />
+                    <div className="feature-check-box">
+                      <Check size={12} />
                     </div>
                     <span><strong>{pkg.instanceLimit === -1 ? 'Unlimited' : pkg.instanceLimit}</strong> WhatsApp Instance{pkg.instanceLimit !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="feature-item">
-                    <div className="feature-icon-box">
-                      <Check size={13} />
+                    <div className="feature-check-box">
+                      <Check size={12} />
                     </div>
-                    <span><strong>{pkg.messageLimit === -1 ? 'Unlimited' : pkg.messageLimit.toLocaleString('en-IN')}</strong> Total Messages</span>
+                    <span>Unlimited Contacts</span>
                   </div>
                   <div className="feature-item">
-                    <div className="feature-icon-box">
-                      <Check size={13} />
+                    <div className="feature-check-box">
+                      <Check size={12} />
                     </div>
-                    <span><strong>{pkg.dailyMessageLimit === -1 ? 'Unlimited' : pkg.dailyMessageLimit.toLocaleString('en-IN')}</strong> Daily Messages</span>
+                    <span>Bulk Messaging ({pkg.messageLimit === -1 ? 'Unlimited' : pkg.messageLimit.toLocaleString('en-IN')} Msg)</span>
                   </div>
                   <div className="feature-item">
-                    <div className={`feature-icon-box ${!pkg.canSendMedia ? 'disabled' : ''}`}>
-                      {pkg.canSendMedia ? <Check size={13} /> : <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✕</span>}
+                    <div className="feature-check-box">
+                      <Check size={12} />
                     </div>
-                    <span className={!pkg.canSendMedia ? 'text-muted' : ''}>Media Files (Images, Documents)</span>
+                    <span>Campaign Management</span>
                   </div>
                   <div className="feature-item">
-                    <div className="feature-icon-box">
-                      <Check size={13} />
+                    <div className="feature-check-box">
+                      <Check size={12} />
                     </div>
-                    <span>API Access & Webhooks</span>
+                    <span>API Access & Integrations</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className={`feature-check-box ${!pkg.canSendMedia ? 'disabled' : ''}`}>
+                      {pkg.canSendMedia ? <Check size={12} /> : <span style={{ fontSize: '11px', fontWeight: 'bold' }}>✕</span>}
+                    </div>
+                    <span className={!pkg.canSendMedia ? 'text-muted' : ''}>Media Support (Images, PDFs)</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className="feature-check-box">
+                      <Check size={12} />
+                    </div>
+                    <span>Analytics Reports & Logs</span>
+                  </div>
+                  <div className="feature-item">
+                    <div className="feature-check-box">
+                      <Check size={12} />
+                    </div>
+                    <span>Instant Webhooks</span>
                   </div>
                 </div>
 
                 {showButtons && (
                   <button
-                    className={`pkg-btn ${isActive ? 'btn-active' : isNextScheduled ? 'btn-scheduled' : 'premium-btn-primary'} ${processingId === pkg.id ? 'loading' : ''}`}
+                    className={`pkg-choose-btn ${isActive ? 'btn-active' : isNextScheduled ? 'btn-scheduled' : 'btn-emerald-gradient'} ${processingId === pkg.id ? 'loading' : ''}`}
                     onClick={() => handleActivate(pkg)}
                     disabled={processingId === pkg.id || isNextScheduled || isAlreadyPurchased}
-                    style={{
-                      marginTop: '24px',
-                      width: '100%',
-                      height: '44px',
-                      borderRadius: '10px',
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      cursor: (isNextScheduled || isAlreadyPurchased) ? 'not-allowed' : 'pointer'
-                    }}
                   >
                     {processingId === pkg.id ? (
                       <Loader2 className="animate-spin" size={18} />
@@ -217,7 +234,7 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
                     ) : isAlreadyPurchased ? (
                       'Already Purchased'
                     ) : (
-                      Number(pkg.price) === 0 ? 'Activate Free' : 'Upgrade Plan'
+                      Number(pkg.price) === 0 ? 'Activate Free' : 'Choose Plan'
                     )}
                   </button>
                 )}
@@ -229,14 +246,13 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
         <div className="plan-support-card-container">
           <div className="plan-support-card-modern">
             <div>
-              <h3>Need a custom enterprise plan?</h3>
-              <p>If our standard plans don't fit your scale, contact our team for a custom tailored solution.</p>
+              <h3>Need something larger?</h3>
+              <p>Enterprise solutions built for growing businesses.</p>
             </div>
             <button 
               type="button" 
-              className="premium-btn-primary" 
-              onClick={() => window.open(`https://wa.me/919023960106?text=${encodeURIComponent('Hello! I am interested in a custom enterprise plan for WA-Mitra.')}`, '_blank')} 
-              style={{ height: '42px', padding: '0 24px', whiteSpace: 'nowrap', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+              className="contact-sales-pill-btn" 
+              onClick={() => window.open(`https://wa.me/919023960106?text=${encodeURIComponent('Hello! I am interested in an enterprise plan for WA-Mitra.')}`, '_blank')} 
             >
               <MessageSquare size={16} /> Contact Sales
             </button>

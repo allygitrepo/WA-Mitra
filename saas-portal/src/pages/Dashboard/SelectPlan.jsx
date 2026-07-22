@@ -1,6 +1,6 @@
 
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Bell } from 'lucide-react';
 import Packages from '../../components/Packages';
 import useAuthStore from '../../store/useAuthStore';
 import useThemeStore from '../../store/useThemeStore';
@@ -18,41 +18,53 @@ const SelectPlan = () => {
   };
 
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'J';
 
   return (
     <div className="select-plan-overlay">
-      <div className="select-plan-container">
-        <div className="select-plan-header">
-          <div className="header-top">
-            <div className="brand-wrap">
-              <img 
-                src={isDark ? '/Logo_Dark.png' : '/Logo_Light.png'} 
-                alt="WA-Mitra" 
-                className="select-plan-logo" 
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <ThemeToggle />
-              <button className="logout-btn" onClick={handleLogout}>
-                <LogOut size={18} /> Logout
+      {/* 72px Top Navigation */}
+      <header className="sp-top-nav">
+        <div className="sp-nav-container">
+          <div className="sp-brand">
+            <img 
+              src={isDark ? '/Logo_Dark.png' : '/Logo_Light.png'} 
+              alt="WA-Mitra" 
+              className="sp-logo" 
+            />
+          </div>
+          <div className="sp-nav-actions">
+            <ThemeToggle />
+            <button className="sp-icon-btn" title="Notifications">
+              <Bell size={18} />
+            </button>
+            <div className="sp-user-pill">
+              <div className="sp-avatar">{userInitial}</div>
+              <span className="sp-username">{user?.username || 'User'}</span>
+              <button className="sp-logout-icon" onClick={handleLogout} title="Logout">
+                <LogOut size={16} />
               </button>
             </div>
           </div>
-          
-          <div className="header-content-main text-center mb-5">
-            <h1 className="welcome-text">Welcome to WA-Mitra, <span className="text-primary">{user?.username}</span>!</h1>
-            <p className="welcome-sub">Your account is ready. Please select a plan to activate your dashboard.</p>
-          </div>
         </div>
+      </header>
 
-        <div className="plans-wrapper">
+      {/* Main Content Body */}
+      <main className="sp-main-body">
+        {/* Welcome Section - Left Aligned, Max 700px */}
+        <section className="sp-welcome-section">
+          <h1 className="sp-welcome-title">
+            Welcome back, <span className="sp-username-highlight">{user?.username || 'Jenil'} 👋</span>
+          </h1>
+          <p className="sp-welcome-subtitle">
+            Choose a plan to activate your WA-Mitra account.
+          </p>
+        </section>
+
+        {/* Pricing Cards Grid */}
+        <div className="sp-plans-wrapper">
           <Packages hideHeader={true} />
         </div>
-
-        <div className="select-plan-footer text-center mt-12 pb-12">
-          <p className="text-muted text-sm">Need a custom enterprise solution? <span className="text-primary pointer">Contact Sales</span></p>
-        </div>
-      </div>
+      </main>
     </div>
   );
 };

@@ -310,3 +310,24 @@
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: #f8fafc !important;
 }
+
+/* Mobile Responsiveness for Tokens */
+@media (max-width: 768px) {
+  .token-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    padding: 16px !important;
+  }
+
+  .token-meta {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .token-actions {
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+}

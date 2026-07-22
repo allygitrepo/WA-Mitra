@@ -4,7 +4,13 @@ import {
   Activity,
   CheckCircle2,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  BarChart3,
+  Key,
+  Settings,
+  ArrowRight,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { instanceService, messageService } from '../../api/services';
@@ -28,7 +34,7 @@ const Overview = () => {
       setInstances(instRes.data.instances || []);
       setLogs(logsRes.data.logs || []);
     } catch (err) {
-      console.error(err);
+      console.error("Overview Fetch Error:", err);
     }
   }, []);
 
@@ -47,15 +53,9 @@ const Overview = () => {
   const totalMessages = instances.reduce((acc, curr) => acc + (curr.messageCount || 0), 0);
   const activeSessions = instances.filter(i => i.liveStatus === 'connected').length;
 
-  const stats = [
-    { label: 'Total Messages Sent', value: totalMessages.toLocaleString(), change: '+0%', icon: <Send size={24} />, color: '#00A884' },
-    { label: 'Active Sessions', value: activeSessions, change: '+0%', icon: <Activity size={24} />, color: 'var(--primary)' },
-    { label: 'Total Instances', value: instances.length, change: '+0%', icon: <Smartphone size={24} />, color: '#6366f1' },
-  ];
-
   const filteredLogs = logs.filter(log =>
-    (log.recipient?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-    (log.instance?.name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    (log.recipient?.toLowerCase() || '').includes((searchQuery || '').toLowerCase()) ||
+    (log.instance?.name?.toLowerCase() || '').includes((searchQuery || '').toLowerCase())
   );
 
   const formatTime = (dateString) => {
@@ -67,107 +67,207 @@ const Overview = () => {
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${diffDays} days ago`;
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
 
   return (
-    <div className="overview-container">
-      {/* <div className="page-header">
+    <div className="overview-container animate-fade-in">
+      {/* Top Greeting Header */}
+      <div className="overview-hero-header">
         <div>
-          <h1 className="page-title">Dashboard Overview</h1>
-          <p className="page-subtitle">Welcome back! Here's what's happening with your instances.</p>
+          <h1 className="overview-hero-title">
+            Dashboard Overview 👋
+          </h1>
+          <p className="overview-hero-subtitle">
+            Welcome back, <span className="text-primary font-bold">{user?.username || 'User'}</span>! Here is a real-time summary of your WhatsApp gateway activity.
+          </p>
         </div>
-      </div> */}
+        {user?.packageId && (
+          <div className="system-status-badge">
+            <span className="live-dot"></span> Gateway Operational
+          </div>
+        )}
+      </div>
 
+      {/* Package Reminder Banner if No Plan */}
       {!user?.packageId && (
         <div className="package-reminder-banner glass animate-slide-down mb-6">
           <div className="banner-content">
-            <AlertCircle className="text-primary" size={24} />
+            <div className="banner-icon-box">
+              <AlertCircle size={24} />
+            </div>
             <div>
               <h4>No Active Plan Detected</h4>
-              <p>Pick a plan to start connecting WhatsApp instances and sending messages.</p>
+              <p>Pick a plan to start connecting WhatsApp instances and sending messages seamlessly.</p>
             </div>
           </div>
-          <Link to="/dashboard/plans" className="btn-primary">View Plans</Link>
+          <Link to="/dashboard/plans" className="btn-primary-gradient">
+            <Zap size={16} /> Choose a Plan
+          </Link>
         </div>
       )}
 
+      {/* 3 Metric Cards Grid */}
       <div className="stats-grid">
-        {stats.map((stat, i) => (
-          <div key={i} className="stat-card glass">
-            <div className="stat-header">
-              <div className="stat-icon" style={{ color: stat.color, background: `${stat.color}10` }}>
-                {stat.icon}
-              </div>
+        <div className="stat-card glass-card">
+          <div className="stat-header">
+            <div className="stat-icon-wrapper emerald-badge">
+              <Send size={22} />
             </div>
-            <div className="stat-body">
-              <span className="stat-label">{stat.label}</span>
-              <h3 className="stat-value">{stat.value}</h3>
-            </div>
+            <span className="stat-trend trend-neutral">Real-time</span>
           </div>
-        ))}
+          <div className="stat-body">
+            <span className="stat-label">Total Messages Sent</span>
+            <h3 className="stat-value">{totalMessages.toLocaleString('en-IN')}</h3>
+          </div>
+        </div>
+
+        <div className="stat-card glass-card">
+          <div className="stat-header">
+            <div className="stat-icon-wrapper indigo-badge">
+              <Activity size={22} />
+            </div>
+            {activeSessions > 0 ? (
+              <span className="stat-trend trend-positive">
+                <span className="live-pulse-dot"></span> Live Connected
+              </span>
+            ) : (
+              <span className="stat-trend trend-neutral">Standby</span>
+            )}
+          </div>
+          <div className="stat-body">
+            <span className="stat-label">Active Connected Sessions</span>
+            <h3 className="stat-value">{activeSessions}</h3>
+          </div>
+        </div>
+
+        <div className="stat-card glass-card">
+          <div className="stat-header">
+            <div className="stat-icon-wrapper cyan-badge">
+              <Smartphone size={22} />
+            </div>
+            <span className="stat-trend trend-positive">
+              <ShieldCheck size={14} /> Ready
+            </span>
+          </div>
+          <div className="stat-body">
+            <span className="stat-label">Total Instances Created</span>
+            <h3 className="stat-value">{instances.length}</h3>
+          </div>
+        </div>
       </div>
 
+      {/* Main Content Grid: Recent Activity & Quick Actions */}
       <div className="overview-content-grid">
-        <div className="content-card glass">
-          <div className="card-header">
-            <h3>Recent Activity</h3>
-            <button className="text-btn" onClick={() => navigate('/dashboard/reports')}>View All</button>
+        {/* Left Column: Recent Activity Log */}
+        <div className="content-card glass-card">
+          <div className="card-header-styled">
+            <div className="card-header-title">
+              <BarChart3 size={20} className="text-primary" />
+              <h3>Recent Activity</h3>
+            </div>
+            <button className="view-all-link-btn" onClick={() => navigate('/dashboard/reports')}>
+              View All <ArrowRight size={14} />
+            </button>
           </div>
+
           <div className="activity-list">
             {filteredLogs.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
-                {searchQuery ? "No matching activity found." : "No recent activity found."}
-              </p>
+              <div className="overview-empty-state">
+                <div className="empty-icon-badge">
+                  <BarChart3 size={32} />
+                </div>
+                <h4>No Recent Activity Logged</h4>
+                <p>
+                  {searchQuery
+                    ? `No activity matching "${searchQuery}". Try clearing your search.`
+                    : "Sent messages and instance activity logs will automatically appear here."}
+                </p>
+                <button className="empty-action-btn" onClick={() => navigate('/dashboard/messaging')}>
+                  <Send size={15} /> Send First Message
+                </button>
+              </div>
             ) : (
-              filteredLogs.slice(0, 3).map((log) => (
-                <ActivityItem
-                  key={log.id}
-                  icon={log.status === 'sent' ? <CheckCircle2 size={16} color="#10b981" /> : <AlertCircle size={16} color="#ef4444" />}
-                  title={log.status === 'sent' ? "Message Sent Successfully" : "Failed to Send"}
-                  desc={`To ${log.recipient} from ${log.instance?.name || 'Instance'}`}
-                  time={formatTime(log.createdAt)}
-                />
+              filteredLogs.slice(0, 5).map((log) => (
+                <div key={log.id} className="activity-item-styled">
+                  <div className={`activity-status-box ${log.status === 'sent' ? 'success' : 'failed'}`}>
+                    {log.status === 'sent' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                  </div>
+                  <div className="activity-details">
+                    <h4 className="activity-title-text">
+                      {log.status === 'sent' ? 'Message Delivered' : 'Failed Delivery'}
+                    </h4>
+                    <p className="activity-subtext">
+                      To <span className="font-semibold text-main">{log.recipient}</span> via {log.instance?.name || 'Gateway Instance'}
+                    </p>
+                  </div>
+                  <span className="activity-time-badge">{formatTime(log.createdAt)}</span>
+                </div>
               ))
             )}
           </div>
         </div>
 
-        <div className="content-card glass">
-          <div className="card-header">
-            <h3>Quick Actions</h3>
+        {/* Right Column: Quick Action Cards */}
+        <div className="content-card glass-card">
+          <div className="card-header-styled">
+            <div className="card-header-title">
+              <Zap size={20} className="text-primary" />
+              <h3>Quick Actions</h3>
+            </div>
           </div>
-          <div className="quick-actions-grid">
-            <button className="q-action-btn" onClick={() => navigate('/dashboard/messaging')}>
-              <Send size={20} />
-              <span>Send Message</span>
-            </button>
-            <button className="q-action-btn" onClick={() => navigate('/dashboard/instances')}>
-              <Smartphone size={20} />
-              <span>Manage Instances</span>
-            </button>
-            <button className="q-action-btn" onClick={() => navigate('/dashboard/tokens')}>
-              <Activity size={20} />
-              <span>API Tokens</span>
-            </button>
+
+          <div className="quick-actions-grid-styled">
+            <div className="q-action-card" onClick={() => navigate('/dashboard/messaging')}>
+              <div className="q-icon-box emerald-bg">
+                <Send size={20} />
+              </div>
+              <div className="q-action-info">
+                <h4>Send Message</h4>
+                <p>Blast single or bulk WhatsApp text & media</p>
+              </div>
+              <ArrowRight size={16} className="q-arrow" />
+            </div>
+
+            <div className="q-action-card" onClick={() => navigate('/dashboard/instances')}>
+              <div className="q-icon-box indigo-bg">
+                <Smartphone size={20} />
+              </div>
+              <div className="q-action-info">
+                <h4>Manage Instances</h4>
+                <p>Pair WhatsApp QR code & manage sessions</p>
+              </div>
+              <ArrowRight size={16} className="q-arrow" />
+            </div>
+
+            <div className="q-action-card" onClick={() => navigate('/dashboard/tokens')}>
+              <div className="q-icon-box cyan-bg">
+                <Key size={20} />
+              </div>
+              <div className="q-action-info">
+                <h4>API Tokens</h4>
+                <p>Generate API keys for developer webhooks</p>
+              </div>
+              <ArrowRight size={16} className="q-arrow" />
+            </div>
+
+            <div className="q-action-card" onClick={() => navigate('/dashboard/settings')}>
+              <div className="q-icon-box purple-bg">
+                <Settings size={20} />
+              </div>
+              <div className="q-action-info">
+                <h4>Account Settings</h4>
+                <p>Manage subscription plan & profile</p>
+              </div>
+              <ArrowRight size={16} className="q-arrow" />
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-const ActivityItem = ({ icon, title, desc, time }) => (
-  <div className="activity-item">
-    <div className="activity-icon-wrap">{icon}</div>
-    <div className="activity-info">
-      <h4>{title}</h4>
-      <p>{desc}</p>
-    </div>
-    <span className="activity-time">{time}</span>
-  </div>
-);
 
 export default Overview;

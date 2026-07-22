@@ -18,6 +18,7 @@
     display: flex;
     align-items: center;
     gap: 1.5rem;
+    width: 100%;
 }
 
 .input-with-icon {
@@ -98,244 +99,198 @@
 
 .stat-item:hover {
     background: rgba(255, 255, 255, 0.05);
-    transform: translateY(-2px);
 }
 
-.stat-left {
+.instance-meta {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-.stat-left h4 {
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-}
-
-.stat-left p {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.stat-right {
-    text-align: right;
+.instance-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 0.75rem;
+    background: rgba(0, 168, 132, 0.1);
+    color: var(--primary);
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: center;
+}
+
+.instance-name {
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.2rem;
+}
+
+.stat-counts {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .count-badge {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    line-height: 1;
-}
+    padding: 0.35rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
 
-.count-label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 0.25rem;
-}
-
-.loading-state, .empty-state {
-    text-align: center;
-    padding: 3rem;
-    color: var(--text-muted);
-}
-
-@media (max-width: 768px) {
-    .page-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1.5rem;
+    &.sent {
+        background: rgba(0, 168, 132, 0.1);
+        color: var(--primary);
     }
 
-    .btn-primary {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .report-filters {
-        padding: 1.25rem;
-    }
-
-    .filter-group {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-    }
-
-    .filter-separator {
-        text-align: center;
-        opacity: 0.5;
-    }
-
-    .text-btn {
-        margin-left: 0 !important;
-        padding: 0.5rem;
-    }
-
-    .reports-content {
-        padding: 1.25rem;
-    }
-
-    .instance-stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .stat-item {
-        padding: 1rem;
-    }
-
-    .count-badge {
-        font-size: 1.25rem;
+    &.failed {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--error);
     }
 }
 
-.stat-card-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
-
-.stat-item.has-failures {
-    cursor: pointer;
-    border-left: 3px solid rgba(239, 68, 68, 0.3);
-}
-
-.stat-item.expanded {
-    border-radius: 1rem 1rem 0 0;
-    background: rgba(255, 255, 255, 0.06);
-    border-bottom-color: transparent;
-}
-
-.stat-right {
-    display: flex;
-    flex-direction: row;
-    gap: 1.5rem;
-}
-
-.stat-count {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-.count-badge.sent { color: #10b981; }
-.count-badge.failed { color: #ef4444; }
-
-.failure-details {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 1rem 1rem;
-    padding: 1rem;
-    animation: slideDown 0.3s ease-out;
-}
-
-.failure-header {
+.logs-preview-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    gap: 0.5rem;
+    background: transparent;
+    border: none;
     color: var(--text-muted);
-    text-transform: uppercase;
-    margin-bottom: 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: var(--transition);
 }
 
-.failure-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 200px;
-    overflow-y: auto;
+.logs-preview-toggle:hover {
+    color: var(--primary);
 }
 
-.failure-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px;
+.instance-logs-container {
+    margin-top: 1rem;
     background: var(--surface);
+    border-radius: 0.75rem;
+    padding: 1rem;
     border: 1px solid var(--border);
-    border-radius: 6px;
+}
+
+.log-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
     font-size: 0.85rem;
 }
 
-.fail-num {
-    font-weight: 600;
-    color: var(--text-main);
-}
-
-.fail-reason {
-    color: var(--error);
-    font-weight: 500;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+.log-row:last-child {
+    border-bottom: none;
 }
 
 /* Reports Empty State */
 .reports-empty-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px 24px;
-  text-align: center;
-  background: var(--card-bg, #ffffff);
-  border: 1px dashed var(--border, rgba(0, 0, 0, 0.12));
-  border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    background: var(--card-bg, #ffffff);
+    border: 1px dashed var(--border, rgba(0, 0, 0, 0.12));
+    border-radius: 20px;
 }
 
 .reports-empty-icon-inner {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  background: rgba(16, 185, 129, 0.1);
-  color: #10B981;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10B981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
 }
 
 .reports-empty-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--text-main);
-  margin-bottom: 8px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 6px;
 }
 
 .reports-empty-description {
-  font-size: 0.92rem;
-  color: var(--text-muted);
-  max-width: 480px;
-  line-height: 1.6;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    max-width: 440px;
+    line-height: 1.5;
 }
 
 /* Dark Theme Overrides for Reports */
 [data-theme='dark'] .reports-content,
 [data-theme='dark'] .report-filters,
 [data-theme='dark'] .reports-empty-container {
-  background: #161618 !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+    background: #161618 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
 }
 
 [data-theme='dark'] .reports-empty-title {
-  color: #f8fafc !important;
+    color: #f8fafc !important;
 }
 
 [data-theme='dark'] .reports-empty-description {
-  color: #94a3b8 !important;
+    color: #94a3b8 !important;
 }
 
 [data-theme='dark'] .stat-item {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Mobile Responsiveness for Reports */
+@media (max-width: 768px) {
+    .reports-container {
+        padding-bottom: 1rem;
+    }
+
+    .page-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
+    .page-header button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .report-filters {
+        padding: 16px 12px !important;
+        margin-top: 1rem !important;
+    }
+
+    .filter-group {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .filter-separator {
+        text-align: center;
+        margin: 2px 0;
+    }
+
+    .instance-stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .reports-empty-container {
+        padding: 32px 16px !important;
+    }
+
+    .reports-empty-icon-inner {
+        width: 52px !important;
+        height: 52px !important;
+    }
 }
