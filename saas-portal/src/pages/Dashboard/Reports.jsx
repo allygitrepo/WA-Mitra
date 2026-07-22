@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Smartphone, Download, AlertCircle } from 'lucide-react';
+import { Calendar, Smartphone, Download, AlertCircle, BarChart3, RotateCcw } from 'lucide-react';
 import { messageService } from '../../api/services';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -12,7 +12,7 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [expandedInstance, setExpandedInstance] = useState(null); // { date, instanceId }
+  const [expandedInstance, setExpandedInstance] = useState(null);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -168,7 +168,7 @@ const Reports = () => {
           <h1 className="page-title">Message Reports</h1>
           <p className="page-subtitle">Track your message usage across all instances.</p>
         </div>
-        <button className="btn-primary" onClick={downloadPDF} disabled={filteredReports.length === 0}>
+        <button className="premium-btn-primary" onClick={downloadPDF} disabled={filteredReports.length === 0} style={{ height: '42px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
           <Download size={18} /> Download PDF
         </button>
       </div>
@@ -189,21 +189,39 @@ const Reports = () => {
             placeholder="To Date"
             style={{ maxWidth: '180px' }}
           />
-          <button 
-            className="text-btn" 
-            style={{ marginLeft: 'auto' }}
-            onClick={() => { setFromDate(''); setToDate(''); }}
-          >
-            Clear Filters
-          </button>
+          {(fromDate || toDate) && (
+            <button 
+              className="btn-icon-text" 
+              style={{ marginLeft: 'auto' }}
+              onClick={() => { setFromDate(''); setToDate(''); }}
+            >
+              <RotateCcw size={14} /> Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
       <div className="reports-content glass">
         {loading ? (
-          <div className="loading-state">Loading reports...</div>
+          <div className="reports-empty-container animate-fade-in">
+            <div className="reports-empty-icon-inner">
+              <BarChart3 size={38} />
+            </div>
+            <h3 className="reports-empty-title">Loading Reports...</h3>
+            <p className="reports-empty-description">Fetching deliverability logs from database.</p>
+          </div>
         ) : filteredReports.length === 0 ? (
-          <div className="empty-state">No message data found for the selected period.</div>
+          <div className="reports-empty-container animate-fade-in">
+            <div className="reports-empty-icon-inner">
+              <BarChart3 size={38} />
+            </div>
+            <h3 className="reports-empty-title">No Message Reports Found</h3>
+            <p className="reports-empty-description" style={{ margin: 0 }}>
+              {fromDate || toDate
+                ? `No message logs match the selected date range from ${fromDate || 'start'} to ${toDate || 'end'}.`
+                : 'Start sending single, bulk, or scheduled WhatsApp messages to track real-time deliverability analytics here.'}
+            </p>
+          </div>
         ) : (
           Object.keys(groupedReports).map(date => (
             <div key={date} className="report-group">

@@ -322,6 +322,22 @@ const Settings = () => {
                       )}
                     </div>
 
+                    {user?.nextPackage && (
+                      <div style={{ marginTop: '20px', padding: '16px 20px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Zap size={20} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: '0 0 2px 0', fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                            Scheduled Next Plan: {user.nextPackage.name}
+                          </h4>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            This plan is scheduled to activate automatically when your current plan completes on {user?.expiresAt ? new Date(user.expiresAt).toLocaleDateString('en-GB') : 'expiration'}.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border, rgba(0,0,0,0.08))', display: 'flex', justifyContent: 'flex-end' }}>
                       <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ height: '42px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
                         <Zap size={16} /> Upgrade Plan

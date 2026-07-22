@@ -39,15 +39,22 @@ server.listen(PORT, async () => {
         }
         console.log('Database synced successfully');
 
-        // Ensure suspendReason column exists
+        // Ensure new schema columns exist
         try {
             const dialect = sequelize.getDialect();
             if (dialect === 'postgres') {
                 await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "suspendReason" TEXT;');
+                await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "nextPackageId" INTEGER;');
+                await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "nextPackageStartsAt" TIMESTAMP WITH TIME ZONE;');
             } else if (dialect === 'mysql') {
                 const [results] = await sequelize.query("SHOW COLUMNS FROM `Users` LIKE 'suspendReason';");
                 if (results.length === 0) {
                     await sequelize.query("ALTER TABLE `Users` ADD COLUMN `suspendReason` TEXT;");
+                }
+                const [npResults] = await sequelize.query("SHOW COLUMNS FROM `Users` LIKE 'nextPackageId';");
+                if (npResults.length === 0) {
+                    await sequelize.query("ALTER TABLE `Users` ADD COLUMN `nextPackageId` INT NULL;");
+                    await sequelize.query("ALTER TABLE `Users` ADD COLUMN `nextPackageStartsAt` DATETIME NULL;");
                 }
             } else if (dialect === 'sqlite') {
                 const [results] = await sequelize.query("PRAGMA table_info(Users);");
@@ -55,10 +62,15 @@ server.listen(PORT, async () => {
                 if (!hasCol) {
                     await sequelize.query("ALTER TABLE Users ADD COLUMN suspendReason TEXT;");
                 }
+                const hasNpCol = results.some(r => r.name === 'nextPackageId');
+                if (!hasNpCol) {
+                    await sequelize.query("ALTER TABLE Users ADD COLUMN nextPackageId INTEGER;");
+                    await sequelize.query("ALTER TABLE Users ADD COLUMN nextPackageStartsAt DATETIME;");
+                }
             }
-            console.log('Database schema: suspendReason column verified/migrated.');
+            console.log('Database schema: User table columns verified/migrated.');
         } catch (colErr) {
-            console.error('Failed to auto-migrate suspendReason column:', colErr.message);
+            console.error('Failed to auto-migrate database columns:', colErr.message);
         }
 
         await seedAdmin();

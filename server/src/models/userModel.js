@@ -59,6 +59,14 @@ const User = sequelize.define("User", {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  nextPackageId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  nextPackageStartsAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   timezone: {
     type: DataTypes.STRING,
     allowNull: false,

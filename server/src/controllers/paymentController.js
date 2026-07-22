@@ -26,16 +26,42 @@ const paymentController = {
 
       // Path A: Free Package
       if (parseFloat(pkg.price) === 0) {
-        let expiryDate = null;
-        if (pkg.duration !== -1) {
-          expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
-        }
+        const now = new Date();
+        const hasActivePlan = user.expiresAt && new Date(user.expiresAt) > now;
+        const isSamePackage = user.packageId === pkg.id;
 
-        // Update User
-        user.packageId = pkg.id;
-        user.expiresAt = expiryDate;
-        await user.save();
+        let finalExpiryDate = null;
+        let isQueued = false;
+
+        if (hasActivePlan && isSamePackage) {
+          // Extension of current active plan
+          finalExpiryDate = new Date(user.expiresAt);
+          if (pkg.duration !== -1) {
+            finalExpiryDate.setDate(finalExpiryDate.getDate() + (pkg.duration || 30));
+          } else {
+            finalExpiryDate = null;
+          }
+          user.expiresAt = finalExpiryDate;
+          await user.save();
+        } else if (hasActivePlan && !isSamePackage) {
+          // Queue the new plan to activate when current plan expires
+          user.nextPackageId = pkg.id;
+          user.nextPackageStartsAt = user.expiresAt;
+          await user.save();
+          isQueued = true;
+          finalExpiryDate = user.expiresAt;
+        } else {
+          // Immediate activation
+          if (pkg.duration !== -1) {
+            finalExpiryDate = new Date();
+            finalExpiryDate.setDate(finalExpiryDate.getDate() + (pkg.duration || 30));
+          }
+          user.packageId = pkg.id;
+          user.expiresAt = finalExpiryDate;
+          user.nextPackageId = null;
+          user.nextPackageStartsAt = null;
+          await user.save();
+        }
 
         // Create Payment Record
         await Payment.create({
@@ -59,15 +85,17 @@ const paymentController = {
             pkg.duration,
             pkg.instanceLimit,
             pkg.messageLimit,
-            expiryDate
+            finalExpiryDate
           )
         ).catch(err => console.error("Error sending free plan activation email:", err));
 
         return res.status(200).json({ 
-          message: "Package activated successfully", 
+          message: isQueued ? `Package scheduled to activate on ${new Date(user.expiresAt).toLocaleDateString()}` : "Package activated successfully", 
           isFree: true,
-          packageId: pkg.id,
-          expiresAt: expiryDate 
+          isQueued,
+          packageId: user.packageId,
+          nextPackageId: user.nextPackageId,
+          expiresAt: user.expiresAt 
         });
       }
 
@@ -96,7 +124,7 @@ const paymentController = {
 
     } catch (error) {
       console.error("Create Order Error:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(500).json({ message: error.message || "Failed to create payment order" });
     }
   },
 
@@ -142,16 +170,43 @@ const paymentController = {
       paymentRecord.transactionId = razorpay_payment_id;
       await paymentRecord.save();
 
-      // Update User
-      let expiryDate = null;
-      if (pkg.duration !== -1) {
-        expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + (pkg.duration || 30));
-      }
+      // Update User Plan / Queue
+      const now = new Date();
+      const hasActivePlan = user.expiresAt && new Date(user.expiresAt) > now;
+      const isSamePackage = user.packageId === pkg.id;
 
-      user.packageId = pkg.id;
-      user.expiresAt = expiryDate;
-      await user.save();
+      let finalExpiryDate = null;
+      let isQueued = false;
+
+      if (hasActivePlan && isSamePackage) {
+        // Renewal / Extension of current active plan
+        finalExpiryDate = new Date(user.expiresAt);
+        if (pkg.duration !== -1) {
+          finalExpiryDate.setDate(finalExpiryDate.getDate() + (pkg.duration || 30));
+        } else {
+          finalExpiryDate = null;
+        }
+        user.expiresAt = finalExpiryDate;
+        await user.save();
+      } else if (hasActivePlan && !isSamePackage) {
+        // Queue the new package to activate automatically when current plan expires
+        user.nextPackageId = pkg.id;
+        user.nextPackageStartsAt = user.expiresAt;
+        await user.save();
+        isQueued = true;
+        finalExpiryDate = user.expiresAt;
+      } else {
+        // Immediate activation for new/expired user
+        if (pkg.duration !== -1) {
+          finalExpiryDate = new Date();
+          finalExpiryDate.setDate(finalExpiryDate.getDate() + (pkg.duration || 30));
+        }
+        user.packageId = pkg.id;
+        user.expiresAt = finalExpiryDate;
+        user.nextPackageId = null;
+        user.nextPackageStartsAt = null;
+        await user.save();
+      }
 
       // Send plan update email to user asynchronously
       emailService.sendEmail(
@@ -163,14 +218,16 @@ const paymentController = {
           pkg.duration,
           pkg.instanceLimit,
           pkg.messageLimit,
-          expiryDate
+          finalExpiryDate
         )
       ).catch(err => console.error("Error sending paid plan activation email:", err));
 
       res.status(200).json({ 
-        message: "Payment verified and package activated", 
-        packageId: pkg.id,
-        expiresAt: expiryDate 
+        message: isQueued ? `Package scheduled to activate on ${new Date(user.expiresAt).toLocaleDateString()}` : "Payment verified and package activated", 
+        isQueued,
+        packageId: user.packageId,
+        nextPackageId: user.nextPackageId,
+        expiresAt: user.expiresAt 
       });
 
     } catch (error) {

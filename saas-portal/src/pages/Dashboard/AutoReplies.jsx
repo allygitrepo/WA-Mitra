@@ -31,6 +31,13 @@ const AutoReplies = () => {
   const instanceDropdownRef = useRef(null);
   const [editingRule, setEditingRule] = useState(null);
   const modalRef = useRef(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
 
   // Click outside for instance filter dropdown
   useEffect(() => {
@@ -126,13 +133,18 @@ const AutoReplies = () => {
           const rulesRes = await API.get('/whatsapp/auto-reply/rules', {
             params: { instanceKey: inst.instanceKey }
           });
-          return rulesRes.data.rules || [];
+          const rawRules = rulesRes.data.rules || [];
+          return rawRules.map((r, idx) => ({
+            ...r,
+            instanceKey: inst.instanceKey,
+            _clientKey: r.id ? String(r.id) : `${inst.instanceKey}_${r.keyword}_${idx}`
+          }));
         } catch {
           return [];
         }
       });
-      const allRulesArrays = await Promise.all(rulesPromises);
-      return allRulesArrays.flat();
+      const results = await Promise.all(rulesPromises);
+      return results.flat();
     } catch (err) {
       console.error(err);
       return [];
@@ -463,7 +475,7 @@ const AutoReplies = () => {
                 <div className="card-actions">
                   <button
                     className="icon-btn-sm"
-                    onClick={() => handleToggleRule(rule.id, rule.instanceKey)}
+                    onClick={() => handleToggleRule(rule)}
                     title={rule.isActive ? "Deactivate" : "Activate"}
                   >
                     {rule.isActive ? (
@@ -481,7 +493,7 @@ const AutoReplies = () => {
                   </button>
                   <button
                     className="icon-btn-sm"
-                    onClick={() => handleDeleteRule(rule.id, rule.instanceKey)}
+                    onClick={() => handleDeleteRule(rule)}
                     title="Delete Rule"
                   >
                     <Trash2 size={18} className="text-error" />

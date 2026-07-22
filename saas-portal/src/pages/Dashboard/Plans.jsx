@@ -12,7 +12,7 @@ const UserPlans = () => {
       </div>
 
       <div className="mt-8">
-        <Packages showButtons={false} hideHeader={true} />
+        <Packages showButtons={true} hideHeader={true} />
       </div>
     </div>
   );

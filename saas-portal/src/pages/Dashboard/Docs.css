@@ -116,6 +116,56 @@
   margin-bottom: 24px;
 }
 
+/* Vibrant Icon Badges for Section Headers */
+.doc-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff !important;
+  flex-shrink: 0;
+}
+
+.doc-icon-badge.emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.doc-icon-badge.indigo {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.doc-icon-badge.amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.doc-icon-badge.cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+}
+
+.doc-icon-badge.rose {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+}
+
+.doc-icon-badge.purple {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35);
+}
+
+.doc-icon-badge.emerald-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
 .section-header h2 {
   font-size: 1.75rem;
   font-weight: 800;
@@ -141,15 +191,17 @@
 }
 
 .step-number {
-  width: 32px;
-  height: 32px;
-  background: var(--primary);
-  color: var(--primary-text);
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #ffffff;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
   flex-shrink: 0;
 }
 
@@ -265,50 +317,73 @@ code {
   position: sticky;
   top: 100px;
   padding: 24px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
 }
 
-[data-theme='light'] .sticky-docs-nav {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-}
-
-[data-theme='light'] .sticky-docs-nav a {
-  color: var(--text-secondary);
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-[data-theme='light'] .sticky-docs-nav a:hover {
-  color: var(--primary);
-  transform: translateX(5px);
-}
-
-.sticky-docs-nav h3 {
-  font-size: 1.1rem;
+.quick-nav-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
-.sticky-docs-nav ul {
-  list-style: none;
-  padding: 0;
+.quick-nav-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
   margin: 0;
 }
 
-.sticky-docs-nav li {
-  margin-bottom: 12px;
+.quick-nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.sticky-docs-nav a {
+.quick-nav-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  transition: var(--transition);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
 }
 
-.sticky-docs-nav a:hover {
-  color: var(--primary);
-  padding-left: 4px;
+.quick-nav-list a .nav-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+  color: #10B981;
+}
+
+.quick-nav-list a:hover {
+  background: rgba(16, 185, 129, 0.08);
+  color: #10B981;
+  padding-left: 18px;
+}
+
+.quick-nav-list a:hover .nav-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+[data-theme='dark'] .sticky-docs-nav {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4) !important;
 }
 
 .postman-req {
@@ -1533,4 +1608,29 @@ code {
 [data-theme='light'] .copy-btn-code:hover {
   background: rgba(0, 0, 0, 0.1);
   color: var(--text-main);
+}
+
+/* Dark Theme Overrides for API Docs */
+[data-theme='dark'] .docs-section {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] .docs-section h2,
+[data-theme='dark'] .docs-section h3,
+[data-theme='dark'] .docs-section h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .docs-section p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme='dark'] .step-text h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .step-text p {
+  color: #94a3b8 !important;
 }

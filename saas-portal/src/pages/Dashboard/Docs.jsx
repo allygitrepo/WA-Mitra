@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Code, Terminal, Zap, ShieldCheck, Copy, Check, ArrowLeft,
-  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare
+  Play, Pause, X, Laptop, Server, Smartphone, CheckCircle, MessageSquare,
+  Compass, BookOpen, ChevronRight, AlertCircle
 } from 'lucide-react';
 import './Docs.css';
 
@@ -91,7 +92,9 @@ const Docs = () => {
             {/* Getting Started */}
             <section id="getting-started" className="docs-section card glass">
               <div className="section-header">
-                <Zap size={24} className="text-primary" />
+                <div className="doc-icon-badge emerald">
+                  <Zap size={22} />
+                </div>
                 <h2>Getting Started</h2>
               </div>
               <div className="section-content">
@@ -118,7 +121,9 @@ const Docs = () => {
             {/* Authentication */}
             <section id="authentication" className="docs-section card glass">
               <div className="section-header">
-                <ShieldCheck size={24} className="text-primary" />
+                <div className="doc-icon-badge indigo">
+                  <ShieldCheck size={22} />
+                </div>
                 <h2>Authentication</h2>
               </div>
               <div className="section-content">
@@ -145,11 +150,13 @@ const Docs = () => {
             {/* Zero-Config Session Flow */}
             <section id="zero-config" className="docs-section card glass">
               <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Zap size={24} className="text-primary" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div className="doc-icon-badge amber">
+                    <Zap size={22} />
+                  </div>
                   <h2>Zero-Config External Sessions</h2>
                 </div>
-                <button className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => setShowFlowModal(true)}>
+                <button className="premium-btn-primary" style={{ height: '38px', padding: '0 16px', fontSize: '0.85rem', fontWeight: 'bold' }} onClick={() => setShowFlowModal(true)}>
                   <Zap size={16} className="animate-pulse" style={{ marginRight: '6px' }} />
                   <span>Interactive Flowchart</span>
                 </button>
@@ -467,7 +474,9 @@ const Docs = () => {
             {/* Send Message */}
             <section id="sending-messages" className="docs-section card glass">
               <div className="section-header">
-                <Terminal size={24} className="text-primary" />
+                <div className="doc-icon-badge cyan">
+                  <Terminal size={22} />
+                </div>
                 <h2>Sending Messages</h2>
               </div>
               <div className="section-content">
@@ -793,7 +802,9 @@ const Docs = () => {
             {/* Best Practices */}
             <section id="best-practices" className="docs-section card glass">
               <div className="section-header">
-                <ShieldCheck size={24} className="text-primary" />
+                <div className="doc-icon-badge rose">
+                  <ShieldCheck size={22} />
+                </div>
                 <h2>Error Codes & Best Practices</h2>
               </div>
               <div className="section-content">
@@ -840,7 +851,9 @@ const Docs = () => {
             {/* FAQ Section */}
             <section id="faq" className="docs-section card glass">
               <div className="section-header">
-                <Zap size={24} className="text-primary" />
+                <div className="doc-icon-badge purple">
+                  <AlertCircle size={22} />
+                </div>
                 <h2>Quick Start Q&A</h2>
               </div>
               <div className="section-content">
@@ -870,14 +883,19 @@ const Docs = () => {
 
           <div className="docs-sidebar">
             <div className="card glass sticky-docs-nav">
-              <h3>Quick Navigation</h3>
-              <ul>
-                <li><a href="#getting-started">Getting Started</a></li>
-                <li><a href="#authentication">Authentication</a></li>
-                <li><a href="#zero-config">Zero-Config Sessions</a></li>
-                <li><a href="#sending-messages">Messaging API</a></li>
-                <li><a href="#best-practices">Error Codes</a></li>
-                <li><a href="#faq">Quick Q&A</a></li>
+              <div className="quick-nav-header">
+                <div className="doc-icon-badge emerald-sm">
+                  <Compass size={16} />
+                </div>
+                <h3>Quick Navigation</h3>
+              </div>
+              <ul className="quick-nav-list">
+                <li><a href="#getting-started"><span>Getting Started</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                <li><a href="#authentication"><span>Authentication</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                <li><a href="#zero-config"><span>Zero-Config Sessions</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                <li><a href="#sending-messages"><span>Messaging API</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                <li><a href="#best-practices"><span>Error Codes</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                <li><a href="#faq"><span>Quick Q&A</span><ChevronRight size={14} className="nav-arrow" /></a></li>
               </ul>
             </div>
           </div>

@@ -278,3 +278,64 @@
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Reports Empty State */
+.reports-empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  background: var(--card-bg, #ffffff);
+  border: 1px dashed var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 20px;
+}
+
+.reports-empty-icon-inner {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.reports-empty-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.reports-empty-description {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  max-width: 480px;
+  line-height: 1.6;
+}
+
+/* Dark Theme Overrides for Reports */
+[data-theme='dark'] .reports-content,
+[data-theme='dark'] .report-filters,
+[data-theme='dark'] .reports-empty-container {
+  background: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] .reports-empty-title {
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .reports-empty-description {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .stat-item {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}

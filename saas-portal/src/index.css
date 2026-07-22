@@ -30,15 +30,62 @@
   --primary-hover: #008f70;
   --primary-text: #ffffff;
   --bg: #0a0a0a;
-  --surface: #141414;
+  --surface: #141416;
   --card-bg: #161618;
-  --surface-hover: #1f1f1f;
-  --text-main: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --border: #262626;
+  --surface-hover: #222225;
+  --text-main: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.12);
   --border-focus: #00a884;
   --calendar-filter: invert(1);
+}
+
+/* Global Dark Theme Overrides for Form Controls, Inputs, Labels & Number Spinners */
+[data-theme='dark'] label,
+[data-theme='dark'] .form-label,
+[data-theme='dark'] .input-label,
+[data-theme='dark'] .field-label,
+[data-theme='dark'] .help-text,
+[data-theme='dark'] .form-text {
+  color: #cbd5e1 !important;
+}
+
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select {
+  background-color: #161618 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme='dark'] input:focus,
+[data-theme='dark'] textarea:focus,
+[data-theme='dark'] select:focus {
+  border-color: #00a884 !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.2) !important;
+}
+
+[data-theme='dark'] input::placeholder,
+[data-theme='dark'] textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Chrome/Edge/Safari number input spinner dark theme fix */
+[data-theme='dark'] input[type="number"]::-webkit-inner-spin-button,
+[data-theme='dark'] input[type="number"]::-webkit-outer-spin-button {
+  filter: invert(0.85) hue-rotate(180deg);
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* Modals & Dialogs Dark Mode Fix */
+[data-theme='dark'] .modal-content,
+[data-theme='dark'] .custom-modal-content,
+[data-theme='dark'] .dialog-content {
+  background-color: #161618 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
 }
 
 * {
@@ -97,24 +144,45 @@ ul {
   background-clip: text;
 }
 
-/* Button Utilities */
+/* Premium Primary Buttons & Clear High-Contrast Disabled States */
+.premium-btn-primary,
 .btn-primary {
-  background-color: var(--accent);
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: var(--transition);
-  box-shadow: 0 4px 14px 0 rgba(0, 168, 132, 0.39);
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
-.btn-primary:hover {
-  background-color: #008f70;
+.premium-btn-primary:hover:not(:disabled):not(.disabled),
+.btn-primary:hover:not(:disabled):not(.disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 168, 132, 0.23);
+}
+
+.premium-btn-primary:disabled,
+.premium-btn-primary.disabled,
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  border: 1px solid #cbd5e1 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+[data-theme='dark'] .premium-btn-primary:disabled,
+[data-theme='dark'] .premium-btn-primary.disabled,
+[data-theme='dark'] .btn-primary:disabled,
+[data-theme='dark'] .btn-primary.disabled {
+  background: #27272a !important;
+  color: #71717a !important;
+  border: 1px solid #3f3f46 !important;
 }
 
 .btn-secondary {

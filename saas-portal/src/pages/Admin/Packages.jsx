@@ -122,6 +122,21 @@ const AdminPackages = () => {
     });
   };
 
+  const handleToggleActive = async (pkg) => {
+    const newStatus = !pkg.isActive;
+    const loadingToast = toast.loading(`${newStatus ? 'Activating' : 'Deactivating'} package...`);
+    try {
+      await API.put(`/admin/packages/${pkg.id}`, {
+        ...pkg,
+        isActive: newStatus
+      });
+      fetchPackages();
+      toast.success(`Package ${newStatus ? 'activated' : 'deactivated'} successfully!`, { id: loadingToast });
+    } catch {
+      toast.error("Failed to update package status", { id: loadingToast });
+    }
+  };
+
   const filteredPackages = packages.filter(p =>
     p.name.toLowerCase().includes((searchQuery || '').toLowerCase())
   );
@@ -380,7 +395,11 @@ const AdminPackages = () => {
                   </td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                      <button className="premium-action-btn hover-warning" title="Deactivate">
+                      <button
+                        className={`premium-action-btn ${pkg.isActive ? 'hover-warning' : 'hover-success'}`}
+                        onClick={() => handleToggleActive(pkg)}
+                        title={pkg.isActive ? "Deactivate Plan" : "Activate Plan"}
+                      >
                         <Ban size={16} />
                       </button>
                       <button className="premium-action-btn hover-success" onClick={() => handleEdit(pkg)} title="Edit">

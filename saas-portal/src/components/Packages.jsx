@@ -54,8 +54,8 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
       const res = await API.post('/payments/create-order', { packageId: pkg.id });
 
       if (res.data.isFree) {
-        updateUser({ packageId: res.data.packageId });
-        toast.success("Free package activated successfully!", { id: loadingToast });
+        updateUser({ packageId: res.data.packageId, nextPackageId: res.data.nextPackageId, expiresAt: res.data.expiresAt });
+        toast.success(res.data.message || "Package processed successfully!", { id: loadingToast });
         navigate('/dashboard');
         return;
       }
@@ -77,8 +77,8 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
               razorpay_signature: response.razorpay_signature,
               paymentRecordId: res.data.paymentRecordId
             });
-            updateUser({ packageId: verifyRes.data.packageId });
-            toast.success("Payment successful! Your package is now active.", { id: verificationToast });
+            updateUser({ packageId: verifyRes.data.packageId, nextPackageId: verifyRes.data.nextPackageId, expiresAt: verifyRes.data.expiresAt });
+            toast.success(verifyRes.data.message || "Payment verified and package processed successfully!", { id: verificationToast });
             navigate('/dashboard');
           } catch {
             toast.error("Payment verification failed. Please contact support.", { id: verificationToast });
@@ -132,13 +132,15 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
         <div className={`packages-grid ${getGridClass()}`}>
           {packages.map((pkg, index) => {
             const isActive = user?.packageId === pkg.id;
+            const isNextScheduled = user?.nextPackageId === pkg.id;
             const isAlreadyPurchased = pkg.isOneTime && purchasedIds.includes(pkg.id);
             const numPrice = Number(pkg.price) || 0;
             const formattedPrice = numPrice === 0 ? '0' : numPrice.toLocaleString('en-IN');
 
             return (
-              <div key={pkg.id} className={`package-card glass animate-fade-in delay-${index} ${isActive ? 'active-pkg' : ''}`}>
+              <div key={pkg.id} className={`package-card glass animate-fade-in delay-${index} ${isActive ? 'active-pkg' : ''} ${isNextScheduled ? 'scheduled-pkg' : ''}`}>
                 {isActive && <div className="active-badge">Active Plan</div>}
+                {isNextScheduled && <div className="active-badge" style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>Scheduled Next</div>}
                 <div className="package-header">
                   <div className="pkg-icon">
                     {pkg.instanceLimit > 10 ? <Layers size={24} /> : pkg.instanceLimit > 1 ? <Zap size={24} /> : <Smartphone size={24} />}
@@ -186,20 +188,36 @@ const Packages = ({ hideHeader = false, showButtons = true }) => {
 
                 {showButtons && (
                   <button
-                    className={`pkg-btn ${isActive ? 'btn-active' : index === 1 ? 'btn-primary' : 'btn-outline'} ${processingId === pkg.id ? 'loading' : ''}`}
+                    className={`pkg-btn ${isActive ? 'btn-active' : isNextScheduled ? 'btn-scheduled' : 'premium-btn-primary'} ${processingId === pkg.id ? 'loading' : ''}`}
                     onClick={() => handleActivate(pkg)}
-                    disabled={processingId === pkg.id || isActive || isAlreadyPurchased}
+                    disabled={processingId === pkg.id || isNextScheduled || isAlreadyPurchased}
+                    style={{
+                      marginTop: '24px',
+                      width: '100%',
+                      height: '44px',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: (isNextScheduled || isAlreadyPurchased) ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     {processingId === pkg.id ? (
                       <Loader2 className="animate-spin" size={18} />
                     ) : isActive ? (
                       <>
-                        <Check size={16} /> Active Plan
+                        <Zap size={16} /> Renew Plan
+                      </>
+                    ) : isNextScheduled ? (
+                      <>
+                        <Check size={16} /> Scheduled Next
                       </>
                     ) : isAlreadyPurchased ? (
                       'Already Purchased'
                     ) : (
-                      pkg.price === 0 ? 'Activate Free' : 'Get Started'
+                      Number(pkg.price) === 0 ? 'Activate Free' : 'Upgrade Plan'
                     )}
                   </button>
                 )}

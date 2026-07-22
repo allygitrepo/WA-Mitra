@@ -20,6 +20,7 @@ ApiToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // User <-> Package
 Package.hasMany(User, { foreignKey: 'packageId', as: 'users' });
 User.belongsTo(Package, { foreignKey: 'packageId', as: 'package' });
+User.belongsTo(Package, { foreignKey: 'nextPackageId', as: 'nextPackage' });
 
 // User <-> Payment
 User.hasMany(Payment, { foreignKey: 'userId', as: 'payments' });
