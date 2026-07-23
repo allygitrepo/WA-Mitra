@@ -128,6 +128,8 @@ const SendMessage = () => {
     fileName: '',
     phoneHeader: ''
   });
+  const [analyzingContacts, setAnalyzingContacts] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
 
   // Template Management States
   const [savedTemplates, setSavedTemplates] = useState([]);
@@ -1495,6 +1497,7 @@ const SendMessage = () => {
         fileName: fileName,
         phoneHeader
       });
+      setAnalysisResult(null);
 
       toast.success(
         `Parsed ${uniqueRows.length} unique contacts successfully.` +
@@ -1565,6 +1568,59 @@ const SendMessage = () => {
       fileName: '',
       phoneHeader: ''
     });
+    setAnalysisResult(null);
+  };
+
+  const handleAnalyzeContacts = async () => {
+    if (!selectedInstance) {
+      toast.error('Please select an active WhatsApp instance first.');
+      return;
+    }
+    if (csvData.rows.length === 0) {
+      toast.error('No contact numbers found to analyze.');
+      return;
+    }
+
+    setAnalyzingContacts(true);
+    const loadingToast = toast.loading('Analyzing WhatsApp status of your numbers...');
+    try {
+      const numbersToCheck = csvData.rows.map(r => r._cleanPhone);
+      const res = await instanceService.checkNumbers(selectedInstance, numbersToCheck);
+
+      if (res.data.success) {
+        const results = res.data.results;
+        const existsCount = results.filter(r => r.exists).length;
+        const nonExistsCount = results.filter(r => !r.exists).length;
+        const nonWhatsAppNumbers = results.filter(r => !r.exists).map(r => r.number);
+
+        setAnalysisResult({
+          onWhatsAppCount: existsCount,
+          notOnWhatsAppCount: nonExistsCount,
+          nonWhatsAppNumbers
+        });
+        toast.success(`Analysis complete: ${existsCount} are on WhatsApp, ${nonExistsCount} are not.`, { id: loadingToast });
+      } else {
+        toast.error('Failed to check numbers on WhatsApp', { id: loadingToast });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to analyze contacts', { id: loadingToast });
+    } finally {
+      setAnalyzingContacts(false);
+    }
+  };
+
+  const handleCleanContacts = () => {
+    if (!analysisResult) return;
+    const { nonWhatsAppNumbers } = analysisResult;
+
+    const cleanedRows = csvData.rows.filter(r => !nonWhatsAppNumbers.includes(r._cleanPhone));
+    setCsvData(prev => ({
+      ...prev,
+      rows: cleanedRows
+    }));
+    setAnalysisResult(null);
+    toast.success(`Removed ${nonWhatsAppNumbers.length} non-WhatsApp numbers! remaining: ${cleanedRows.length} contacts.`);
   };
 
   // CSV Template download
@@ -4437,10 +4493,71 @@ const SendMessage = () => {
 
                             {csvData.rows.length > 0 && (
                               <div className="csv-preview-section">
-                                <div className="preview-header">
-                                  <h3>CSV Data Preview ({csvData.rows.length} Contacts)</h3>
-                                  <span className="phone-indicator">Phone number column detected: <strong>{csvData.phoneHeader}</strong></span>
+                                <div className="preview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                  <div>
+                                    <h3>CSV Data Preview ({csvData.rows.length} Contacts)</h3>
+                                    <span className="phone-indicator">Phone number column detected: <strong>{csvData.phoneHeader}</strong></span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="premium-btn-primary"
+                                    style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem' }}
+                                    onClick={handleAnalyzeContacts}
+                                    disabled={analyzingContacts}
+                                  >
+                                    {analyzingContacts ? 'Analyzing...' : 'Analyze WhatsApp Numbers'}
+                                  </button>
                                 </div>
+
+                                {analysisResult && (
+                                  <div style={{
+                                    margin: '16px 0',
+                                    padding: '14px 20px',
+                                    borderRadius: '12px',
+                                    background: analysisResult.notOnWhatsAppCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                                    border: `1px solid ${analysisResult.notOnWhatsAppCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '16px'
+                                  }}>
+                                    <div>
+                                      <h4 style={{ margin: '0 0 4px 0', color: analysisResult.notOnWhatsAppCount > 0 ? '#ef4444' : '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {analysisResult.notOnWhatsAppCount > 0 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+                                        WhatsApp Status Analysis Complete
+                                      </h4>
+                                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        <strong>{analysisResult.onWhatsAppCount}</strong> contacts are registered on WhatsApp. 
+                                        {analysisResult.notOnWhatsAppCount > 0 && (
+                                          <span> 
+                                            {" "}<strong>{analysisResult.notOnWhatsAppCount}</strong> contacts are <strong>NOT using WhatsApp</strong>:{" "}
+                                            <code style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                              {analysisResult.nonWhatsAppNumbers.join(', ')}
+                                            </code>
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                    {analysisResult.notOnWhatsAppCount > 0 && (
+                                      <button
+                                        type="button"
+                                        className="premium-btn-primary"
+                                        style={{
+                                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                          boxShadow: '0 4px 14px rgba(239, 68, 68, 0.35)',
+                                          height: '36px',
+                                          padding: '0 16px',
+                                          fontSize: '0.85rem'
+                                        }}
+                                        onClick={handleCleanContacts}
+                                      >
+                                        Clean List (Remove non-WhatsApp)
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+ 
                                 <div className="csv-preview-table-container" data-lenis-prevent>
                                   <table className="csv-preview-table">
                                     <thead>
@@ -4452,14 +4569,22 @@ const SendMessage = () => {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {csvData.rows.slice(0, 10).map((row, rIdx) => (
-                                        <tr key={rIdx}>
-                                          <td>{rIdx + 1}</td>
-                                          {csvData.headers.map((h, cIdx) => (
-                                            <td key={cIdx}>{row[h]}</td>
-                                          ))}
-                                        </tr>
-                                      ))}
+                                      {csvData.rows.slice(0, 10).map((row, rIdx) => {
+                                        const isNonWhatsApp = analysisResult?.nonWhatsAppNumbers?.includes(row._cleanPhone);
+                                        return (
+                                          <tr key={rIdx} style={isNonWhatsApp ? { backgroundColor: 'rgba(239, 68, 68, 0.08)' } : {}}>
+                                            <td>{rIdx + 1}</td>
+                                            {csvData.headers.map((h, cIdx) => (
+                                              <td key={cIdx}>
+                                                {row[h]}
+                                                {h === csvData.phoneHeader && isNonWhatsApp && (
+                                                  <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '8px', fontWeight: '600' }}>(Not on WhatsApp)</span>
+                                                )}
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        );
+                                      })}
                                     </tbody>
                                   </table>
                                 </div>

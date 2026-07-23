@@ -20,6 +20,7 @@ export const instanceService = {
   getStatus: (instanceKey) => API.get(`/instances/status?instanceKey=${instanceKey}`),
   deleteInstance: (instanceKey) => API.delete(`/instances/${instanceKey}`),
   getGroups: (instanceKey) => API.get(`/instances/${instanceKey}/groups`),
+  checkNumbers: (instanceKey, numbers) => API.post('/whatsapp/check-numbers', { instanceKey, numbers }),
 };
 
 export const tokenService = {

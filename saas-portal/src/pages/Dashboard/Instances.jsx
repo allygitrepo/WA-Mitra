@@ -6,7 +6,8 @@ import {
   Trash2,
   MessageSquare,
   AlertCircle,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { instanceService } from '../../api/services';
@@ -368,7 +369,12 @@ const Instances = () => {
               </div>
             </div>
 
-            {inst.qr ? (
+            {inst.liveStatus === 'connecting' ? (
+              <div className="qr-box animate-fade-in" style={{ border: '1px dashed var(--border)', padding: '24px 16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '180px', background: 'var(--surface-hover)' }}>
+                <Loader2 className="animate-spin" size={32} style={{ color: 'var(--primary)', marginBottom: '8px' }} />
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: 0, textTransform: 'none', fontWeight: '500' }}>Fetching details...</p>
+              </div>
+            ) : inst.qr ? (
               <div className="qr-box animate-fade-in">
                 <img src={inst.qr} alt="Scan me" />
                 <p>Scan with WhatsApp</p>
