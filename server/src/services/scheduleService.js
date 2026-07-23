@@ -6,14 +6,22 @@ const path = require('path');
 const moment = require('moment-timezone');
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
   try {
+    let userId = null;
+    if (instanceId) {
+      const instance = await WhatsAppInstance.findByPk(instanceId);
+      if (instance) {
+        userId = instance.userId;
+      }
+    }
     await MessageLog.create({
       instanceId,
+      userId,
       recipient,
       messageType: type,
       status,
       errorMessage: error
     });
-    if (status === 'sent') {
+    if (status === 'sent' && instanceId) {
       await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
     }
   } catch (e) {

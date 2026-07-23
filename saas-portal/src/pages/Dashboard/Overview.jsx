@@ -24,6 +24,7 @@ const Overview = () => {
   const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [totalMessagesSent, setTotalMessagesSent] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -33,6 +34,7 @@ const Overview = () => {
       ]);
       setInstances(instRes.data.instances || []);
       setLogs(logsRes.data.logs || []);
+      setTotalMessagesSent(logsRes.data.totalMessagesSent || 0);
     } catch (err) {
       console.error("Overview Fetch Error:", err);
     }
@@ -50,7 +52,7 @@ const Overview = () => {
     };
   }, [fetchData]);
 
-  const totalMessages = instances.reduce((acc, curr) => acc + (curr.messageCount || 0), 0);
+  const totalMessages = totalMessagesSent;
   const activeSessions = instances.filter(i => i.liveStatus === 'connected').length;
 
   const filteredLogs = logs.filter(log =>

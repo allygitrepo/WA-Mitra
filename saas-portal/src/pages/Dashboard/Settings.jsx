@@ -78,7 +78,7 @@ const Settings = () => {
       }
 
       const instances = instRes.data.instances || [];
-      const totalMessages = instances.reduce((acc, curr) => acc + (curr.messageCount || 0), 0);
+      const totalMessages = logsRes.data.totalMessagesSent || 0;
 
       setUsage({
         instances: instances.length,

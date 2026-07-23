@@ -31,8 +31,12 @@ Package.hasMany(Payment, { foreignKey: 'packageId', as: 'payments' });
 Payment.belongsTo(Package, { foreignKey: 'packageId', as: 'package' });
 
 // Instance <-> MessageLog
-WhatsAppInstance.hasMany(MessageLog, { foreignKey: 'instanceId', as: 'logs' });
-MessageLog.belongsTo(WhatsAppInstance, { foreignKey: 'instanceId', as: 'instance' });
+WhatsAppInstance.hasMany(MessageLog, { foreignKey: 'instanceId', as: 'logs', onDelete: 'SET NULL' });
+MessageLog.belongsTo(WhatsAppInstance, { foreignKey: 'instanceId', as: 'instance', onDelete: 'SET NULL' });
+
+// User <-> MessageLog
+User.hasMany(MessageLog, { foreignKey: 'userId', as: 'logs' });
+MessageLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User <-> Template
 User.hasMany(Template, { foreignKey: 'userId', as: 'templates' });

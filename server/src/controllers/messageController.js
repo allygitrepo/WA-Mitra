@@ -8,14 +8,22 @@ const { getIO } = require('../config/socket');
 
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
     try {
+        let userId = null;
+        if (instanceId) {
+            const instance = await WhatsAppInstance.findByPk(instanceId);
+            if (instance) {
+                userId = instance.userId;
+            }
+        }
         await MessageLog.create({
             instanceId,
+            userId,
             recipient,
             messageType: type,
             status,
             errorMessage: error
         });
-        if (status === 'sent') {
+        if (status === 'sent' && instanceId) {
             await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
         }
     } catch (e) {
@@ -27,12 +35,9 @@ const checkMessageQuota = async (user, count = 1) => {
     const pkg = await user.getPackage();
     if (!pkg) return true; // No package means no limit? (Or assume trial)
 
-    const instances = await WhatsAppInstance.findAll({ where: { userId: user.id } });
-    const instanceIds = instances.map(i => i.id);
-
     const totalSent = await MessageLog.count({
         where: {
-            instanceId: instanceIds,
+            userId: user.id,
             status: 'sent'
         }
     });
@@ -355,11 +360,8 @@ const messageController = {
     },
     getMessageLogs: async (req, res) => {
         try {
-            const instances = await WhatsAppInstance.findAll({ where: { userId: req.user.id } });
-            const instanceIds = instances.map(i => i.id);
-
             const logs = await MessageLog.findAll({
-                where: { instanceId: instanceIds },
+                where: { userId: req.user.id },
                 order: [['createdAt', 'DESC']],
                 limit: 50,
                 include: [{
@@ -369,7 +371,22 @@ const messageController = {
                 }]
             });
 
-            res.json({ success: true, logs });
+            const logsWithInstanceName = logs.map(log => {
+                const logJson = log.toJSON();
+                if (!logJson.instance) {
+                    logJson.instance = { name: 'Deleted Instance' };
+                }
+                return logJson;
+            });
+
+            const totalMessagesSent = await MessageLog.count({
+                where: {
+                    userId: req.user.id,
+                    status: 'sent'
+                }
+            });
+
+            res.json({ success: true, logs: logsWithInstanceName, totalMessagesSent });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
         }
@@ -377,13 +394,11 @@ const messageController = {
     getReports: async (req, res) => {
         try {
             const instances = await WhatsAppInstance.findAll({ where: { userId: req.user.id } });
-            const instanceIds = instances.map(i => i.id);
-
             const sequelize = require('../config/db');
 
             const reportsRaw = await MessageLog.findAll({
                 where: {
-                    instanceId: instanceIds
+                    userId: req.user.id
                 },
                 attributes: [
                     [sequelize.fn('DATE', sequelize.col('MessageLog.createdAt')), 'date'],
@@ -405,7 +420,7 @@ const messageController = {
                 const inst = instances.find(i => i.id === rep.instanceId);
                 return {
                     ...rep,
-                    instance: inst ? { name: inst.name } : { name: 'Unknown' }
+                    instance: inst ? { name: inst.name } : { name: 'Deleted Instance' }
                 };
             });
 

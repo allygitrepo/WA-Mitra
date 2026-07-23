@@ -9,7 +9,11 @@ const MessageLog = sequelize.define("MessageLog", {
   },
   instanceId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true, // Nullable to persist logs when instance is deleted
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Associated directly with User
   },
   recipient: {
     type: DataTypes.STRING,

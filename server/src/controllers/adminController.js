@@ -318,15 +318,10 @@ const adminController = {
       });
       const totalMessages = await MessageLog.count({
         include: [{
-          model: WhatsAppInstance,
-          as: 'instance',
+          model: User,
+          as: 'user',
           required: true,
-          include: [{
-            model: User,
-            as: 'user',
-            required: true,
-            where: { role: { [Op.ne]: 'admin' }, isVerified: true }
-          }]
+          where: { role: { [Op.ne]: 'admin' }, isVerified: true }
         }]
       });
       const totalRevenue = await Payment.sum('amount', { where: { status: 'completed' } }) || 0;

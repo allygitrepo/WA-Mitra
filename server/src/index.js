@@ -46,6 +46,16 @@ server.listen(PORT, async () => {
                 await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "suspendReason" TEXT;');
                 await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "nextPackageId" INTEGER;');
                 await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "nextPackageStartsAt" TIMESTAMP WITH TIME ZONE;');
+                
+                // Migrate MessageLogs for Postgres
+                await sequelize.query('ALTER TABLE "MessageLogs" ADD COLUMN IF NOT EXISTS "userId" INTEGER;');
+                await sequelize.query('ALTER TABLE "MessageLogs" ALTER COLUMN "instanceId" DROP NOT NULL;');
+                try {
+                    await sequelize.query('ALTER TABLE "MessageLogs" DROP CONSTRAINT IF EXISTS "MessageLogs_instanceId_fkey";');
+                    await sequelize.query('ALTER TABLE "MessageLogs" ADD CONSTRAINT "MessageLogs_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "WhatsAppInstances" ("id") ON DELETE SET NULL ON UPDATE CASCADE;');
+                } catch (fkErr) {
+                    console.warn('Postgres FK constraint update warning:', fkErr.message);
+                }
             } else if (dialect === 'mysql') {
                 const [results] = await sequelize.query("SHOW COLUMNS FROM `Users` LIKE 'suspendReason';");
                 if (results.length === 0) {
@@ -56,6 +66,13 @@ server.listen(PORT, async () => {
                     await sequelize.query("ALTER TABLE `Users` ADD COLUMN `nextPackageId` INT NULL;");
                     await sequelize.query("ALTER TABLE `Users` ADD COLUMN `nextPackageStartsAt` DATETIME NULL;");
                 }
+
+                // Migrate MessageLogs for MySQL
+                const [mlResults] = await sequelize.query("SHOW COLUMNS FROM `MessageLogs` LIKE 'userId';");
+                if (mlResults.length === 0) {
+                    await sequelize.query("ALTER TABLE `MessageLogs` ADD COLUMN `userId` INT NULL;");
+                }
+                await sequelize.query("ALTER TABLE `MessageLogs` MODIFY COLUMN `instanceId` INT NULL;");
             } else if (dialect === 'sqlite') {
                 const [results] = await sequelize.query("PRAGMA table_info(Users);");
                 const hasCol = results.some(r => r.name === 'suspendReason');
@@ -67,8 +84,15 @@ server.listen(PORT, async () => {
                     await sequelize.query("ALTER TABLE Users ADD COLUMN nextPackageId INTEGER;");
                     await sequelize.query("ALTER TABLE Users ADD COLUMN nextPackageStartsAt DATETIME;");
                 }
+
+                // Migrate MessageLogs for SQLite
+                const [mlResults] = await sequelize.query("PRAGMA table_info(MessageLogs);");
+                const hasUserIdCol = mlResults.some(r => r.name === 'userId');
+                if (!hasUserIdCol) {
+                    await sequelize.query("ALTER TABLE MessageLogs ADD COLUMN userId INTEGER;");
+                }
             }
-            console.log('Database schema: User table columns verified/migrated.');
+            console.log('Database schema: User and MessageLogs table columns verified/migrated.');
         } catch (colErr) {
             console.error('Failed to auto-migrate database columns:', colErr.message);
         }

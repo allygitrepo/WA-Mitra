@@ -160,6 +160,10 @@ const AdminUsers = () => {
     return matchesRole && matchesSearch;
   });
 
+  const allUsersCount = users.filter(u => u.role === 'admin' || (u.role === 'user' && u.isVerified)).length;
+  const businessOwnersCount = users.filter(u => u.role === 'user' && u.isVerified).length;
+  const portalAdminsCount = users.filter(u => u.role === 'admin').length;
+
   // Pagination Logic
   const totalPages = Math.ceil(filteredUsers.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -293,19 +297,19 @@ const AdminUsers = () => {
             className={`filter-tab-text ${roleFilter === 'all' && activeView === 'list' ? 'active' : ''}`}
             onClick={() => { setActiveView('list'); setRoleFilter('all'); }}
           >
-            All Users
+            All Users ({allUsersCount})
           </button>
           <button
             className={`filter-tab-text ${roleFilter === 'user' && activeView === 'list' ? 'active' : ''}`}
             onClick={() => { setActiveView('list'); setRoleFilter('user'); }}
           >
-            Business Owners
+            Business Owners ({businessOwnersCount})
           </button>
           <button
             className={`filter-tab-text ${roleFilter === 'admin' && activeView === 'list' ? 'active' : ''}`}
             onClick={() => { setActiveView('list'); setRoleFilter('admin'); }}
           >
-            Portal Admins
+            Portal Admins ({portalAdminsCount})
           </button>
           <button
             className={`filter-tab-text ${activeView === 'usage' ? 'active' : ''}`}

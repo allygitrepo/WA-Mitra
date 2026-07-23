@@ -379,6 +379,7 @@ async function _internalStartSession(instanceKey) {
                                         const cleanNumber = msg.key.remoteJid.split('@')[0];
                                         await MessageLog.create({
                                             instanceId: instance.id,
+                                            userId: instance.userId,
                                             recipient: cleanNumber,
                                             messageType: 'text',
                                             status: 'sent',
@@ -433,6 +434,15 @@ function getStatus(instanceKey) {
 }
 
 async function disconnect(instanceKey) {
+    const sessionData = sessions.get(instanceKey);
+    if (sessionData && sessionData.sock && sessionData.connectionStatus === 'connected') {
+        try {
+            await sessionData.sock.logout();
+        } catch (e) {
+            console.error(`[Baileys Logout Error] Failed to log out session for ${instanceKey}:`, e.message);
+        }
+    }
+
     cleanupSocket(instanceKey);
     sessions.delete(instanceKey);
     rulesCache.delete(instanceKey);
