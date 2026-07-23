@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Edit2, BarChart3, Square } from 'lucide-react';
+import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Edit2, BarChart3, Square, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOutletContext, useSearchParams, Link } from 'react-router-dom';
 import { instanceService, messageService, templateService, scheduleService, cycleService, campaignService } from '../../../api/services';
 import toast from 'react-hot-toast';
@@ -159,7 +159,9 @@ const SendMessage = () => {
   const [trackingCampaignId, setTrackingCampaignId] = useState(null);
   const [trackingCampaignData, setTrackingCampaignData] = useState(null);
   const [loadingTrackingData, setLoadingTrackingData] = useState(false);
+  const [campaignsRowsPerPage, setCampaignsRowsPerPage] = useState(5);
   const [trackerPage, setTrackerPage] = useState(1);
+  const [trackerRowsPerPage, setTrackerRowsPerPage] = useState(10);
 
   // Template Management States
   const [savedTemplates, setSavedTemplates] = useState([]);
@@ -2438,10 +2440,10 @@ const SendMessage = () => {
   const headerDetails = getHeaderDetails();
 
   const renderCampaignsUI = () => {
-    const ITEMS_PER_PAGE = 5;
-    const totalPages = Math.ceil(savedCampaigns.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(savedCampaigns.length / campaignsRowsPerPage);
     const safePage = Math.max(1, Math.min(campaignsPage, totalPages || 1));
-    const paginatedCampaigns = savedCampaigns.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+    const paginatedCampaigns = savedCampaigns.slice((safePage - 1) * campaignsRowsPerPage, safePage * campaignsRowsPerPage);
+    const indexOfFirst = (safePage - 1) * campaignsRowsPerPage;
 
     return (
       <div className="campaigns-history-layout animate-fade-in" style={{ width: '100%' }}>
@@ -2531,48 +2533,52 @@ const SendMessage = () => {
                 ))}
               </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                    Showing page <strong style={{ color: 'var(--text-main)' }}>{safePage}</strong> of <strong style={{ color: 'var(--text-main)' }}>{totalPages}</strong> ({savedCampaigns.length} campaigns total)
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      className="premium-btn-outline"
-                      style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: '6px' }}
-                      disabled={safePage === 1}
-                      onClick={() => setCampaignsPage(safePage - 1)}
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const pNum = idx + 1;
-                      return (
-                        <button
-                          key={pNum}
-                          type="button"
-                          className={safePage === pNum ? "premium-btn-primary" : "premium-btn-outline"}
-                          style={{ height: '32px', minWidth: '32px', padding: '0 8px', fontSize: '0.8rem', borderRadius: '6px' }}
-                          onClick={() => setCampaignsPage(pNum)}
-                        >
-                          {pNum}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      className="premium-btn-outline"
-                      style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: '6px' }}
-                      disabled={safePage === totalPages}
-                      onClick={() => setCampaignsPage(safePage + 1)}
-                    >
-                      Next
-                    </button>
-                  </div>
+              {/* Standardized Pagination Controls */}
+              <div className="premium-pagination" style={{ marginTop: '12px' }}>
+                <div className="premium-rows-dropdown">
+                  <span>Rows per page:</span>
+                  <select
+                    value={campaignsRowsPerPage}
+                    onChange={(e) => {
+                      setCampaignsRowsPerPage(Number(e.target.value));
+                      setCampaignsPage(1);
+                    }}
+                    className="premium-select"
+                  >
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                  </select>
                 </div>
-              )}
+
+                <div className="premium-pagination-info">
+                  <span>
+                    Showing {indexOfFirst + 1}-{Math.min(indexOfFirst + campaignsRowsPerPage, savedCampaigns.length)} of {savedCampaigns.length} campaigns
+                  </span>
+                </div>
+
+                <div className="premium-pagination-controls">
+                  <button
+                    type="button"
+                    disabled={safePage === 1}
+                    onClick={() => setCampaignsPage(p => p - 1)}
+                    className="premium-page-btn"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={safePage === totalPages || totalPages === 0}
+                    onClick={() => setCampaignsPage(p => p + 1)}
+                    className="premium-page-btn"
+                    title="Next Page"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -5461,10 +5467,10 @@ const SendMessage = () => {
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Fetching campaign metrics...</span>
               </div>
             ) : trackingCampaignData ? (() => {
-              const TRACKER_PAGE_SIZE = 10;
-              const totalTrackerPages = Math.ceil(trackingCampaignData.statuses.length / TRACKER_PAGE_SIZE);
+              const totalTrackerPages = Math.ceil(trackingCampaignData.statuses.length / trackerRowsPerPage);
               const safeTrackerPage = Math.max(1, Math.min(trackerPage, totalTrackerPages || 1));
-              const paginatedStatuses = trackingCampaignData.statuses.slice((safeTrackerPage - 1) * TRACKER_PAGE_SIZE, safeTrackerPage * TRACKER_PAGE_SIZE);
+              const paginatedStatuses = trackingCampaignData.statuses.slice((safeTrackerPage - 1) * trackerRowsPerPage, safeTrackerPage * trackerRowsPerPage);
+              const indexOfFirstTracker = (safeTrackerPage - 1) * trackerRowsPerPage;
 
               return (
                 <div>
@@ -5530,33 +5536,52 @@ const SendMessage = () => {
                     </div>
                   </div>
 
-                  {/* Tracker Pagination Controls */}
-                  {totalTrackerPages > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      <span>Showing {(safeTrackerPage - 1) * TRACKER_PAGE_SIZE + 1} - {Math.min(safeTrackerPage * TRACKER_PAGE_SIZE, trackingCampaignData.statuses.length)} of {trackingCampaignData.statuses.length} logs</span>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          className="premium-btn-outline"
-                          style={{ height: '28px', padding: '0 8px', fontSize: '0.78rem', borderRadius: '4px' }}
-                          disabled={safeTrackerPage === 1}
-                          onClick={() => setTrackerPage(safeTrackerPage - 1)}
-                        >
-                          Prev
-                        </button>
-                        <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Page {safeTrackerPage} of {totalTrackerPages}</span>
-                        <button
-                          type="button"
-                          className="premium-btn-outline"
-                          style={{ height: '28px', padding: '0 8px', fontSize: '0.78rem', borderRadius: '4px' }}
-                          disabled={safeTrackerPage === totalTrackerPages}
-                          onClick={() => setTrackerPage(safeTrackerPage + 1)}
-                        >
-                          Next
-                        </button>
-                      </div>
+                  {/* Standardized Pagination Controls */}
+                  <div className="premium-pagination" style={{ marginTop: '12px' }}>
+                    <div className="premium-rows-dropdown">
+                      <span>Rows per page:</span>
+                      <select
+                        value={trackerRowsPerPage}
+                        onChange={(e) => {
+                          setTrackerRowsPerPage(Number(e.target.value));
+                          setTrackerPage(1);
+                        }}
+                        className="premium-select"
+                      >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
                     </div>
-                  )}
+
+                    <div className="premium-pagination-info">
+                      <span>
+                        Showing {indexOfFirstTracker + 1}-{Math.min(indexOfFirstTracker + trackerRowsPerPage, trackingCampaignData.statuses.length)} of {trackingCampaignData.statuses.length} logs
+                      </span>
+                    </div>
+
+                    <div className="premium-pagination-controls">
+                      <button
+                        type="button"
+                        disabled={safeTrackerPage === 1}
+                        onClick={() => setTrackerPage(p => p - 1)}
+                        className="premium-page-btn"
+                        title="Previous Page"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={safeTrackerPage === totalTrackerPages || totalTrackerPages === 0}
+                        onClick={() => setTrackerPage(p => p + 1)}
+                        className="premium-page-btn"
+                        title="Next Page"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })() : (

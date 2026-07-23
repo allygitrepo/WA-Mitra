@@ -345,3 +345,88 @@ select option:disabled {
 .animate-fade-in {
   animation: fadeIn 0.6s ease forwards;
 }
+
+/* Universal Global Premium Pagination Component */
+.premium-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 0 0 12px 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.premium-rows-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.premium-rows-dropdown select.premium-select,
+.premium-pagination select.premium-select {
+  padding: 4px 10px;
+  height: 32px;
+  min-height: 32px;
+  line-height: 22px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: all 200ms ease;
+}
+
+.premium-pagination-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.premium-pagination-info strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.premium-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.premium-page-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.premium-page-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.premium-page-btn.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+  font-weight: 700;
+}
+
+.premium-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
