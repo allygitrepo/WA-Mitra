@@ -2392,28 +2392,94 @@ const SendMessage = () => {
                                   No groups found matching search query
                                 </div>
                               ) : (
-                                filteredScheduleGroupsList.map(group => {
-                                  const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
-                                  return (
-                                    <div
-                                      key={group.id}
-                                      onClick={() => {
-                                        if (isSelected) {
-                                          setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                        } else {
-                                          setScheduleSelectedGroups(prev => [...prev, group]);
-                                        }
-                                        setScheduleGroupSearchQuery('');
+                                <>
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const allFilteredSelected = filteredScheduleGroupsList.every(group =>
+                                        scheduleSelectedGroups.some(g => g.id === group.id)
+                                      );
+                                      if (allFilteredSelected) {
+                                        const filteredIds = filteredScheduleGroupsList.map(g => g.id);
+                                        setScheduleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
+                                      } else {
+                                        setScheduleSelectedGroups(prev => {
+                                          const existingIds = prev.map(g => g.id);
+                                          const toAdd = filteredScheduleGroupsList.filter(g => !existingIds.includes(g.id));
+                                          return [...prev, ...toAdd];
+                                        });
+                                      }
+                                    }}
+                                    className="group-dropdown-item select-all-item"
+                                    style={{
+                                      borderBottom: '1px solid var(--border)',
+                                      fontWeight: '600',
+                                      color: 'var(--primary)',
+                                      display: 'flex',
+                                      justifyContent: 'flex-start',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '12px 14px',
+                                      cursor: 'pointer',
+                                      backgroundColor: 'rgba(0, 168, 132, 0.05)'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={filteredScheduleGroupsList.every(group => scheduleSelectedGroups.some(g => g.id === group.id))}
+                                      readOnly
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--primary)'
                                       }}
-                                      className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                    >
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className="group-subject">{group.subject}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                    />
+                                    <span>
+                                      Select All Matching ({filteredScheduleGroupsList.length})
+                                    </span>
+                                  </div>
+                                  {filteredScheduleGroupsList.map(group => {
+                                    const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
+                                    return (
+                                      <div
+                                        key={group.id}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                          } else {
+                                            setScheduleSelectedGroups(prev => [...prev, group]);
+                                          }
+                                          setScheduleGroupSearchQuery('');
+                                        }}
+                                        className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'flex-start',
+                                          alignItems: 'center',
+                                          gap: '10px',
+                                          padding: '10px 14px'
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          readOnly
+                                          style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            cursor: 'pointer',
+                                            accentColor: 'var(--primary)'
+                                          }}
+                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span className="group-subject">{group.subject}</span>
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })
+                                    );
+                                  })}
+                                </>
                               )}
                             </div>
                           )}
@@ -2563,28 +2629,94 @@ const SendMessage = () => {
                               No groups found matching search query
                             </div>
                           ) : (
-                            filteredScheduleGroupsList.map(group => {
-                              const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
-                              return (
-                                <div
-                                  key={group.id}
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                    } else {
-                                      setScheduleSelectedGroups(prev => [...prev, group]);
-                                    }
-                                    setScheduleGroupSearchQuery('');
+                            <>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allFilteredSelected = filteredScheduleGroupsList.every(group =>
+                                    scheduleSelectedGroups.some(g => g.id === group.id)
+                                  );
+                                  if (allFilteredSelected) {
+                                    const filteredIds = filteredScheduleGroupsList.map(g => g.id);
+                                    setScheduleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
+                                  } else {
+                                    setScheduleSelectedGroups(prev => {
+                                      const existingIds = prev.map(g => g.id);
+                                      const toAdd = filteredScheduleGroupsList.filter(g => !existingIds.includes(g.id));
+                                      return [...prev, ...toAdd];
+                                    });
+                                  }
+                                }}
+                                className="group-dropdown-item select-all-item"
+                                style={{
+                                  borderBottom: '1px solid var(--border)',
+                                  fontWeight: '600',
+                                  color: 'var(--primary)',
+                                  display: 'flex',
+                                  justifyContent: 'flex-start',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 14px',
+                                  cursor: 'pointer',
+                                  backgroundColor: 'rgba(0, 168, 132, 0.05)'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={filteredScheduleGroupsList.every(group => scheduleSelectedGroups.some(g => g.id === group.id))}
+                                  readOnly
+                                  style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--primary)'
                                   }}
-                                  className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="group-subject">{group.subject}</span>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                />
+                                <span>
+                                  Select All Matching ({filteredScheduleGroupsList.length})
+                                </span>
+                              </div>
+                              {filteredScheduleGroupsList.map(group => {
+                                const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
+                                return (
+                                  <div
+                                    key={group.id}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                      } else {
+                                        setScheduleSelectedGroups(prev => [...prev, group]);
+                                      }
+                                      setScheduleGroupSearchQuery('');
+                                    }}
+                                    className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'flex-start',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '10px 14px'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      readOnly
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--primary)'
+                                      }}
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span className="group-subject">{group.subject}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })
+                                );
+                              })}
+                            </>
                           )}
                         </div>
                       )}
@@ -3341,28 +3473,94 @@ const SendMessage = () => {
                                   No groups found matching search query
                                 </div>
                               ) : (
-                                filteredCycleGroupsList.map(group => {
-                                  const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
-                                  return (
-                                    <div
-                                      key={group.id}
-                                      onClick={() => {
-                                        if (isSelected) {
-                                          setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                        } else {
-                                          setCycleSelectedGroups(prev => [...prev, group]);
-                                        }
-                                        setCycleGroupSearchQuery('');
+                                <>
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const allFilteredSelected = filteredCycleGroupsList.every(group =>
+                                        cycleSelectedGroups.some(g => g.id === group.id)
+                                      );
+                                      if (allFilteredSelected) {
+                                        const filteredIds = filteredCycleGroupsList.map(g => g.id);
+                                        setCycleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
+                                      } else {
+                                        setCycleSelectedGroups(prev => {
+                                          const existingIds = prev.map(g => g.id);
+                                          const toAdd = filteredCycleGroupsList.filter(g => !existingIds.includes(g.id));
+                                          return [...prev, ...toAdd];
+                                        });
+                                      }
+                                    }}
+                                    className="group-dropdown-item select-all-item"
+                                    style={{
+                                      borderBottom: '1px solid var(--border)',
+                                      fontWeight: '600',
+                                      color: 'var(--primary)',
+                                      display: 'flex',
+                                      justifyContent: 'flex-start',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '12px 14px',
+                                      cursor: 'pointer',
+                                      backgroundColor: 'rgba(0, 168, 132, 0.05)'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={filteredCycleGroupsList.every(group => cycleSelectedGroups.some(g => g.id === group.id))}
+                                      readOnly
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--primary)'
                                       }}
-                                      className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                    >
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className="group-subject">{group.subject}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                    />
+                                    <span>
+                                      Select All Matching ({filteredCycleGroupsList.length})
+                                    </span>
+                                  </div>
+                                  {filteredCycleGroupsList.map(group => {
+                                    const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
+                                    return (
+                                      <div
+                                        key={group.id}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                          } else {
+                                            setCycleSelectedGroups(prev => [...prev, group]);
+                                          }
+                                          setCycleGroupSearchQuery('');
+                                        }}
+                                        className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'flex-start',
+                                          alignItems: 'center',
+                                          gap: '10px',
+                                          padding: '10px 14px'
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          readOnly
+                                          style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            cursor: 'pointer',
+                                            accentColor: 'var(--primary)'
+                                          }}
+                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span className="group-subject">{group.subject}</span>
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })
+                                    );
+                                  })}
+                                </>
                               )}
                             </div>
                           )}
@@ -3497,28 +3695,94 @@ const SendMessage = () => {
                               No groups found matching search query
                             </div>
                           ) : (
-                            filteredCycleGroupsList.map(group => {
-                              const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
-                              return (
-                                <div
-                                  key={group.id}
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                    } else {
-                                      setCycleSelectedGroups(prev => [...prev, group]);
-                                    }
-                                    setCycleGroupSearchQuery('');
+                            <>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allFilteredSelected = filteredCycleGroupsList.every(group =>
+                                    cycleSelectedGroups.some(g => g.id === group.id)
+                                  );
+                                  if (allFilteredSelected) {
+                                    const filteredIds = filteredCycleGroupsList.map(g => g.id);
+                                    setCycleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
+                                  } else {
+                                    setCycleSelectedGroups(prev => {
+                                      const existingIds = prev.map(g => g.id);
+                                      const toAdd = filteredCycleGroupsList.filter(g => !existingIds.includes(g.id));
+                                      return [...prev, ...toAdd];
+                                    });
+                                  }
+                                }}
+                                className="group-dropdown-item select-all-item"
+                                style={{
+                                  borderBottom: '1px solid var(--border)',
+                                  fontWeight: '600',
+                                  color: 'var(--primary)',
+                                  display: 'flex',
+                                  justifyContent: 'flex-start',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 14px',
+                                  cursor: 'pointer',
+                                  backgroundColor: 'rgba(0, 168, 132, 0.05)'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={filteredCycleGroupsList.every(group => cycleSelectedGroups.some(g => g.id === group.id))}
+                                  readOnly
+                                  style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--primary)'
                                   }}
-                                  className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="group-subject">{group.subject}</span>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                />
+                                <span>
+                                  Select All Matching ({filteredCycleGroupsList.length})
+                                </span>
+                              </div>
+                              {filteredCycleGroupsList.map(group => {
+                                const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
+                                return (
+                                  <div
+                                    key={group.id}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                      } else {
+                                        setCycleSelectedGroups(prev => [...prev, group]);
+                                      }
+                                      setCycleGroupSearchQuery('');
+                                    }}
+                                    className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'flex-start',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '10px 14px'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      readOnly
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--primary)'
+                                      }}
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span className="group-subject">{group.subject}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })
+                                );
+                              })}
+                            </>
                           )}
                         </div>
                       )}
@@ -3958,29 +4222,93 @@ const SendMessage = () => {
                                   No groups found matching search query
                                 </div>
                               ) : (
-                                filteredGroupsList.map(group => {
-                                  const isSelected = selectedGroups.some(g => g.id === group.id);
-                                  return (
-                                    <div
-                                      key={group.id}
-                                      onClick={() => {
-                                        if (isSelected) {
-                                          setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                        } else {
-                                          setSelectedGroups(prev => [...prev, group]);
-                                        }
-                                        setGroupSearchQuery('');
+                                <>
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const allFilteredSelected = filteredGroupsList.every(group =>
+                                        selectedGroups.some(g => g.id === group.id)
+                                      );
+                                      if (allFilteredSelected) {
+                                        const filteredIds = filteredGroupsList.map(g => g.id);
+                                        setSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
+                                      } else {
+                                        setSelectedGroups(prev => {
+                                          const existingIds = prev.map(g => g.id);
+                                          const toAdd = filteredGroupsList.filter(g => !existingIds.includes(g.id));
+                                          return [...prev, ...toAdd];
+                                        });
+                                      }
+                                    }}
+                                    className="group-dropdown-item select-all-item"
+                                    style={{
+                                      borderBottom: '1px solid var(--border)',
+                                      fontWeight: '600',
+                                      color: 'var(--primary)',
+                                      display: 'flex',
+                                      justifyContent: 'flex-start',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '12px 14px',
+                                      cursor: 'pointer',
+                                      backgroundColor: 'rgba(0, 168, 132, 0.05)'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={filteredGroupsList.every(group => selectedGroups.some(g => g.id === group.id))}
+                                      readOnly
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        cursor: 'pointer',
+                                        accentColor: 'var(--primary)'
                                       }}
-                                      className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                    >
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontWeight: '500' }}>{group.subject}</span>
-                                        {isSelected && <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>(Selected)</span>}
+                                    />
+                                    <span>
+                                      Select All Matching ({filteredGroupsList.length})
+                                    </span>
+                                  </div>
+                                  {filteredGroupsList.map(group => {
+                                    const isSelected = selectedGroups.some(g => g.id === group.id);
+                                    return (
+                                      <div
+                                        key={group.id}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setSelectedGroups(prev => prev.filter(g => g.id !== group.id));
+                                          } else {
+                                            setSelectedGroups(prev => [...prev, group]);
+                                          }
+                                          setGroupSearchQuery('');
+                                        }}
+                                        className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          padding: '10px 14px'
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            readOnly
+                                            style={{
+                                              width: '16px',
+                                              height: '16px',
+                                              cursor: 'pointer',
+                                              accentColor: 'var(--primary)'
+                                            }}
+                                          />
+                                          <span style={{ fontWeight: '500' }}>{group.subject}</span>
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{group.participantsCount} members</span>
                                       </div>
-                                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{group.participantsCount} members</span>
-                                    </div>
-                                  );
-                                })
+                                    );
+                                  })}
+                                </>
                               )}
                             </div>
                           )}
