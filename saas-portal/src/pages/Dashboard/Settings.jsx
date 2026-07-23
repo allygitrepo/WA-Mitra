@@ -13,7 +13,8 @@ import {
   MessageSquare,
   Zap,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -22,7 +23,6 @@ import useThemeStore from '../../store/useThemeStore';
 import API from '../../api/axiosConfig';
 import { authService, instanceService, messageService } from '../../api/services';
 import './Settings.css';
-import '../Admin/Admin.css';
 
 const Settings = () => {
   const { user, updateUser } = useAuthStore();
@@ -30,11 +30,14 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  
+  // Profile Form State
   const [profileForm, setProfileForm] = useState({
     username: '',
     orgName: '',
     phone: ''
   });
+
   const [packages, setPackages] = useState([]);
   const [loadingPkg, setLoadingPkg] = useState(false);
   const [usage, setUsage] = useState({ instances: 0, messages: 0 });
@@ -70,7 +73,6 @@ const Settings = () => {
 
       setPackages(pkgsRes.data.packages || []);
 
-      // Update store with latest user data (including expiresAt)
       if (profileRes.data.user) {
         useAuthStore.getState().updateUser(profileRes.data.user);
       }
@@ -130,293 +132,265 @@ const Settings = () => {
   };
 
   return (
-    <div className="settings-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage your account and visual preferences.</p>
+    <div className="settings-page-wrapper animate-fade-in">
+      {/* Page Header */}
+      <div className="settings-header">
+        <div className="breadcrumb-trail">
+          <span>Dashboard</span>
+          <ChevronRight size={14} />
+          <span className="current">Settings</span>
         </div>
+        <h1 className="settings-page-title">Settings</h1>
+        <p className="settings-page-subtitle">Manage your profile, appearance and subscription plan.</p>
       </div>
 
-      <div className="settings-grid">
-        <div className="settings-nav glass">
+      {/* Main Settings Swiss Grid Layout */}
+      <div className="settings-layout">
+        {/* Left Vertical Tabs Navigation */}
+        <aside className="settings-vertical-tabs">
           <button
-            className={`s-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+            className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
-            <User size={18} /> <span>Profile</span>
+            <User size={18} />
+            <span>Profile</span>
           </button>
+
           <button
-            className={`s-nav-item ${activeTab === 'theme' ? 'active' : ''}`}
+            className={`tab-item ${activeTab === 'theme' ? 'active' : ''}`}
             onClick={() => setActiveTab('theme')}
           >
-            <Palette size={18} /> <span>Appearance</span>
+            <Palette size={18} />
+            <span>Appearance</span>
           </button>
+
           <button
-            className={`s-nav-item ${activeTab === 'subscription' ? 'active' : ''}`}
+            className={`tab-item ${activeTab === 'subscription' ? 'active' : ''}`}
             onClick={() => setActiveTab('subscription')}
           >
-            <Box size={18} /> <span>Subscription</span>
+            <Box size={18} />
+            <span>Subscription</span>
           </button>
-        </div>
+        </aside>
 
-        <div className="settings-content">
-          {activeTab === 'profile' ? (
-            <div className="settings-card glass animate-fade-in">
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h3>Profile Information</h3>
-                  <p>Update your personal details and how others see you.</p>
+        {/* Right Tab Content Panel */}
+        <main className="settings-tab-panel">
+          {/* TAB 1: PROFILE */}
+          {activeTab === 'profile' && (
+            <div className="settings-card-container animate-fade-in">
+              <div className="profile-header-card">
+                <div className="avatar-large-wrapper">
+                  <div className="avatar-large">
+                    {(user?.username || user?.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="user-name-title">
+                      <h2>{user?.username || 'Enterprise User'}</h2>
+                      <span className="role-badge">
+                        {user?.role === 'admin' ? 'System Administrator' : 'Account Owner'}
+                      </span>
+                    </div>
+                    <span className="user-email-subtitle">{user?.email}</span>
+                  </div>
                 </div>
+
                 <button
-                  className={`btn-edit ${isEditing ? 'active' : ''}`}
+                  className={`btn-secondary-modern ${isEditing ? 'active' : ''}`}
                   onClick={() => setIsEditing(!isEditing)}
                 >
                   {isEditing ? <><X size={16} /> Cancel</> : <><Edit2 size={16} /> Edit Profile</>}
                 </button>
               </div>
 
-              <div className="settings-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Username</label>
-                    <input
-                      type="text"
-                      className="auth-input"
-                      style={{ paddingLeft: '14px' }}
-                      value={profileForm.username}
-                      onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                      readOnly={!isEditing}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Email Address</label>
-                    <input
-                      type="email"
-                      className="auth-input"
-                      style={{ paddingLeft: '14px' }}
-                      defaultValue={user?.email}
-                      readOnly
-                    />
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Email cannot be changed</span>
-                  </div>
+              <div className="card-section-divider"></div>
+
+              <div className="settings-form-grid">
+                <div className="form-field-group">
+                  <label className="form-field-label">Username</label>
+                  <input
+                    type="text"
+                    className="modern-input"
+                    value={profileForm.username}
+                    onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                    readOnly={!isEditing}
+                  />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Organization</label>
-                    <input
-                      type="text"
-                      className="auth-input"
-                      style={{ paddingLeft: '14px' }}
-                      value={profileForm.orgName}
-                      onChange={(e) => setProfileForm({ ...profileForm, orgName: e.target.value })}
-                      readOnly={!isEditing}
-                      placeholder="Not set"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Phone Number</label>
-                    <input
-                      type="text"
-                      className="auth-input"
-                      style={{ paddingLeft: '14px' }}
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      readOnly={!isEditing}
-                      placeholder="Not set"
-                    />
-                  </div>
+                <div className="form-field-group">
+                  <label className="form-field-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="modern-input read-only"
+                    value={user?.email || ''}
+                    readOnly
+                  />
+                  <span className="field-hint">Email address cannot be changed</span>
                 </div>
 
-                {isEditing && (
-                  <div className="form-actions animate-fade-in">
-                    <button className="btn-primary" onClick={handleSaveProfile} disabled={savingProfile}>
-                      <Save size={18} /> Save Changes
-                    </button>
-                  </div>
-                )}
+                <div className="form-field-group">
+                  <label className="form-field-label">Organization</label>
+                  <input
+                    type="text"
+                    className="modern-input"
+                    value={profileForm.orgName}
+                    onChange={(e) => setProfileForm({ ...profileForm, orgName: e.target.value })}
+                    readOnly={!isEditing}
+                    placeholder="Not set"
+                  />
+                </div>
+
+                <div className="form-field-group">
+                  <label className="form-field-label">Phone Number</label>
+                  <input
+                    type="text"
+                    className="modern-input"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    readOnly={!isEditing}
+                    placeholder="Not set"
+                  />
+                </div>
               </div>
+
+              {isEditing && (
+                <div className="form-actions-bar animate-fade-in">
+                  <button className="btn-primary-modern" onClick={handleSaveProfile} disabled={savingProfile}>
+                    <Save size={18} /> Save Changes
+                  </button>
+                </div>
+              )}
             </div>
-          ) : activeTab === 'subscription' ? (
-            <div className="settings-card glass animate-fade-in">
-              <div className="card-header">
-                <h3>Your Subscription</h3>
-                <p>Manage your current plan and system limits.</p>
-              </div>
-              <div className="subscription-content p-6">
-                {loadingPkg ? (
-                  <div className="flex flex-col items-center justify-center p-12">
-                    <Loader2 size={32} className="animate-spin text-primary" />
-                    <p className="mt-4 text-muted">Fetching subscription details...</p>
-                  </div>
-                ) : currentPackage ? (
-                  <div className="current-plan-card glass animate-fade-in">
-                    <div className="plan-badge">CURRENT PLAN</div>
-                    <h2>{currentPackage.name}</h2>
-                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                      Subscription valid until <strong>{currentPackage.duration === -1 ? 'Lifetime' : formatDate(user?.expiresAt)}</strong>
-                    </p>
+          )}
 
-                    <div className="plan-stats-grid">
-                      <div className="plan-stat">
-                        <div className="stat-icon-box">
-                          <Smartphone size={20} />
-                        </div>
-                        <div>
-                          <span className="label">Instances</span>
-                          <span className="value">{currentPackage.instanceLimit === -1 ? 'Unlimited' : `${usage.instances} / ${currentPackage.instanceLimit}`}</span>
-                        </div>
-                      </div>
-                      <div className="plan-stat">
-                        <div className="stat-icon-box">
-                          <MessageSquare size={20} />
-                        </div>
-                        <div>
-                          <span className="label">Message Quota</span>
-                          <span className="value">{currentPackage.messageLimit === -1 ? 'Unlimited' : `${usage.messages.toLocaleString('en-IN')} / ${currentPackage.messageLimit.toLocaleString('en-IN')}`}</span>
-                        </div>
-                      </div>
-                      <div className="plan-stat">
-                        <div className="stat-icon-box">
-                          <Zap size={20} />
-                        </div>
-                        <div>
-                          <span className="label">Status</span>
-                          <span className="value text-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span> Active
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="usage-progress-bars">
-                      {currentPackage.messageLimit !== -1 && (
-                        <div className="usage-item">
-                          <div className="usage-item-header">
-                            <span className="usage-label">Message Quota Usage</span>
-                            <span className="usage-count">{usage.messages.toLocaleString('en-IN')} / {currentPackage.messageLimit.toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="progress-bar-bg">
-                            <div
-                              className="progress-bar-fill"
-                              style={{ width: `${Math.min(100, (usage.messages / currentPackage.messageLimit) * 100)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-
-                      {currentPackage.instanceLimit !== -1 && (
-                        <div className="usage-item">
-                          <div className="usage-item-header">
-                            <span className="usage-label">Instance Connection Usage</span>
-                            <span className="usage-count">{usage.instances} / {currentPackage.instanceLimit}</span>
-                          </div>
-                          <div className="progress-bar-bg">
-                            <div
-                              className="progress-bar-fill"
-                              style={{ width: `${Math.min(100, (usage.instances / currentPackage.instanceLimit) * 100)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {user?.nextPackage && (
-                      <div style={{ marginTop: '20px', padding: '16px 20px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Zap size={20} />
-                        </div>
-                        <div>
-                          <h4 style={{ margin: '0 0 2px 0', fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                            Scheduled Next Plan: {user.nextPackage.name}
-                          </h4>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            This plan is scheduled to activate automatically when your current plan completes on {user?.expiresAt ? new Date(user.expiresAt).toLocaleDateString('en-GB') : 'expiration'}.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border, rgba(0,0,0,0.08))', display: 'flex', justifyContent: 'flex-end' }}>
-                      <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ height: '42px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-                        <Zap size={16} /> Upgrade Plan
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="no-plan-card-premium" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center' }}>
-                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-                      <AlertCircle size={32} />
-                    </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: '0 0 8px 0' }}>No Active Plan</h3>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-                      You haven't subscribed to any plan yet. Subscribe now to start using the gateway.
-                    </p>
-                    <button className="premium-btn-primary" onClick={() => navigate('/dashboard/plans')} style={{ width: '160px', height: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                      Browse Plans
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="settings-card glass animate-fade-in">
-              {/* ... theme settings ... */}
-              <div className="card-header">
+          {/* TAB 2: APPEARANCE */}
+          {activeTab === 'theme' && (
+            <div className="settings-card-container animate-fade-in">
+              <div className="panel-title-block">
                 <h3>Theme Settings</h3>
                 <p>Customize how the dashboard looks on your device.</p>
               </div>
 
-              <div className="theme-selection-grid">
+              <div className="theme-options-grid">
                 <div
-                  className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+                  className={`theme-card-option ${theme === 'light' ? 'active' : ''}`}
                   onClick={() => setTheme('light')}
                 >
-                  <div className="theme-preview light">
-                    <div className="preview-header"></div>
-                    <div className="preview-sidebar"></div>
-                    <div className="preview-content"></div>
+                  <div className="theme-preview-box light-preview">
+                    <div className="preview-header-bar"></div>
+                    <div className="preview-content-lines"></div>
                   </div>
-                  <div className="theme-info">
-                    <Sun size={16} />
+                  <div className="theme-label-row">
+                    <Sun size={18} />
                     <span>Light Mode</span>
                   </div>
                 </div>
 
                 <div
-                  className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+                  className={`theme-card-option ${theme === 'dark' ? 'active' : ''}`}
                   onClick={() => setTheme('dark')}
                 >
-                  <div className="theme-preview dark">
-                    <div className="preview-header"></div>
-                    <div className="preview-sidebar"></div>
-                    <div className="preview-content"></div>
+                  <div className="theme-preview-box dark-preview">
+                    <div className="preview-header-bar"></div>
+                    <div className="preview-content-lines"></div>
                   </div>
-                  <div className="theme-info">
-                    <Moon size={16} />
+                  <div className="theme-label-row">
+                    <Moon size={18} />
                     <span>Dark Mode</span>
                   </div>
                 </div>
 
                 <div
-                  className={`theme-option ${theme === 'system' ? 'active' : ''}`}
+                  className={`theme-card-option ${theme === 'system' ? 'active' : ''}`}
                   onClick={() => setTheme('system')}
                 >
-                  <div className="theme-preview system">
-                    <div className="preview-header"></div>
-                    <div className="preview-sidebar"></div>
-                    <div className="preview-content"></div>
+                  <div className="theme-preview-box system-preview">
+                    <div className="preview-header-bar"></div>
+                    <div className="preview-content-lines"></div>
                   </div>
-                  <div className="theme-info">
-                    <Monitor size={16} />
+                  <div className="theme-label-row">
+                    <Monitor size={18} />
                     <span>System Default</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
-        </div>
+
+          {/* TAB 3: SUBSCRIPTION */}
+          {activeTab === 'subscription' && (
+            <div className="settings-card-container animate-fade-in">
+              <div className="panel-title-block">
+                <h3>Your Subscription</h3>
+                <p>Manage your current plan and system limits.</p>
+              </div>
+
+              <div className="card-section-divider"></div>
+
+              {loadingPkg ? (
+                <div className="loader-center-box">
+                  <Loader2 size={32} className="animate-spin text-emerald" />
+                  <p>Fetching subscription details...</p>
+                </div>
+              ) : currentPackage ? (
+                <div className="active-subscription-block">
+                  <div className="sub-status-header">
+                    <div>
+                      <span className="sub-badge-active">ACTIVE SUBSCRIPTION</span>
+                      <h2 className="sub-plan-name">{currentPackage.name}</h2>
+                      <p className="sub-expiry-text">
+                        Subscription valid until: <strong>{currentPackage.duration === -1 ? 'Lifetime Access' : formatDate(user?.expiresAt)}</strong>
+                      </p>
+                    </div>
+                    <button className="btn-primary-modern" onClick={() => navigate('/dashboard/plans')}>
+                      <Zap size={18} /> Upgrade Plan
+                    </button>
+                  </div>
+
+                  <div className="plan-metrics-grid">
+                    <div className="metric-box">
+                      <div className="metric-icon-wrap emerald">
+                        <Smartphone size={20} />
+                      </div>
+                      <div>
+                        <span className="metric-label">Instances</span>
+                        <span className="metric-value">
+                          {currentPackage.instanceLimit === -1 ? 'Unlimited' : `${usage.instances} / ${currentPackage.instanceLimit}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="metric-box">
+                      <div className="metric-icon-wrap indigo">
+                        <MessageSquare size={20} />
+                      </div>
+                      <div>
+                        <span className="metric-label">Message Quota</span>
+                        <span className="metric-value">
+                          {currentPackage.messageLimit === -1 ? 'Unlimited' : `${usage.messages.toLocaleString('en-IN')} / ${currentPackage.messageLimit.toLocaleString('en-IN')}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-sub-banner">
+                  <div className="empty-sub-info">
+                    <div className="empty-sub-icon">
+                      <AlertCircle size={24} />
+                    </div>
+                    <div>
+                      <h4 className="empty-sub-title">No Active Subscription</h4>
+                      <p className="empty-sub-desc">You haven't subscribed to a plan yet. Browse our pricing packages to activate WhatsApp instances and unlimited REST API messaging.</p>
+                    </div>
+                  </div>
+                  <button className="btn-primary-modern" onClick={() => navigate('/dashboard/plans')}>
+                    <Zap size={18} /> Browse Pricing Plans
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

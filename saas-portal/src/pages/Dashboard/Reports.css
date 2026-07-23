@@ -191,11 +191,11 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
+    padding: 64px 24px !important;
     text-align: center;
-    background: var(--card-bg, #ffffff);
-    border: 1px dashed var(--border, rgba(0, 0, 0, 0.12));
-    border-radius: 20px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .reports-empty-icon-inner {
@@ -226,8 +226,7 @@
 
 /* Dark Theme Overrides for Reports */
 [data-theme='dark'] .reports-content,
-[data-theme='dark'] .report-filters,
-[data-theme='dark'] .reports-empty-container {
+[data-theme='dark'] .report-filters {
     background: #161618 !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;

@@ -9,7 +9,13 @@ import {
   Code2,
   BarChart4,
   Plus,
-  Minus
+  Minus,
+  CheckCircle2,
+  Smartphone,
+  Activity,
+  Globe,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -21,64 +27,107 @@ const LandingPage = () => {
   const { isAuthenticated } = useAuthStore();
 
   return (
-    <div className="landing-container">
+    <div className="landing-container animate-fade-in">
       <Navbar />
 
       {/* Hero Section */}
       <section className="hero">
         <div className="container hero-grid">
-          <div className="hero-content animate-fade-in">
-            <div className="badge">
-              <span className="badge-dot"></span>
-              New: Multi-Instance V2 is live
+          <div className="hero-content">
+            <div className="badge-pill">
+              <span className="badge-pulse-dot"></span>
+              <span>New Release V2.0 • Multi-Instance REST Gateway is Live</span>
             </div>
-            <h1>
-              The Enterprise <span className="text-gradient">WhatsApp Gateway</span>
+            
+            <h1 className="hero-title">
+              The Enterprise <br />
+              <span className="text-emerald-gradient">WhatsApp Gateway</span>
             </h1>
+            
             <p className="hero-desc">
-              Connect multiple WhatsApp instances through a unified REST API.
-              Built for reliability, speed, and production-scale automation.
+              Connect multiple WhatsApp instances, blast bulk campaigns, schedule automated messaging, and integrate real-time webhooks through a high-performance REST API.
             </p>
+
             <div className="hero-actions">
               {!isAuthenticated ? (
                 <Link to="/register" className="btn-hero-primary">
-                  Get Started Free <ArrowRight size={20} />
+                  Get Started Free <ArrowRight size={18} />
                 </Link>
               ) : (
                 <Link to="/dashboard" className="btn-hero-primary">
-                  Go to Dashboard <ArrowRight size={20} />
+                  Go to Dashboard <ArrowRight size={18} />
                 </Link>
               )}
               <Link to="/docs" className="btn-hero-secondary">
                 View API Documentation
               </Link>
             </div>
+
+            <div className="hero-trust-metrics">
+              <div className="metric-item">
+                <span className="metric-val">99.99%</span>
+                <span className="metric-lbl">Uptime SLA</span>
+              </div>
+              <div className="metric-divider"></div>
+              <div className="metric-item">
+                <span className="metric-val">Sub-second</span>
+                <span className="metric-lbl">Message Delivery</span>
+              </div>
+              <div className="metric-divider"></div>
+              <div className="metric-item">
+                <span className="metric-val">256-bit</span>
+                <span className="metric-lbl">Session Encryption</span>
+              </div>
+            </div>
           </div>
 
-          <div className="hero-visual animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="dashboard-preview glass">
-              <div className="preview-header">
-                <div className="preview-dots"><span></span><span></span><span></span></div>
-                <div className="preview-title">Dashboard Overview</div>
+          <div className="hero-visual">
+            <div className="dashboard-preview-card glass-hero-card">
+              <div className="preview-top-bar">
+                <div className="preview-dots">
+                  <span className="dot-red"></span>
+                  <span className="dot-yellow"></span>
+                  <span className="dot-green"></span>
+                </div>
+                <div className="preview-live-status">
+                  <span className="live-ping"></span> Gateway Connected
+                </div>
               </div>
-              <div className="preview-body">
-                <div className="preview-stat-grid">
-                  <div className="p-stat">
-                    <span className="p-label">Active Instances</span>
-                    <span className="p-value">12</span>
+
+              <div className="preview-inner">
+                <div className="preview-stat-row">
+                  <div className="p-stat-box">
+                    <div className="p-stat-icon emerald"><Smartphone size={18} /></div>
+                    <div>
+                      <span className="p-stat-num">12</span>
+                      <span className="p-stat-title">Active Instances</span>
+                    </div>
                   </div>
-                  <div className="p-stat">
-                    <span className="p-label">Messages Today</span>
-                    <span className="p-value">2.4k</span>
+                  <div className="p-stat-box">
+                    <div className="p-stat-icon indigo"><Send size={18} /></div>
+                    <div>
+                      <span className="p-stat-num">48.2k</span>
+                      <span className="p-stat-title">Messages Sent</span>
+                    </div>
                   </div>
                 </div>
-                <div className="preview-chart">
-                  <div className="chart-bar" style={{ height: '40%' }}></div>
-                  <div className="chart-bar" style={{ height: '60%' }}></div>
-                  <div className="chart-bar" style={{ height: '45%' }}></div>
-                  <div className="chart-bar" style={{ height: '80%' }}></div>
-                  <div className="chart-bar" style={{ height: '55%' }}></div>
-                  <div className="chart-bar" style={{ height: '70%' }}></div>
+
+                <div className="preview-log-preview">
+                  <div className="log-row-item">
+                    <CheckCircle2 size={15} className="text-emerald" />
+                    <span className="log-text">Campaign #104 delivered to +91 90239...</span>
+                    <span className="log-time">Just now</span>
+                  </div>
+                  <div className="log-row-item">
+                    <CheckCircle2 size={15} className="text-emerald" />
+                    <span className="log-text">Auto-reply triggered for keyword "PRICE"</span>
+                    <span className="log-time">2m ago</span>
+                  </div>
+                  <div className="log-row-item">
+                    <CheckCircle2 size={15} className="text-emerald" />
+                    <span className="log-text">Instance "Sales-01" reconnected</span>
+                    <span className="log-time">5m ago</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -86,92 +135,115 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="features">
+      {/* Features Showcase Section */}
+      <section id="features" className="features-section">
         <div className="container">
-          <div className="section-head">
-            <h2 className="section-title">Designed for Scale</h2>
-            <p className="section-subtitle">Everything you need to power your business communication.</p>
+          <div className="section-head-centered">
+            <span className="section-tag">ENGINEERED FOR PRODUCTION</span>
+            <h2 className="section-title">Built for Modern Businesses & Developers</h2>
+            <p className="section-subtitle">Everything you need to automate, broadcast, and scale your WhatsApp communication seamlessly.</p>
           </div>
 
           <div className="features-grid">
             <FeatureCard
-              icon={<Layers />}
-              title="Multi-Instance"
-              desc="Manage multiple WhatsApp accounts through a single portal with ease."
+              icon={<Layers size={24} />}
+              badgeColor="emerald"
+              title="Multi-Instance Orchestration"
+              desc="Connect and manage multiple WhatsApp accounts from a centralized SaaS dashboard with automated failover."
             />
             <FeatureCard
-              icon={<Zap />}
-              title="Lightning Fast"
-              desc="Optimized Baileys-core for sub-second message delivery."
+              icon={<Zap size={24} />}
+              badgeColor="indigo"
+              title="Lightning Fast REST API"
+              desc="Sub-second message dispatching with simple JSON payloads, webhooks, and granular error tracebacks."
             />
             <FeatureCard
-              icon={<Shield />}
-              title="Secure Sessions"
-              desc="End-to-end encrypted sessions with automatic auto-reconnect."
+              icon={<MessageSquare size={24} />}
+              badgeColor="cyan"
+              title="AI Keyword Auto-Replies"
+              desc="Set up smart keyword triggers, automated greetings, and instant customer support flows without writing code."
             />
             <FeatureCard
-              icon={<Code2 />}
-              title="RESTful API"
-              desc="Simple JSON endpoints that integrate with any tech stack."
+              icon={<Code2 size={24} />}
+              badgeColor="purple"
+              title="Bulk Messaging & Scheduling"
+              desc="Schedule broadcasts, cycle numbers automatically to prevent rate-limits, and monitor campaign performance."
             />
             <FeatureCard
-              icon={<BarChart4 />}
-              title="Real-time Stats"
-              desc="Monitor your message flow and instance health in real-time."
+              icon={<BarChart4 size={24} />}
+              badgeColor="emerald"
+              title="Real-time Analytics & Logs"
+              desc="Track message delivery rates, status callbacks, failure reasons, and export detailed PDF/CSV reports."
             />
             <FeatureCard
-              icon={<Send />}
-              title="Media Support"
-              desc="Send images, PDFs, and documents as easily as text messages."
+              icon={<Shield size={24} />}
+              badgeColor="cyan"
+              title="Encrypted Isolated Sessions"
+              desc="Every WhatsApp session is isolated with individual container sessions and auto-reconnect listeners."
             />
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <Packages />
+      {/* Pricing Section Wrapper */}
+      <section id="pricing" className="pricing-landing-wrapper">
+        <div className="container">
+          <div className="section-head-centered">
+            <span className="section-tag">TRANSPARENT PRICING</span>
+            <h2 className="section-title">Simple Plans for Every Scale</h2>
+            <p className="section-subtitle">Pick the right package for your WhatsApp gateway needs. Upgrade or switch plans anytime.</p>
+          </div>
+          <Packages hideHeader={true} showButtons={true} />
+        </div>
+      </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="faq">
+      <section id="faq" className="faq-section">
         <div className="container">
-          <div className="section-head">
+          <div className="section-head-centered">
+            <span className="section-tag">GOT QUESTIONS?</span>
             <h2 className="section-title">Frequently Asked Questions</h2>
-            <p className="section-subtitle">Have questions? We have answers.</p>
+            <p className="section-subtitle">Find answers to common questions about WA-Mitra features, API, and billing.</p>
           </div>
 
           <div className="faq-list">
             <FAQItem
-              question="What is WA-Mitra?"
-              answer="WA-Mitra is an enterprise-grade WhatsApp Gateway that allows developers to connect multiple WhatsApp accounts and interact with them via a clean REST API. It's built for scale, automation, and high reliability."
+              question="What is WA-Mitra WhatsApp Gateway?"
+              answer="WA-Mitra is an enterprise-grade WhatsApp REST API Gateway that enables businesses and developers to connect multiple WhatsApp accounts and automate messaging, bulk broadcasts, and webhook integrations."
             />
             <FAQItem
-              question="How many WhatsApp instances can I connect?"
-              answer="Depending on your plan, you can connect anywhere from 1 to 100+ instances. Our infrastructure is designed to handle multiple concurrent sessions with automatic reconnection."
+              question="How many WhatsApp instances can I run simultaneously?"
+              answer="Depending on your selected plan, you can connect from 1 to multiple active WhatsApp instances. Each instance runs in an isolated session with independent QR pairing."
             />
             <FAQItem
-              question="Is my data and session secure?"
-              answer="Yes. We use industry-standard encryption for session storage. Your WhatsApp sessions are managed securely, and we never access your message content beyond what is necessary for the API relay."
+              question="Can I send images, PDFs, and documents via API?"
+              answer="Yes! WA-Mitra fully supports text, images, videos, audio files, PDFs, and documents through clean REST API endpoints."
             />
             <FAQItem
-              question="Do you support media messages?"
-              answer="Absolutely. You can send and receive images, videos, PDFs, audio files, and documents through our unified API endpoints."
+              question="How does message scheduling and auto-replies work?"
+              answer="You can set up keyword rules in your dashboard for instant auto-replies, or use our scheduling tool to queue bulk campaigns at specific dates and times."
             />
             <FAQItem
-              question="Can I integrate WA-Mitra with my CRM?"
-              answer="Yes, our REST API and Webhook system make it incredibly easy to integrate with any platform, including Salesforce, HubSpot, or your custom internal CRM."
+              question="Can I upgrade or renew my plan anytime?"
+              answer="Yes, you can upgrade your plan or renew existing active plans directly from your dashboard using Razorpay instant checkout."
             />
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="cta">
+      {/* CTA Conversion Banner */}
+      <section className="cta-banner-section">
         <div className="container">
-          <div className="cta-card">
-            <h2>Ready to automate your WhatsApp?</h2>
-            <p>Join thousands of businesses scaling their communication with WA-Mitra.</p>
-            <Link to="/register" className="btn-hero-primary">Start Your Free Trial</Link>
+          <div className="cta-glass-card">
+            <div className="cta-content">
+              <h2>Ready to Supercharge Your WhatsApp Messaging?</h2>
+              <p>Start connecting instances and sending messages in under 2 minutes.</p>
+            </div>
+            <div className="cta-btn-wrap">
+              <Link to="/register" className="btn-hero-primary btn-cta-large">
+                Get Started Free <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -181,9 +253,11 @@ const LandingPage = () => {
   );
 };
 
-const FeatureCard = ({ icon, title, desc }) => (
-  <div className="feature-card glass">
-    <div className="feature-icon">{icon}</div>
+const FeatureCard = ({ icon, title, desc, badgeColor = "emerald" }) => (
+  <div className="landing-feature-card glass-card">
+    <div className={`landing-feature-icon ${badgeColor}`}>
+      {icon}
+    </div>
     <h3>{title}</h3>
     <p>{desc}</p>
   </div>
@@ -193,16 +267,16 @@ const FAQItem = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={`faq-item glass ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-      <div className="faq-question">
-        <span>{question}</span>
-        <div className="faq-toggle">
-          {isOpen ? <Minus size={20} /> : <Plus size={20} />}
+    <div className={`landing-faq-item glass-card ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+      <div className="faq-question-row">
+        <h3>{question}</h3>
+        <div className="faq-icon-toggle">
+          {isOpen ? <Minus size={18} /> : <Plus size={18} />}
         </div>
       </div>
       {isOpen && (
-        <div className="faq-answer animate-slide-down">
-          {answer}
+        <div className="faq-answer-content animate-slide-down">
+          <p>{answer}</p>
         </div>
       )}
     </div>
