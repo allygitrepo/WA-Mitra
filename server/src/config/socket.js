@@ -12,15 +12,15 @@ module.exports = {
         });
 
         io.on("connection", (socket) => {
-            console.log(`[SOCKET] Client connected: ${socket.id}`);
+            // console.log(`[SOCKET] Client connected: ${socket.id}`);
 
             socket.on("join_room", (roomName) => {
                 socket.join(roomName);
-                console.log(`[SOCKET] Client ${socket.id} joined room: ${roomName}`);
+                // console.log(`[SOCKET] Client ${socket.id} joined room: ${roomName}`);
             });
 
             socket.on("disconnect", () => {
-                console.log(`[SOCKET] Client disconnected: ${socket.id}`);
+                // console.log(`[SOCKET] Client disconnected: ${socket.id}`);
             });
         });
 
