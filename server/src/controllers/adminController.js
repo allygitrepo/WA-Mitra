@@ -215,7 +215,7 @@ const adminController = {
       // Send plan update email to user asynchronously
       emailService.sendEmail(
         user.email,
-        emailTemplates.planChangeEmail(
+        emailTemplates.adminPlanChangeEmail(
           user.username,
           pkg.name,
           pkg.price,

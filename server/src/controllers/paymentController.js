@@ -26,6 +26,7 @@ const paymentController = {
 
       // Path A: Free Package
       if (parseFloat(pkg.price) === 0) {
+        const isFirstPurchase = !user.packageId;
         const now = new Date();
         const hasActivePlan = user.expiresAt && new Date(user.expiresAt) > now;
         const isSamePackage = user.packageId === pkg.id;
@@ -75,19 +76,30 @@ const paymentController = {
           razorpayOrderId: 'FREE_PLAN'
         });
 
+        // Determine email template
+        const emailTemplate = isFirstPurchase
+          ? emailTemplates.planActivationEmail(
+              user.username,
+              pkg.name,
+              pkg.price,
+              pkg.duration,
+              pkg.instanceLimit,
+              pkg.messageLimit,
+              finalExpiryDate
+            )
+          : emailTemplates.planChangeEmail(
+              user.username,
+              pkg.name,
+              pkg.price,
+              pkg.duration,
+              pkg.instanceLimit,
+              pkg.messageLimit,
+              finalExpiryDate
+            );
+
         // Send plan update email to user asynchronously
-        emailService.sendEmail(
-          user.email,
-          emailTemplates.planChangeEmail(
-            user.username,
-            pkg.name,
-            pkg.price,
-            pkg.duration,
-            pkg.instanceLimit,
-            pkg.messageLimit,
-            finalExpiryDate
-          )
-        ).catch(err => console.error("Error sending free plan activation email:", err));
+        emailService.sendEmail(user.email, emailTemplate)
+          .catch(err => console.error("Error sending free plan activation email:", err));
 
         return res.status(200).json({ 
           message: isQueued ? `Package scheduled to activate on ${new Date(user.expiresAt).toLocaleDateString()}` : "Package activated successfully", 
@@ -171,6 +183,7 @@ const paymentController = {
       await paymentRecord.save();
 
       // Update User Plan / Queue
+      const isFirstPurchase = !user.packageId;
       const now = new Date();
       const hasActivePlan = user.expiresAt && new Date(user.expiresAt) > now;
       const isSamePackage = user.packageId === pkg.id;
@@ -208,19 +221,30 @@ const paymentController = {
         await user.save();
       }
 
+      // Determine email template
+      const emailTemplate = isFirstPurchase
+        ? emailTemplates.planActivationEmail(
+            user.username,
+            pkg.name,
+            pkg.price,
+            pkg.duration,
+            pkg.instanceLimit,
+            pkg.messageLimit,
+            finalExpiryDate
+          )
+        : emailTemplates.planChangeEmail(
+            user.username,
+            pkg.name,
+            pkg.price,
+            pkg.duration,
+            pkg.instanceLimit,
+            pkg.messageLimit,
+            finalExpiryDate
+          );
+
       // Send plan update email to user asynchronously
-      emailService.sendEmail(
-        user.email,
-        emailTemplates.planChangeEmail(
-          user.username,
-          pkg.name,
-          pkg.price,
-          pkg.duration,
-          pkg.instanceLimit,
-          pkg.messageLimit,
-          finalExpiryDate
-        )
-      ).catch(err => console.error("Error sending paid plan activation email:", err));
+      emailService.sendEmail(user.email, emailTemplate)
+        .catch(err => console.error("Error sending paid plan activation email:", err));
 
       res.status(200).json({ 
         message: isQueued ? `Package scheduled to activate on ${new Date(user.expiresAt).toLocaleDateString()}` : "Payment verified and package activated", 
