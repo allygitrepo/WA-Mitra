@@ -141,8 +141,36 @@ const messageController = {
             let index = 0;
             let batchCounter = 0;
             let nextBatchThreshold = Math.floor(Math.random() * 6) + 15; // 15 to 20
+            let isAborted = false;
+
+            const handleAbort = () => {
+                isAborted = true;
+            };
+            req.on('close', handleAbort);
+            res.on('close', handleAbort);
+
+            const sleepMs = (ms) => new Promise(resolve => {
+                if (isAborted) return resolve();
+                const timer = setTimeout(resolve, ms);
+                const interval = setInterval(() => {
+                    if (isAborted) {
+                        clearTimeout(timer);
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 150);
+            });
 
             for (const msg of parsedMessages) {
+                if (isAborted) {
+                    console.log(`[BulkSend] Sending process aborted by client for campaign ${campaign.id}`);
+                    await BulkMessageStatus.update(
+                        { status: 'failed', errorMessage: 'Cancelled by user' },
+                        { where: { campaignId: campaign.id, status: 'pending' } }
+                    );
+                    break;
+                }
+
                 const { number, message } = msg;
                 let status = 'failed';
                 let errorMsg = null;
@@ -172,16 +200,20 @@ const messageController = {
                                 { where: { campaignId: campaign.id, recipient: number } }
                             );
 
-                            res.write(JSON.stringify({
-                                type: 'progress',
-                                index,
-                                total: results.total,
-                                sent: results.sent,
-                                failed: results.failed,
-                                currentNumber: number,
-                                status: 'failed',
-                                error: errorMsg
-                            }) + '\n');
+                            try {
+                                res.write(JSON.stringify({
+                                    type: 'progress',
+                                    index,
+                                    total: results.total,
+                                    sent: results.sent,
+                                    failed: results.failed,
+                                    currentNumber: number,
+                                    status: 'failed',
+                                    error: errorMsg
+                                }) + '\n');
+                            } catch (e) {
+                                // Connection closed
+                            }
 
                             emitSocket('bulk_progress', {
                                 type: 'progress',
@@ -205,16 +237,25 @@ const messageController = {
                                         sent: results.sent,
                                         failed: results.failed
                                     });
-                                    await new Promise(resolve => setTimeout(resolve, 15000));
+                                    await sleepMs(15000);
                                     batchCounter = 0;
                                     nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
                                 } else {
                                     const delay = Math.floor(Math.random() * 7000) + 1000;
-                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                    await sleepMs(delay);
                                 }
                             }
                             continue;
                         }
+                    }
+
+                    if (isAborted) {
+                        console.log(`[BulkSend] Sending process aborted before message dispatch for campaign ${campaign.id}`);
+                        await BulkMessageStatus.update(
+                            { status: 'failed', errorMessage: 'Cancelled by user' },
+                            { where: { campaignId: campaign.id, status: 'pending' } }
+                        );
+                        break;
                     }
 
                     let msgId = null;
@@ -259,16 +300,20 @@ const messageController = {
 
                 await logMessage(instance.id, number, type, status, errorMsg);
 
-                res.write(JSON.stringify({
-                    type: 'progress',
-                    index,
-                    total: results.total,
-                    sent: results.sent,
-                    failed: results.failed,
-                    currentNumber: number,
-                    status,
-                    error: errorMsg
-                }) + '\n');
+                try {
+                    res.write(JSON.stringify({
+                        type: 'progress',
+                        index,
+                        total: results.total,
+                        sent: results.sent,
+                        failed: results.failed,
+                        currentNumber: number,
+                        status,
+                        error: errorMsg
+                    }) + '\n');
+                } catch (e) {
+                    // Connection closed
+                }
 
                 emitSocket('bulk_progress', {
                     type: 'progress',
@@ -292,12 +337,12 @@ const messageController = {
                             sent: results.sent,
                             failed: results.failed
                         });
-                        await new Promise(resolve => setTimeout(resolve, 15000));
+                        await sleepMs(15000);
                         batchCounter = 0;
                         nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
                     } else {
                         const delay = Math.floor(Math.random() * 7000) + 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
+                        await sleepMs(delay);
                     }
                 }
             }

@@ -188,9 +188,43 @@ ul {
 [data-theme='dark'] .premium-btn-primary.disabled,
 [data-theme='dark'] .btn-primary:disabled,
 [data-theme='dark'] .btn-primary.disabled {
-  background: #27272a !important;
-  color: #71717a !important;
-  border: 1px solid #3f3f46 !important;
+  background: #1e293b !important;
+  color: #64748b !important;
+  border: 1px solid #334155 !important;
+}
+
+.premium-btn-outline,
+.btn-outline {
+  background: transparent !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 10px 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+.premium-btn-outline:hover:not(:disabled):not(.disabled),
+.btn-outline:hover:not(:disabled):not(.disabled) {
+  background: var(--surface-hover) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+.premium-btn-outline:disabled,
+.premium-btn-outline.disabled,
+.btn-outline:disabled,
+.btn-outline.disabled {
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+  cursor: not-allowed !important;
+  background: transparent !important;
 }
 
 .btn-secondary {
@@ -205,6 +239,88 @@ ul {
 
 .btn-secondary:hover {
   background-color: var(--surface-hover);
+}
+
+/* Page Title and Subtitle Global Styles */
+.page-title {
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+  margin: 0 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.page-subtitle {
+  font-size: 0.9rem !important;
+  color: var(--text-secondary) !important;
+  margin: 4px 0 0 0 !important;
+  font-weight: 500 !important;
+}
+
+.download-template-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: rgba(0, 168, 132, 0.08) !important;
+  color: var(--primary) !important;
+  border: 1px solid rgba(0, 168, 132, 0.25) !important;
+  border-radius: 10px !important;
+  padding: 8px 16px !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  width: fit-content !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.download-template-link:hover {
+  background: rgba(0, 168, 132, 0.16) !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Select & Option Dropdown Theme Customization */
+select,
+.auth-input select {
+  color: var(--text-main) !important;
+  background-color: var(--card-bg) !important;
+  border-color: var(--border) !important;
+}
+
+select option {
+  background-color: var(--card-bg) !important;
+  color: var(--text-main) !important;
+  padding: 8px 12px !important;
+}
+
+select option:disabled {
+  color: var(--text-muted) !important;
+}
+
+/* Light Theme Overrides */
+[data-theme='light'] select,
+[data-theme='light'] select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme='light'] select option:disabled {
+  color: #94a3b8 !important;
+  background-color: #f8fafc !important;
+}
+
+/* Dark Theme Overrides */
+[data-theme='dark'] select,
+[data-theme='dark'] select option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] select option:disabled {
+  color: #64748b !important;
+  background-color: #0f172a !important;
 }
 
 /* Glassmorphism */

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Edit2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Edit2, BarChart3, Square } from 'lucide-react';
 import { useOutletContext, useSearchParams, Link } from 'react-router-dom';
 import { instanceService, messageService, templateService, scheduleService, cycleService, campaignService } from '../../../api/services';
 import toast from 'react-hot-toast';
@@ -44,6 +44,7 @@ const SendMessage = () => {
   const [selectedInstance, setSelectedInstance] = useState('');
   const [loading, setLoading] = useState(false);
   const [progressData, setProgressData] = useState(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     if (!selectedInstance) return;
@@ -149,8 +150,8 @@ const SendMessage = () => {
   const [analyzingContacts, setAnalyzingContacts] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
 
-  // Campaigns states
   const [savedCampaigns, setSavedCampaigns] = useState([]);
+  const [campaignsPage, setCampaignsPage] = useState(1);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [saveCampaignCheckbox, setSaveCampaignCheckbox] = useState(false);
   const [campaignNameInput, setCampaignNameInput] = useState('');
@@ -158,6 +159,7 @@ const SendMessage = () => {
   const [trackingCampaignId, setTrackingCampaignId] = useState(null);
   const [trackingCampaignData, setTrackingCampaignData] = useState(null);
   const [loadingTrackingData, setLoadingTrackingData] = useState(false);
+  const [trackerPage, setTrackerPage] = useState(1);
 
   // Template Management States
   const [savedTemplates, setSavedTemplates] = useState([]);
@@ -1697,6 +1699,7 @@ const SendMessage = () => {
   };
 
   const handleTrackCampaign = async (id) => {
+    setTrackerPage(1);
     setTrackingCampaignId(id);
     setShowCampaignTrackerModal(true);
     setLoadingTrackingData(true);
@@ -1979,10 +1982,12 @@ const SendMessage = () => {
         });
       }
 
+      abortControllerRef.current = new AbortController();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/messages/bulk`, {
         method: 'POST',
         headers,
-        body
+        body,
+        signal: abortControllerRef.current.signal
       });
 
       if (!response.ok) {
@@ -2048,6 +2053,10 @@ const SendMessage = () => {
         clearCSV();
       }
     } catch (err) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        console.log('[BulkSend] Aborted by user.');
+        return;
+      }
       toast.error(err.message || 'Failed to process bulk messages');
       setProgressData(prev => prev ? { ...prev, status: 'error', errorMsg: err.message || 'An unexpected error occurred.' } : null);
     } finally {
@@ -2429,15 +2438,14 @@ const SendMessage = () => {
   const headerDetails = getHeaderDetails();
 
   const renderCampaignsUI = () => {
+    const ITEMS_PER_PAGE = 5;
+    const totalPages = Math.ceil(savedCampaigns.length / ITEMS_PER_PAGE);
+    const safePage = Math.max(1, Math.min(campaignsPage, totalPages || 1));
+    const paginatedCampaigns = savedCampaigns.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
     return (
       <div className="campaigns-history-layout animate-fade-in" style={{ width: '100%' }}>
         <div style={{ padding: '24px', background: 'var(--surface-card)', borderRadius: '16px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
-            <FileText size={22} className="text-primary" /> Campaigns History & Tracking
-          </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 24px 0' }}>
-            View history of sent broadcasts, load templates, and track real-time delivery and read status.
-          </p>
 
           {savedCampaigns.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', border: '1px dashed var(--border)', borderRadius: '12px', background: 'var(--surface-hover)' }}>
@@ -2449,56 +2457,122 @@ const SendMessage = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {savedCampaigns.map(camp => (
-                <div key={camp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-hover)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <strong style={{ color: 'var(--text-main)', fontSize: '1.05rem' }}>{camp.name}</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {paginatedCampaigns.map(camp => (
+                  <div key={camp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)', padding: '18px 24px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <strong style={{ color: 'var(--text-main)', fontSize: '1.05rem' }}>{camp.name}</strong>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRenameCampaign(camp.id, camp.name, e)}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}
+                          title="Rename Campaign"
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <span><strong>Contacts:</strong> {camp.contacts?.length || 0}</span>
+                        <span>•</span>
+                        <span><strong>Sent On:</strong> {new Date(camp.createdAt).toLocaleString()}</span>
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                       <button
                         type="button"
-                        onClick={(e) => handleRenameCampaign(camp.id, camp.name, e)}
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}
-                        title="Rename Campaign"
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                        className="premium-btn-primary"
+                        style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px' }}
+                        onClick={() => handleTrackCampaign(camp.id)}
                       >
-                        <Edit2 size={14} />
+                        Track Status
+                      </button>
+                      <Link
+                        to="/dashboard/messaging?type=bulk"
+                        className="premium-btn-outline"
+                        style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px', display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text-main)' }}
+                        onClick={() => handleLoadCampaign(camp)}
+                      >
+                        Load List
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteCampaign(camp.id, e)}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--text-muted)', 
+                          cursor: 'pointer', 
+                          padding: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          borderRadius: '50%',
+                          width: '36px',
+                          height: '36px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#ef4444';
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.background = 'none';
+                        }}
+                        title="Delete Campaign"
+                      >
+                        <Trash2 size={18} />
                       </button>
                     </div>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                      <span><strong>Contacts:</strong> {camp.contacts?.length || 0}</span>
-                      <span>•</span>
-                      <span><strong>Sent On:</strong> {new Date(camp.createdAt).toLocaleString()}</span>
-                    </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    Showing page <strong style={{ color: 'var(--text-main)' }}>{safePage}</strong> of <strong style={{ color: 'var(--text-main)' }}>{totalPages}</strong> ({savedCampaigns.length} campaigns total)
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button
                       type="button"
-                      className="premium-btn-primary"
-                      style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px' }}
-                      onClick={() => handleTrackCampaign(camp.id)}
-                    >
-                      Track Status
-                    </button>
-                    <Link
-                      to="/dashboard/messaging?type=bulk"
                       className="premium-btn-outline"
-                      style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px', display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text-main)' }}
-                      onClick={() => handleLoadCampaign(camp)}
+                      style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: '6px' }}
+                      disabled={safePage === 1}
+                      onClick={() => setCampaignsPage(safePage - 1)}
                     >
-                      Load List
-                    </Link>
+                      Previous
+                    </button>
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const pNum = idx + 1;
+                      return (
+                        <button
+                          key={pNum}
+                          type="button"
+                          className={safePage === pNum ? "premium-btn-primary" : "premium-btn-outline"}
+                          style={{ height: '32px', minWidth: '32px', padding: '0 8px', fontSize: '0.8rem', borderRadius: '6px' }}
+                          onClick={() => setCampaignsPage(pNum)}
+                        >
+                          {pNum}
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
-                      onClick={(e) => handleDeleteCampaign(camp.id, e)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-error)', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
-                      title="Delete Campaign"
+                      className="premium-btn-outline"
+                      style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: '6px' }}
+                      disabled={safePage === totalPages}
+                      onClick={() => setCampaignsPage(safePage + 1)}
                     >
-                      <Trash2 size={18} />
+                      Next
                     </button>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
@@ -2846,18 +2920,19 @@ const SendMessage = () => {
                           <FileText size={14} /> Download Sample CSV Template
                         </button>
                         <div style={{
-                          fontSize: '0.8rem',
-                          color: '#eab308',
-                          background: 'rgba(234, 179, 8, 0.1)',
-                          border: '1px solid rgba(234, 179, 8, 0.2)',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          color: 'var(--text-secondary)',
+                          background: 'rgba(245, 158, 11, 0.08)',
+                          border: '1px solid rgba(245, 158, 11, 0.25)',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginTop: '8px'
+                          alignItems: 'flex-start',
+                          gap: '10px',
+                          marginTop: '10px',
+                          lineHeight: '1.45'
                         }}>
-                          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                          <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
                           <span><strong>Note:</strong> The first column in the file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>).</span>
                         </div>
                       </div>
@@ -4762,18 +4837,19 @@ const SendMessage = () => {
                                 <FileText size={14} /> Download Sample CSV Template
                               </button>
                               <div style={{
-                                fontSize: '0.8rem',
-                                color: '#eab308',
-                                background: 'rgba(234, 179, 8, 0.1)',
-                                border: '1px solid rgba(234, 179, 8, 0.2)',
-                                padding: '10px 14px',
-                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                color: 'var(--text-secondary)',
+                                background: 'rgba(245, 158, 11, 0.08)',
+                                border: '1px solid rgba(245, 158, 11, 0.25)',
+                                padding: '12px 16px',
+                                borderRadius: '10px',
                                 display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginTop: '8px'
+                                alignItems: 'flex-start',
+                                gap: '10px',
+                                marginTop: '10px',
+                                lineHeight: '1.45'
                               }}>
-                                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                                <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
                                 <span><strong>Note:</strong> The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
                               </div>
                             </div>
@@ -5137,8 +5213,54 @@ const SendMessage = () => {
       {/* Bulk Progress Modal */}
       {progressData && createPortal(
         <div className="progress-modal-overlay">
-          <div className="progress-modal-content glass animate-scale-up" onClick={e => e.stopPropagation()}>
-            <h3 className="progress-modal-title">Bulk Message Campaign</h3>
+          <div className="progress-modal-content animate-scale-up" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', textAlign: 'left' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(0, 168, 132, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0, 168, 132, 0.2)' }}>
+                  <Send size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                    Bulk Message Campaign
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                    Real-time broadcast dispatch & delivery progress
+                  </p>
+                </div>
+              </div>
+              {['done', 'error', 'stopped'].includes(progressData.status) && (
+                <button 
+                  type="button" 
+                  onClick={() => setProgressData(null)} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: 'var(--text-muted)', 
+                    cursor: 'pointer', 
+                    padding: '4px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--text-main)';
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                    e.currentTarget.style.background = 'none';
+                  }}
+                  title="Close Modal"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
 
             <div className="progress-status-container">
               <div className="progress-circle-wrapper">
@@ -5190,39 +5312,82 @@ const SendMessage = () => {
               </div>
             </div>
 
-            <div className="progress-current-action">
+            <div className="progress-current-action" style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', marginTop: '16px' }}>
               {progressData.status === 'done' ? (
-                <div className="text-success font-bold flex items-center justify-center gap-2">
+                <div style={{ color: '#10b981', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <CheckCircle2 size={18} />
                   Campaign complete!
                 </div>
+              ) : progressData.status === 'stopped' ? (
+                <div style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <AlertCircle size={18} />
+                  Campaign sending stopped by user.
+                </div>
               ) : progressData.status === 'error' ? (
-                <div className="text-error font-bold flex items-center justify-center gap-2">
+                <div style={{ color: '#ef4444', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <AlertCircle size={18} />
                   {progressData.errorMsg}
                 </div>
               ) : progressData.status === 'paused' ? (
-                <div className="text-warning font-bold flex flex-col items-center justify-center gap-1" style={{ color: '#f59e0b', fontSize: '0.9rem' }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  <div>{progressData.message || 'Taking a 15-second break...'}</div>
+                <div style={{ color: '#f59e0b', fontWeight: '700', fontSize: '0.88rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <Loader2 size={18} className="animate-spin" />
+                  <div>{progressData.message || 'Taking a 15-second break to prevent rate limits...'}</div>
                 </div>
               ) : (
-                <div className="text-muted text-sm flex items-center justify-center gap-2">
-                  <Loader2 size={16} className="animate-spin text-primary" />
+                <div style={{ color: 'var(--text-secondary)', fontWeight: '600', fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Loader2 size={18} className="animate-spin text-primary" />
                   Sending to {progressData.currentNumber}...
                 </div>
               )}
             </div>
 
-            <div className="progress-modal-actions">
-              <button
-                className="btn-primary"
-                disabled={progressData.status !== 'done' && progressData.status !== 'error'}
-                onClick={() => setProgressData(null)}
-                style={{ minWidth: '120px' }}
-              >
-                Close
-              </button>
+            <div className="progress-modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
+              {['sending', 'paused'].includes(progressData.status) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (abortControllerRef.current) {
+                      abortControllerRef.current.abort();
+                      abortControllerRef.current = null;
+                    }
+                    setProgressData(prev => prev ? { ...prev, status: 'stopped', message: 'Campaign stopped by user.' } : null);
+                    toast.info('Campaign sending process stopped.');
+                  }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    minWidth: '130px',
+                    height: '38px',
+                    padding: '0 16px',
+                    borderRadius: '10px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+                  }}
+                >
+                  <Square size={14} fill="#ef4444" /> Stop Sending
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="premium-btn-primary"
+                  onClick={() => setProgressData(null)}
+                  style={{ minWidth: '120px', height: '38px' }}
+                >
+                  Close
+                </button>
+              )}
             </div>
           </div>
         </div>,
@@ -5232,20 +5397,61 @@ const SendMessage = () => {
       {/* Campaign Status Tracker Modal */}
       {showCampaignTrackerModal && createPortal(
         <div className="progress-modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="progress-modal-content glass animate-scale-up" style={{ maxWidth: '600px', width: '90%', padding: '24px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)', fontWeight: '700' }}>
-                Campaign Status: {trackingCampaignData?.campaign?.name || 'Loading...'}
-              </h3>
+          <div className="progress-modal-content animate-scale-up" style={{ maxWidth: '600px', width: '90%', padding: '24px', background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', textAlign: 'left' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(0, 168, 132, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0, 168, 132, 0.2)' }}>
+                  <BarChart3 size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                      Live Campaign Status
+                    </h3>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '700', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                      Live
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px', padding: '4px 10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                    <FileText size={14} className="text-primary" />
+                    <span style={{ wordBreak: 'break-all' }}>{trackingCampaignData?.campaign?.name || 'Loading details...'}</span>
+                  </div>
+                </div>
+              </div>
+
               <button 
                 type="button" 
                 onClick={() => {
                   setShowCampaignTrackerModal(false);
                   setTrackingCampaignData(null);
                 }} 
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  padding: '4px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--text-main)';
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                  e.currentTarget.style.background = 'none';
+                }}
+                title="Close Tracker"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -5254,71 +5460,106 @@ const SendMessage = () => {
                 <Loader2 className="animate-spin text-primary" size={32} />
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Fetching campaign metrics...</span>
               </div>
-            ) : trackingCampaignData ? (
-              <div>
-                {/* Stats Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
-                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Sent</span>
-                    <strong style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}>
-                      {trackingCampaignData.statuses.filter(s => ['sent', 'delivered', 'read'].includes(s.status)).length}
-                    </strong>
-                  </div>
-                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Delivered</span>
-                    <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>
-                      {trackingCampaignData.statuses.filter(s => ['delivered', 'read'].includes(s.status)).length}
-                    </strong>
-                  </div>
-                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Read</span>
-                    <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>
-                      {trackingCampaignData.statuses.filter(s => s.status === 'read').length}
-                    </strong>
-                  </div>
-                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Failed</span>
-                    <strong style={{ fontSize: '1.2rem', color: '#ef4444' }}>
-                      {trackingCampaignData.statuses.filter(s => s.status === 'failed').length}
-                    </strong>
-                  </div>
-                </div>
+            ) : trackingCampaignData ? (() => {
+              const TRACKER_PAGE_SIZE = 10;
+              const totalTrackerPages = Math.ceil(trackingCampaignData.statuses.length / TRACKER_PAGE_SIZE);
+              const safeTrackerPage = Math.max(1, Math.min(trackerPage, totalTrackerPages || 1));
+              const paginatedStatuses = trackingCampaignData.statuses.slice((safeTrackerPage - 1) * TRACKER_PAGE_SIZE, safeTrackerPage * TRACKER_PAGE_SIZE);
 
-                {/* Recipient Wise Status Table */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 14px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                    Recipient-wise Status Logs
+              return (
+                <div>
+                  {/* Stats Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                    <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Sent</span>
+                      <strong style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}>
+                        {trackingCampaignData.statuses.filter(s => ['sent', 'delivered', 'read'].includes(s.status)).length}
+                      </strong>
+                    </div>
+                    <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Delivered</span>
+                      <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>
+                        {trackingCampaignData.statuses.filter(s => ['delivered', 'read'].includes(s.status)).length}
+                      </strong>
+                    </div>
+                    <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Read</span>
+                      <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>
+                        {trackingCampaignData.statuses.filter(s => s.status === 'read').length}
+                      </strong>
+                    </div>
+                    <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Failed</span>
+                      <strong style={{ fontSize: '1.2rem', color: '#ef4444' }}>
+                        {trackingCampaignData.statuses.filter(s => s.status === 'failed').length}
+                      </strong>
+                    </div>
                   </div>
-                  <div style={{ maxHeight: '220px', overflowY: 'auto' }} data-lenis-prevent>
-                    <table className="csv-preview-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                          <th style={{ padding: '8px 12px' }}>Recipient</th>
-                          <th style={{ padding: '8px 12px' }}>Status</th>
-                          <th style={{ padding: '8px 12px' }}>Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trackingCampaignData.statuses.map(st => (
-                          <tr key={st.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '8px 12px', color: 'var(--text-main)' }}>{st.recipient}</td>
-                            <td style={{ padding: '8px 12px' }}>
-                              {renderStatusTicks(st.status)}
-                            </td>
-                            <td style={{ padding: '8px 12px', color: st.status === 'failed' ? '#ef4444' : 'var(--text-muted)', fontSize: '0.8rem' }}>
-                              {st.status === 'failed' 
-                                ? (st.errorMessage || 'Failed') 
-                                : new Date(st.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              }
-                            </td>
+
+                  {/* Recipient Wise Status Table */}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                      Recipient-wise Status Logs
+                    </div>
+                    <div style={{ maxHeight: 'none', overflowY: 'visible' }} data-lenis-prevent>
+                      <table className="csv-preview-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                            <th style={{ padding: '8px 12px' }}>Recipient</th>
+                            <th style={{ padding: '8px 12px' }}>Status</th>
+                            <th style={{ padding: '8px 12px' }}>Time</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {paginatedStatuses.map(st => (
+                            <tr key={st.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '8px 12px', color: 'var(--text-main)' }}>{st.recipient}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                {renderStatusTicks(st.status)}
+                              </td>
+                              <td style={{ padding: '8px 12px', color: st.status === 'failed' ? '#ef4444' : 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                {st.status === 'failed' 
+                                  ? (st.errorMessage || 'Failed') 
+                                  : new Date(st.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                }
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+
+                  {/* Tracker Pagination Controls */}
+                  {totalTrackerPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      <span>Showing {(safeTrackerPage - 1) * TRACKER_PAGE_SIZE + 1} - {Math.min(safeTrackerPage * TRACKER_PAGE_SIZE, trackingCampaignData.statuses.length)} of {trackingCampaignData.statuses.length} logs</span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="premium-btn-outline"
+                          style={{ height: '28px', padding: '0 8px', fontSize: '0.78rem', borderRadius: '4px' }}
+                          disabled={safeTrackerPage === 1}
+                          onClick={() => setTrackerPage(safeTrackerPage - 1)}
+                        >
+                          Prev
+                        </button>
+                        <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Page {safeTrackerPage} of {totalTrackerPages}</span>
+                        <button
+                          type="button"
+                          className="premium-btn-outline"
+                          style={{ height: '28px', padding: '0 8px', fontSize: '0.78rem', borderRadius: '4px' }}
+                          disabled={safeTrackerPage === totalTrackerPages}
+                          onClick={() => setTrackerPage(safeTrackerPage + 1)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ) : (
+              );
+            })() : (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
                 No tracking statistics available.
               </div>
@@ -5345,7 +5586,7 @@ const SendMessage = () => {
       {/* CSV/Excel Import Wizard Modal */}
       {isCsvModalOpen && createPortal(
         <div className="progress-modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="progress-modal-content glass animate-scale-up" 
+          <div className="progress-modal-content animate-scale-up" 
                style={{ 
                  maxWidth: csvData.fileName ? '950px' : '500px', 
                  width: '95%', 
@@ -5353,26 +5594,54 @@ const SendMessage = () => {
                  maxHeight: '90vh', 
                  overflowY: 'auto',
                  display: 'block',
-                 textAlign: 'left'
+                 textAlign: 'left',
+                 background: 'var(--card-bg)'
                }} 
                onClick={e => e.stopPropagation()}>
             
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
-                  <FileUp size={22} className="text-primary" /> Contacts Import Wizard
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Upload a contact list sheet or choose from your campaign history to proceed.
-                </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', textAlign: 'left' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(0, 168, 132, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0, 168, 132, 0.2)' }}>
+                  <FileUp size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                    Contacts Import Wizard
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                    Upload a contact list sheet or choose from your campaign history to proceed.
+                  </p>
+                </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setIsCsvModalOpen(false)} 
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  padding: '4px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--text-main)';
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                  e.currentTarget.style.background = 'none';
+                }}
+                title="Close Wizard"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -5404,7 +5673,7 @@ const SendMessage = () => {
                     </span>
                     <select
                       className="auth-input"
-                      style={{ paddingLeft: '14px', height: '38px', background: 'var(--surface-card)', fontSize: '0.82rem' }}
+                      style={{ padding: '0 36px 0 14px', height: '44px', lineHeight: '44px', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                       onChange={(e) => {
                         if (e.target.value) {
                           const selectedCamp = savedCampaigns.find(c => String(c.id) === e.target.value);
@@ -5413,9 +5682,9 @@ const SendMessage = () => {
                       }}
                       defaultValue=""
                     >
-                      <option value="" disabled>Select a saved list/campaign...</option>
+                      <option value="" disabled style={{ background: 'var(--card-bg)', color: 'var(--text-muted)' }}>Select a saved list/campaign...</option>
                       {savedCampaigns.map(camp => (
-                        <option key={camp.id} value={camp.id}>
+                        <option key={camp.id} value={camp.id} style={{ background: 'var(--card-bg)', color: 'var(--text-main)' }}>
                           {camp.name} ({camp.contacts?.length || 0} contacts)
                         </option>
                       ))}
@@ -5424,15 +5693,15 @@ const SendMessage = () => {
                 )}
 
                 {/* Download Template & Guideline */}
-                <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '12px 16px', borderRadius: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-main)', fontWeight: '600' }}>Need a template format?</span>
-                    <button type="button" className="download-template-link" onClick={downloadCSVTemplate} style={{ margin: 0, padding: '4px 8px', height: 'auto', background: 'rgba(37, 211, 102, 0.1)', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: '600' }}>
-                      <FileText size={12} /> Download Template
+                <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '14px 16px', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: '700' }}>Need a template format?</span>
+                    <button type="button" className="download-template-link" onClick={downloadCSVTemplate} style={{ margin: 0, height: '32px', padding: '0 12px', fontSize: '0.78rem' }}>
+                      <FileText size={14} /> Download Template
                     </button>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start', lineHeight: '1.4' }}>
-                    <AlertCircle size={13} className="text-warning" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: '1.45' }}>
+                    <AlertCircle size={15} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
                     <span>The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
                   </div>
                 </div>

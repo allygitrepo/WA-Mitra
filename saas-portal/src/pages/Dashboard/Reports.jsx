@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Smartphone, Download, AlertCircle, BarChart3, RotateCcw } from 'lucide-react';
+import { Calendar, Smartphone, Download, AlertCircle, BarChart3, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { messageService } from '../../api/services';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -57,6 +57,12 @@ const Reports = () => {
     }
     return true;
   });
+
+  // Calculate dynamic metrics based on filteredReports
+  const totalSent = filteredReports.reduce((sum, item) => item.status === 'sent' ? sum + parseInt(item.count) : sum, 0);
+  const totalFailed = filteredReports.reduce((sum, item) => item.status === 'failed' ? sum + parseInt(item.count) : sum, 0);
+  const totalMessages = totalSent + totalFailed;
+  const deliveryRate = totalMessages > 0 ? ((totalSent / totalMessages) * 100).toFixed(1) : '100.0';
 
   // Group by date AND instanceId for rendering
   const groupedReports = filteredReports.reduce((acc, curr) => {
@@ -173,6 +179,49 @@ const Reports = () => {
         </button>
       </div>
 
+      {/* Dynamic Overview Cards */}
+      <div className="reports-overview-grid animate-fade-in">
+        <div className="overview-metric-card">
+          <div className="metric-icon-wrap" style={{ background: 'rgba(0, 168, 132, 0.08)', color: 'var(--primary)' }}>
+            <Smartphone size={22} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-title">Total Volume</span>
+            <span className="metric-value">{totalMessages}</span>
+          </div>
+        </div>
+
+        <div className="overview-metric-card">
+          <div className="metric-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.08)', color: 'var(--success)' }}>
+            <BarChart3 size={22} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-title">Sent</span>
+            <span className="metric-value" style={{ color: 'var(--success)' }}>{totalSent}</span>
+          </div>
+        </div>
+
+        <div className="overview-metric-card">
+          <div className="metric-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--error)' }}>
+            <AlertCircle size={22} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-title">Failed</span>
+            <span className="metric-value" style={{ color: totalFailed > 0 ? 'var(--error)' : 'var(--text-main)' }}>{totalFailed}</span>
+          </div>
+        </div>
+
+        <div className="overview-metric-card">
+          <div className="metric-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6' }}>
+            <RotateCcw size={22} style={{ transform: 'rotate(90deg)' }} />
+          </div>
+          <div className="metric-info">
+            <span className="metric-title">Success Rate</span>
+            <span className="metric-value">{deliveryRate}%</span>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="report-filters glass animate-fade-in">
         <div className="filter-group">
@@ -201,7 +250,7 @@ const Reports = () => {
         </div>
       </div>
 
-      <div className="reports-content glass">
+      <div className="reports-content">
         {loading ? (
           <div className="reports-empty-container animate-fade-in">
             <div className="reports-empty-icon-inner">
@@ -223,70 +272,98 @@ const Reports = () => {
             </p>
           </div>
         ) : (
-          Object.keys(groupedReports).map(date => (
-            <div key={date} className="report-group">
-              <div className="date-header">
-                <Calendar size={18} />
-                <h3>{new Date(date).toLocaleDateString('en-GB')}</h3>
-              </div>
-              <div className="instance-stats-grid">
-                {Object.values(groupedReports[date]).map((stat, i) => {
-                  const isExpanded = expandedInstance?.date === date && expandedInstance?.instanceId === stat.instanceId;
-                  const instanceFailures = logs.filter(l => 
-                    l.status === 'failed' && 
-                    l.instanceId === stat.instanceId && 
-                    new Date(l.createdAt).toISOString().split('T')[0] === date
-                  );
+          Object.keys(groupedReports).map(date => {
+            // Calculate day's total
+            const daySent = Object.values(groupedReports[date]).reduce((acc, curr) => acc + curr.sent, 0);
+            const dayFailed = Object.values(groupedReports[date]).reduce((acc, curr) => acc + curr.failed, 0);
+            
+            return (
+              <div key={date} className="report-group">
+                <div className="date-header-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={18} className="text-primary" />
+                    <h3>{new Date(date).toLocaleDateString('en-GB')}</h3>
+                  </div>
+                  <span className="day-summary-badge">
+                    {daySent + dayFailed} total ({daySent} sent, {dayFailed} failed)
+                  </span>
+                </div>
+                <div className="instance-stats-grid">
+                  {Object.values(groupedReports[date]).map((stat, i) => {
+                    const isExpanded = expandedInstance?.date === date && expandedInstance?.instanceId === stat.instanceId;
+                    const instanceFailures = logs.filter(l => 
+                      l.status === 'failed' && 
+                      l.instanceId === stat.instanceId && 
+                      new Date(l.createdAt).toISOString().split('T')[0] === date
+                    );
 
-                  return (
-                    <div key={i} className="stat-card-wrap">
-                      <div 
-                        className={`stat-item glass ${stat.failed > 0 ? 'has-failures' : ''} ${isExpanded ? 'expanded' : ''}`}
-                        onClick={() => stat.failed > 0 && setExpandedInstance(isExpanded ? null : { date, instanceId: stat.instanceId })}
-                      >
-                        <div className="stat-left">
-                          <Smartphone size={20} className="text-primary" />
-                          <div>
-                            <h4>{stat.instance?.name || 'Unknown Instance'}</h4>
-                            <p>ID: {stat.instanceId}</p>
-                          </div>
-                        </div>
-                        <div className="stat-right">
-                          <div className="stat-count">
-                            <span className="count-badge sent">{stat.sent}</span>
-                            <span className="count-label">Sent</span>
-                          </div>
-                          {stat.failed > 0 && (
-                            <div className="stat-count">
-                              <span className="count-badge failed">{stat.failed}</span>
-                              <span className="count-label">Failed</span>
+                    return (
+                      <div key={i} className="stat-card-wrap">
+                        <div 
+                          className={`stat-item ${stat.failed > 0 ? 'has-failures pointer' : ''} ${isExpanded ? 'expanded' : ''}`}
+                          onClick={() => stat.failed > 0 && setExpandedInstance(isExpanded ? null : { date, instanceId: stat.instanceId })}
+                        >
+                          <div className="stat-left">
+                            <div className="stat-device-icon">
+                              <Smartphone size={20} />
                             </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {isExpanded && instanceFailures.length > 0 && (
-                        <div className="failure-details animate-slide-down">
-                          <div className="failure-header">
-                            <AlertCircle size={14} className="text-error" />
-                            <span>Failure Reasons</span>
+                            <div>
+                              <h4>{stat.instance?.name || 'Unknown Instance'}</h4>
+                              <p>ID: {stat.instanceId || 'Deleted ID'}</p>
+                            </div>
                           </div>
-                          <div className="failure-list">
-                            {instanceFailures.map((f, idx) => (
-                              <div key={idx} className="failure-row">
-                                <span className="fail-num">{f.recipient}</span>
-                                <span className="fail-reason">{f.errorMessage || 'Unknown error'}</span>
+                          <div className="stat-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div className="stat-count">
+                              <span className="count-badge sent">{stat.sent}</span>
+                              <span className="count-label">Sent</span>
+                            </div>
+                            {stat.failed > 0 ? (
+                              <div className="stat-count">
+                                <span className="count-badge failed">{stat.failed}</span>
+                                <span className="count-label">Failed</span>
                               </div>
-                            ))}
+                            ) : null}
+                            {stat.failed > 0 && (
+                              <div className="stat-chevron">
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        
+                        {isExpanded && instanceFailures.length > 0 && (
+                          <div className="failure-details animate-slide-down">
+                            <div className="failure-header">
+                              <AlertCircle size={14} className="text-error" />
+                              <span>Failure Log details</span>
+                            </div>
+                            <div className="failure-table-wrapper" data-lenis-prevent>
+                              <table className="failure-table">
+                                <thead>
+                                  <tr>
+                                    <th>Recipient</th>
+                                    <th>Error details</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {instanceFailures.map((f, idx) => (
+                                    <tr key={idx}>
+                                      <td className="fail-num">{f.recipient}</td>
+                                      <td className="fail-reason">{f.errorMessage || 'Unknown service failure'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
