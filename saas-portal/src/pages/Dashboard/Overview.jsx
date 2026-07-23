@@ -80,10 +80,10 @@ const Overview = () => {
       <div className="overview-hero-header">
         <div>
           <h1 className="overview-hero-title">
-            Dashboard Overview 👋
+            Dashboard
           </h1>
           <p className="overview-hero-subtitle">
-            Welcome back, <span className="text-primary font-bold">{user?.username || 'User'}</span>! Here is a real-time summary of your WhatsApp gateway activity.
+            Welcome back, <span className="text-primary font-bold">{user?.username || 'User'}</span>!
           </p>
         </div>
         {user?.packageId && (
