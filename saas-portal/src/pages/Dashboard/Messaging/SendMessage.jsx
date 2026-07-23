@@ -138,6 +138,7 @@ const SendMessage = () => {
 
   // New States for CSV Bulk Upload
   const [bulkInputMethod, setBulkInputMethod] = useState('manual'); // 'manual' or 'csv'
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [csvData, setCsvData] = useState({
     headers: [],
     placeholders: [],
@@ -1894,25 +1895,10 @@ const SendMessage = () => {
         }
         const msgPlaceholders = [...new Set(matches)];
 
-        const sortedMsgPlaceholders = [...msgPlaceholders].sort();
-        const sortedCsvPlaceholders = [...csvData.placeholders].sort();
+        const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
 
-        const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
-          sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
-
-        if (!isExactlySame) {
-          const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
-          const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
-
-          let errorMsg = 'Header mismatch! ';
-          if (missingInCsv.length > 0) {
-            errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
-          }
-          if (extraInCsv.length > 0) {
-            errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
-          }
-          errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
-
+        if (missingInCsv.length > 0) {
+          const errorMsg = `Header mismatch! Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. Please ensure these columns exist in your CSV/Excel file (case-sensitive).`;
           toast.error(errorMsg, { id: loadingToast });
           setLoading(false);
           return;
@@ -2167,25 +2153,10 @@ const SendMessage = () => {
       }
       const msgPlaceholders = [...new Set(matches)];
 
-      const sortedMsgPlaceholders = [...msgPlaceholders].sort();
-      const sortedCsvPlaceholders = [...csvData.placeholders].sort();
+      const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
 
-      const isExactlySame = sortedMsgPlaceholders.length === sortedCsvPlaceholders.length &&
-        sortedMsgPlaceholders.every((val, index) => val === sortedCsvPlaceholders[index]);
-
-      if (!isExactlySame) {
-        const missingInCsv = msgPlaceholders.filter(p => !csvData.placeholders.includes(p));
-        const extraInCsv = csvData.placeholders.filter(p => !msgPlaceholders.includes(p));
-
-        let errorMsg = 'Header mismatch! ';
-        if (missingInCsv.length > 0) {
-          errorMsg += `Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. `;
-        }
-        if (extraInCsv.length > 0) {
-          errorMsg += `Extra unused columns in file: ${extraInCsv.map(p => `"${p}"`).join(', ')}. `;
-        }
-        errorMsg += 'Please ensure placeholders and file columns match exactly (case-sensitive).';
-
+      if (missingInCsv.length > 0) {
+        const errorMsg = `Header mismatch! Missing columns in file for placeholders: ${missingInCsv.map(p => `"${p}"`).join(', ')}. Please ensure these columns exist in your CSV/Excel file (case-sensitive).`;
         toast.error(errorMsg);
         return;
       }
@@ -4675,7 +4646,10 @@ const SendMessage = () => {
                           <button
                             type="button"
                             className={`method-btn ${bulkInputMethod === 'csv' ? 'active' : ''}`}
-                            onClick={() => setBulkInputMethod('csv')}
+                            onClick={() => {
+                              setBulkInputMethod('csv');
+                              setIsCsvModalOpen(true);
+                            }}
                           >
                             <FileUp size={16} /> CSV Upload
                           </button>
@@ -4727,65 +4701,58 @@ const SendMessage = () => {
                         ) : (
                           <div className="csv-upload-container animate-fade-in">
                             {!csvData.fileName ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div className="csv-dropzone">
-                                  <input
-                                    type="file"
-                                    id="csv-file-input"
-                                    accept=".csv,.xlsx,.xls"
-                                    onChange={handleFileUpload}
-                                    hidden
-                                  />
-                                  <label htmlFor="csv-file-input" className="csv-dropzone-label">
-                                    <FileUp size={32} className="upload-icon" />
-                                    <span className="upload-title">Choose CSV/Excel File</span>
-                                    <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
-                                  </label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--surface-hover)', padding: '32px 24px', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                <FileUp size={48} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
+                                <div>
+                                  <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '600' }}>No Contacts Loaded</h4>
+                                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '360px' }}>
+                                    Please upload a CSV/Excel file or select a saved list/campaign to load contact details.
+                                  </p>
                                 </div>
-
-                                {savedCampaigns.length > 0 && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--surface-hover)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
-                                      — Or load from saved —
-                                    </span>
-                                    <select
-                                      className="auth-input"
-                                      style={{ paddingLeft: '14px', height: '42px', background: 'var(--surface-card)', fontSize: '0.85rem' }}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          const selectedCamp = savedCampaigns.find(c => String(c.id) === e.target.value);
-                                          if (selectedCamp) handleLoadCampaign(selectedCamp);
-                                        }
-                                      }}
-                                      defaultValue=""
-                                    >
-                                      <option value="" disabled>Select a saved list/campaign...</option>
-                                      {savedCampaigns.map(camp => (
-                                        <option key={camp.id} value={camp.id}>
-                                          {camp.name} ({camp.contacts?.length || 0} contacts)
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
+                                <button
+                                  type="button"
+                                  className="premium-btn-primary"
+                                  onClick={() => setIsCsvModalOpen(true)}
+                                  style={{ height: '42px', padding: '0 24px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                  <FileUp size={16} /> Import Contacts List
+                                </button>
                               </div>
                             ) : (
-                              <div className="csv-success-card">
-                                <div className="csv-success-header">
-                                  <div className="csv-file-info">
-                                    <div className="csv-icon-wrapper">
-                                      <FileText size={24} className="csv-icon" />
-                                    </div>
-                                    <div>
-                                      <span className="csv-filename">{csvData.fileName}</span>
-                                      <span className="csv-details">
-                                        {csvData.rows.length} unique contacts parsed successfully
-                                      </span>
+                              <div className="csv-success-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface-hover)', padding: '20px 24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                  <div style={{ background: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.2)', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                    <FileText size={24} />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: 'var(--text-main)', fontWeight: '700' }}>
+                                      {csvData.fileName}
+                                    </h4>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+                                      <span style={{ fontWeight: '600', color: 'var(--primary)' }}>{csvData.rows.length} contacts configured</span>
+                                      <span>•</span>
+                                      <span>Phone column: <strong>{csvData.phoneHeader}</strong></span>
                                     </div>
                                   </div>
-                                  <button type="button" className="csv-clear-btn" onClick={clearCSV} title="Clear uploaded CSV">
-                                    <X size={18} />
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <button
+                                      type="button"
+                                      className="premium-btn-outline"
+                                      onClick={() => setIsCsvModalOpen(true)}
+                                      style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                      title="Configure Import"
+                                    >
+                                      <Edit2 size={14} /> Configure List
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={clearCSV}
+                                      style={{ background: 'none', border: 'none', color: 'var(--text-error)', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+                                      title="Remove list"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -4810,111 +4777,6 @@ const SendMessage = () => {
                                 <span><strong>Note:</strong> The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
                               </div>
                             </div>
-
-                            {csvData.rows.length > 0 && (
-                              <div className="csv-preview-section">
-                                <div className="preview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                                  <div>
-                                    <h3>CSV Data Preview ({csvData.rows.length} Contacts)</h3>
-                                    <span className="phone-indicator">Phone number column detected: <strong>{csvData.phoneHeader}</strong></span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="premium-btn-primary"
-                                    style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem' }}
-                                    onClick={handleAnalyzeContacts}
-                                    disabled={analyzingContacts}
-                                  >
-                                    {analyzingContacts ? 'Analyzing...' : 'Analyze WhatsApp Numbers'}
-                                  </button>
-                                </div>
-
-                                {analysisResult && (
-                                  <div style={{
-                                    margin: '16px 0',
-                                    padding: '14px 20px',
-                                    borderRadius: '12px',
-                                    background: analysisResult.notOnWhatsAppCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                                    border: `1px solid ${analysisResult.notOnWhatsAppCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                    gap: '16px'
-                                  }}>
-                                    <div>
-                                      <h4 style={{ margin: '0 0 4px 0', color: analysisResult.notOnWhatsAppCount > 0 ? '#ef4444' : '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {analysisResult.notOnWhatsAppCount > 0 ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-                                        WhatsApp Status Analysis Complete
-                                      </h4>
-                                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                        <strong>{analysisResult.onWhatsAppCount}</strong> contacts are registered on WhatsApp. 
-                                        {analysisResult.notOnWhatsAppCount > 0 && (
-                                          <span> 
-                                            {" "}<strong>{analysisResult.notOnWhatsAppCount}</strong> contacts are <strong>NOT using WhatsApp</strong>:{" "}
-                                            <code style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
-                                              {analysisResult.nonWhatsAppNumbers.join(', ')}
-                                            </code>
-                                          </span>
-                                        )}
-                                      </p>
-                                    </div>
-                                    {analysisResult.notOnWhatsAppCount > 0 && (
-                                      <button
-                                        type="button"
-                                        className="premium-btn-primary"
-                                        style={{
-                                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                          boxShadow: '0 4px 14px rgba(239, 68, 68, 0.35)',
-                                          height: '36px',
-                                          padding: '0 16px',
-                                          fontSize: '0.85rem'
-                                        }}
-                                        onClick={handleCleanContacts}
-                                      >
-                                        Clean List (Remove non-WhatsApp)
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
- 
-                                <div className="csv-preview-table-container" data-lenis-prevent>
-                                  <table className="csv-preview-table">
-                                    <thead>
-                                      <tr>
-                                        <th>#</th>
-                                        {csvData.headers.map((h, idx) => (
-                                          <th key={idx}>{h}</th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {csvData.rows.slice(0, 10).map((row, rIdx) => {
-                                        const isNonWhatsApp = analysisResult?.nonWhatsAppNumbers?.includes(row._cleanPhone);
-                                        return (
-                                          <tr key={rIdx} style={isNonWhatsApp ? { backgroundColor: 'rgba(239, 68, 68, 0.08)' } : {}}>
-                                            <td>{rIdx + 1}</td>
-                                            {csvData.headers.map((h, cIdx) => (
-                                              <td key={cIdx}>
-                                                {row[h]}
-                                                {h === csvData.phoneHeader && isNonWhatsApp && (
-                                                  <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '8px', fontWeight: '600' }}>(Not on WhatsApp)</span>
-                                                )}
-                                              </td>
-                                            ))}
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                {csvData.rows.length > 10 && (
-                                  <div className="preview-footer">
-                                    Showing first 10 rows of {csvData.rows.length} total unique rows.
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
                         )}
 
@@ -5473,6 +5335,260 @@ const SendMessage = () => {
                 style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem' }}
               >
                 Close Tracking
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* CSV/Excel Import Wizard Modal */}
+      {isCsvModalOpen && createPortal(
+        <div className="progress-modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="progress-modal-content glass animate-scale-up" 
+               style={{ 
+                 maxWidth: csvData.fileName ? '950px' : '500px', 
+                 width: '95%', 
+                 padding: '24px', 
+                 maxHeight: '90vh', 
+                 overflowY: 'auto',
+                 display: 'block',
+                 textAlign: 'left'
+               }} 
+               onClick={e => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
+                  <FileUp size={22} className="text-primary" /> Contacts Import Wizard
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Upload a contact list sheet or choose from your campaign history to proceed.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsCsvModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Dynamic Grid Layout */}
+            {!csvData.fileName ? (
+              /* Welcoming View - Single Column */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Drag & Drop Zone */}
+                <div className="csv-dropzone">
+                  <input
+                    type="file"
+                    id="csv-modal-file-input"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFileUpload}
+                    hidden
+                  />
+                  <label htmlFor="csv-modal-file-input" className="csv-dropzone-label" style={{ padding: '24px 16px', cursor: 'pointer' }}>
+                    <FileUp size={36} className="upload-icon" style={{ color: 'var(--primary)', marginBottom: '8px' }} />
+                    <span className="upload-title" style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-main)' }}>Choose CSV/Excel File</span>
+                    <span className="upload-subtitle" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
+                  </label>
+                </div>
+
+                {/* Load from Saved Dropdown */}
+                {savedCampaigns.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--surface-hover)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+                      — OR SELECT A SAVED CAMPAIGN LIST —
+                    </span>
+                    <select
+                      className="auth-input"
+                      style={{ paddingLeft: '14px', height: '38px', background: 'var(--surface-card)', fontSize: '0.82rem' }}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const selectedCamp = savedCampaigns.find(c => String(c.id) === e.target.value);
+                          if (selectedCamp) handleLoadCampaign(selectedCamp);
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Select a saved list/campaign...</option>
+                      {savedCampaigns.map(camp => (
+                        <option key={camp.id} value={camp.id}>
+                          {camp.name} ({camp.contacts?.length || 0} contacts)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Download Template & Guideline */}
+                <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '12px 16px', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-main)', fontWeight: '600' }}>Need a template format?</span>
+                    <button type="button" className="download-template-link" onClick={downloadCSVTemplate} style={{ margin: 0, padding: '4px 8px', height: 'auto', background: 'rgba(37, 211, 102, 0.1)', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: '600' }}>
+                      <FileText size={12} /> Download Template
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start', lineHeight: '1.4' }}>
+                    <AlertCircle size={13} className="text-warning" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>The <strong>first column</strong> in your file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>) and must match your message template exactly.</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Configured Split Screen View - Left: Stats & Controls | Right: Data Table Preview */
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '24px', alignItems: 'start' }}>
+                
+                {/* Left Column: List details, WhatsApp validation, guidelines */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* File Badge */}
+                  <div style={{ background: 'rgba(37, 211, 102, 0.06)', border: '1px solid rgba(37, 211, 102, 0.2)', padding: '16px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Loaded Contacts</span>
+                      <button 
+                        type="button" 
+                        onClick={clearCSV}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '700', padding: 0 }}
+                      >
+                        Remove List
+                      </button>
+                    </div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {csvData.fileName}
+                    </h4>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      <strong>{csvData.rows.length}</strong> unique rows parsed.
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      Phone column: <strong style={{ color: 'var(--text-main)' }}>{csvData.phoneHeader}</strong>
+                    </div>
+                  </div>
+
+                  {/* Actions & WhatsApp Analysis */}
+                  <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '16px', borderRadius: '12px' }}>
+                    <h5 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '600' }}>WhatsApp Availability Check</h5>
+                    {!analysisResult ? (
+                      <div>
+                        <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Check if these numbers have registered WhatsApp accounts to prevent failures.
+                        </p>
+                        <button
+                          type="button"
+                          className="premium-btn-primary"
+                          onClick={handleAnalyzeContacts}
+                          disabled={analyzingContacts}
+                          style={{ height: '36px', padding: '0 16px', fontSize: '0.8rem', width: '100%' }}
+                        >
+                          {analyzingContacts ? (
+                            <>
+                              <Loader2 className="animate-spin" size={14} style={{ marginRight: '6px' }} /> Checking WhatsApp...
+                            </>
+                          ) : 'Check Numbers on WhatsApp'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem', background: 'var(--surface-card)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          <span style={{ color: '#10b981', fontWeight: '600' }}>WhatsApp: {analysisResult.onWhatsAppCount}</span>
+                          <span style={{ color: '#ef4444', fontWeight: '600' }}>Not on WA: {analysisResult.notOnWhatsAppCount}</span>
+                        </div>
+                        {analysisResult.notOnWhatsAppCount > 0 && (
+                          <button
+                            type="button"
+                            className="premium-btn-outline"
+                            onClick={handleCleanContacts}
+                            style={{ height: '36px', width: '100%', fontSize: '0.8rem', borderColor: '#ef4444', color: '#ef4444' }}
+                          >
+                            Remove {analysisResult.notOnWhatsAppCount} invalid numbers
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Option to Upload Another CSV / Select Campaign */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <label htmlFor="csv-modal-file-input" className="premium-btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '36px', width: '100%', fontSize: '0.8rem', margin: 0, padding: 0, cursor: 'pointer', textAlign: 'center' }}>
+                      <FileUp size={14} /> Upload Different File
+                    </label>
+                  </div>
+
+                  {/* Guidelines Download */}
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Template format required?</span>
+                    <button type="button" className="download-template-link" onClick={downloadCSVTemplate} style={{ margin: 0, padding: '4px 8px', height: 'auto', background: 'none', color: 'var(--primary)', border: 'none', textDecoration: 'underline', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                      Download Sample File
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Column: Table Preview Grid */}
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Data Preview (Showing first 5 rows)</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>Placeholders: {csvData.placeholders.map(p => `{${p}}`).join(', ') || 'None'}</span>
+                  </div>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div style={{ maxHeight: '280px', overflowY: 'auto' }} data-lenis-prevent>
+                      <table className="csv-preview-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'var(--surface-hover)' }}>
+                            <th style={{ padding: '10px 12px', fontWeight: '600' }}>#</th>
+                            {csvData.headers.map((h, idx) => (
+                              <th key={idx} style={{ padding: '10px 12px', fontWeight: '600' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvData.rows.slice(0, 5).map((row, rIdx) => {
+                            const isNonWhatsApp = analysisResult?.nonWhatsAppNumbers?.includes(row._cleanPhone);
+                            return (
+                              <tr key={rIdx} style={{ borderBottom: '1px solid var(--border)', background: isNonWhatsApp ? 'rgba(239, 68, 68, 0.08)' : 'transparent' }}>
+                                <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{rIdx + 1}</td>
+                                {csvData.headers.map((h, cIdx) => (
+                                  <td key={cIdx} style={{ padding: '10px 12px', color: 'var(--text-main)' }}>
+                                    {row[h]}
+                                    {h === csvData.phoneHeader && isNonWhatsApp && (
+                                      <span style={{ color: '#ef4444', fontSize: '0.75rem', marginLeft: '6px', fontWeight: '600' }}>(Not on WA)</span>
+                                    )}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {csvData.rows.length > 5 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'right' }}>
+                      Showing first 5 rows of {csvData.rows.length} total rows.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Actions Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button
+                type="button"
+                className="premium-btn-outline"
+                onClick={() => setIsCsvModalOpen(false)}
+                style={{ height: '38px', padding: '0 16px', fontSize: '0.85rem' }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="premium-btn-primary"
+                onClick={() => setIsCsvModalOpen(false)}
+                disabled={!csvData.fileName}
+                style={{ height: '38px', padding: '0 20px', fontSize: '0.85rem' }}
+              >
+                Apply Contacts List
               </button>
             </div>
           </div>
