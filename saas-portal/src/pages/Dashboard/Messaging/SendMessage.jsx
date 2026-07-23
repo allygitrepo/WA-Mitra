@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare } from 'lucide-react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { instanceService, messageService, templateService, scheduleService, cycleService } from '../../../api/services';
+import { Send, Users, FileUp, FileText, X, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Edit2 } from 'lucide-react';
+import { useOutletContext, useSearchParams, Link } from 'react-router-dom';
+import { instanceService, messageService, templateService, scheduleService, cycleService, campaignService } from '../../../api/services';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Messaging.css';
@@ -26,6 +26,8 @@ const SendMessage = () => {
     } else if (typeParam === 'group') {
       setMode('single');
       setRecipientType('group');
+    } else if (typeParam === 'campaigns') {
+      setMode('campaigns');
     }
 
     const titles = {
@@ -33,7 +35,8 @@ const SendMessage = () => {
       bulk: 'Bulk Campaigns',
       group: 'Group Broadcasting',
       schedule: 'Message Scheduling',
-      cycling: 'Message Cycling'
+      cycling: 'Message Cycling',
+      campaigns: 'Campaigns History'
     };
     document.title = `${titles[typeParam] || 'Direct Messaging'} | WA-Mitra`;
   }, [typeParam]);
@@ -84,6 +87,7 @@ const SendMessage = () => {
           failed: data.results.failed,
           status: 'done'
         }));
+        fetchCampaigns();
 
         if (data.results.failed === 0) {
           toast.success(`Sent all ${data.results.sent} messages successfully!`, { id: 'bulk-campaign-toast', duration: 5000 });
@@ -91,6 +95,19 @@ const SendMessage = () => {
           toast.success(`Process complete: ${data.results.sent} sent, ${data.results.failed} failed.`, { id: 'bulk-campaign-toast', duration: 6000 });
         }
       }
+    });
+
+    socket.on('bulk_message_status_update', (data) => {
+      setTrackingCampaignData(prev => {
+        if (!prev || prev.campaign.id !== data.campaignId) return prev;
+        const updated = prev.statuses.map(s => {
+          if (s.recipient === data.recipient) {
+            return { ...s, status: data.status };
+          }
+          return s;
+        });
+        return { ...prev, statuses: updated };
+      });
     });
 
     return () => {
@@ -130,6 +147,16 @@ const SendMessage = () => {
   });
   const [analyzingContacts, setAnalyzingContacts] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+
+  // Campaigns states
+  const [savedCampaigns, setSavedCampaigns] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [saveCampaignCheckbox, setSaveCampaignCheckbox] = useState(false);
+  const [campaignNameInput, setCampaignNameInput] = useState('');
+  const [showCampaignTrackerModal, setShowCampaignTrackerModal] = useState(false);
+  const [trackingCampaignId, setTrackingCampaignId] = useState(null);
+  const [trackingCampaignData, setTrackingCampaignData] = useState(null);
+  const [loadingTrackingData, setLoadingTrackingData] = useState(false);
 
   // Template Management States
   const [savedTemplates, setSavedTemplates] = useState([]);
@@ -1229,6 +1256,7 @@ const SendMessage = () => {
 
   useEffect(() => {
     fetchInstances();
+    fetchCampaigns();
   }, []);
 
   const handleNumberCountChange = (count) => {
@@ -1623,6 +1651,126 @@ const SendMessage = () => {
     toast.success(`Removed ${nonWhatsAppNumbers.length} non-WhatsApp numbers! remaining: ${cleanedRows.length} contacts.`);
   };
 
+  const fetchCampaigns = async () => {
+    setLoadingCampaigns(true);
+    try {
+      const res = await campaignService.getCampaigns();
+      if (res.data.success) {
+        setSavedCampaigns(res.data.campaigns);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  };
+
+  const handleLoadCampaign = (campaign) => {
+    if (!campaign.contacts || campaign.contacts.length === 0) {
+      toast.error('This campaign has no contact lists saved.');
+      return;
+    }
+
+    const phoneHeader = Object.keys(campaign.contacts[0] || {}).find(k => k.toLowerCase().includes('phone') || k.toLowerCase().includes('number') || k.toLowerCase().includes('recipient')) || 'Phone number';
+    
+    // Explicitly guarantee every loaded contact has _cleanPhone correctly resolved
+    const processedContacts = campaign.contacts.map(c => {
+      const rawNum = c[phoneHeader];
+      const cleanNum = rawNum ? rawNum.toString().replace(/\D/g, '') : '';
+      return {
+        ...c,
+        _cleanPhone: c._cleanPhone || cleanNum
+      };
+    });
+
+    setCsvData({
+      headers: Object.keys(campaign.contacts[0] || {}).filter(h => h !== '_cleanPhone' && h !== 'message'),
+      placeholders: Object.keys(campaign.contacts[0] || {}).filter(h => h !== '_cleanPhone' && h !== phoneHeader && h !== 'message'),
+      rows: processedContacts,
+      fileName: campaign.name,
+      phoneHeader: phoneHeader
+    });
+    setBulkInputMethod('csv');
+    setAnalysisResult(null); // Clear previous analysis to prevent stale warnings
+    toast.success(`Loaded campaign "${campaign.name}"!`);
+  };
+
+  const handleTrackCampaign = async (id) => {
+    setTrackingCampaignId(id);
+    setShowCampaignTrackerModal(true);
+    setLoadingTrackingData(true);
+    try {
+      const res = await campaignService.getCampaignStatus(id);
+      if (res.data.success) {
+        setTrackingCampaignData(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load campaign status data.');
+    } finally {
+      setLoadingTrackingData(false);
+    }
+  };
+
+  const handleDeleteCampaign = (id, e) => {
+    e.stopPropagation();
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Delete Saved Campaign?',
+      message: 'Are you sure you want to delete this saved campaign list? This action cannot be undone.',
+      okText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          const res = await campaignService.deleteCampaign(id);
+          if (res.data.success) {
+            toast.success(res.data.message);
+            fetchCampaigns();
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to delete campaign.');
+        }
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const handleRenameCampaign = (id, currentName, e) => {
+    if (e) e.stopPropagation();
+    setModalConfig({
+      isOpen: true,
+      type: 'prompt',
+      title: 'Rename Campaign',
+      message: 'Enter a new name for this campaign:',
+      placeholder: 'e.g. July Promotion',
+      defaultValue: currentName,
+      okText: 'Rename',
+      cancelText: 'Cancel',
+      onConfirm: async (newName) => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        if (!newName || !newName.trim()) return;
+        try {
+          const res = await campaignService.updateCampaign(id, { name: newName.trim() });
+          if (res.data.success) {
+            toast.success(res.data.message || 'Campaign renamed successfully.');
+            fetchCampaigns();
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error(err.response?.data?.message || 'Failed to rename campaign.');
+        }
+      },
+      onCancel: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   // CSV Template download
   const downloadCSVTemplate = () => {
     const headers = ['Phone number', 'Name', 'Day', 'Time'];
@@ -1826,12 +1974,22 @@ const SendMessage = () => {
         formData.append('instanceKey', selectedInstance);
         formData.append('messages', JSON.stringify(messagesArray));
         formData.append('file', bulkData.file);
+        if (campaignNameInput) {
+          formData.append('campaignName', campaignNameInput);
+        }
+        if (bulkInputMethod === 'csv') {
+          formData.append('contacts', JSON.stringify(csvData.rows));
+          formData.append('template', bulkData.message);
+        }
         body = formData;
       } else {
         headers['Content-Type'] = 'application/json';
         body = JSON.stringify({
           instanceKey: selectedInstance,
-          messages: messagesArray
+          messages: messagesArray,
+          campaignName: campaignNameInput || undefined,
+          contacts: bulkInputMethod === 'csv' ? csvData.rows : undefined,
+          template: bulkData.message
         });
       }
 
@@ -2212,6 +2370,55 @@ const SendMessage = () => {
     return (g.subject || '').toLowerCase().includes(cycleGroupSearchQuery.toLowerCase());
   });
 
+  const renderStatusTicks = (status) => {
+    switch (status) {
+      case 'read':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#53bdeb' }} title="Read">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '11px' }}>
+              <path d="M4.5 8L1.5 5L0.5 6L4.5 10L12.5 2L11.5 1L4.5 8Z" fill="currentColor" />
+              <path d="M8.5 8L7.5 7L6.5 8L8.5 10L15.5 3L14.5 2L8.5 8Z" fill="currentColor" />
+            </svg>
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Read</span>
+          </div>
+        );
+      case 'delivered':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8696a0' }} title="Delivered">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '11px' }}>
+              <path d="M4.5 8L1.5 5L0.5 6L4.5 10L12.5 2L11.5 1L4.5 8Z" fill="currentColor" />
+              <path d="M8.5 8L7.5 7L6.5 8L8.5 10L15.5 3L14.5 2L8.5 8Z" fill="currentColor" />
+            </svg>
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Delivered</span>
+          </div>
+        );
+      case 'sent':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8696a0' }} title="Sent">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '11px' }}>
+              <path d="M4.5 8L1.5 5L0.5 6L4.5 10L12.5 2L11.5 1L4.5 8Z" fill="currentColor" />
+            </svg>
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Sent</span>
+          </div>
+        );
+      case 'failed':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }} title="Failed">
+            <AlertCircle size={14} />
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Failed</span>
+          </div>
+        );
+      case 'pending':
+      default:
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }} title="Pending">
+            <Loader2 size={14} className="animate-spin" />
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Pending</span>
+          </div>
+        );
+    }
+  };
+
   const getHeaderDetails = () => {
     switch (typeParam) {
       case 'bulk':
@@ -2234,6 +2441,11 @@ const SendMessage = () => {
           title: "Message Cycling",
           subtitle: "Rotate messaging across multiple linked instances to distribute traffic."
         };
+      case 'campaigns':
+        return {
+          title: "Campaigns History",
+          subtitle: "Track live status updates and manage your broadcast history."
+        };
       case 'contact':
       default:
         return {
@@ -2244,6 +2456,84 @@ const SendMessage = () => {
   };
 
   const headerDetails = getHeaderDetails();
+
+  const renderCampaignsUI = () => {
+    return (
+      <div className="campaigns-history-layout animate-fade-in" style={{ width: '100%' }}>
+        <div style={{ padding: '24px', background: 'var(--surface-card)', borderRadius: '16px' }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
+            <FileText size={22} className="text-primary" /> Campaigns History & Tracking
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 24px 0' }}>
+            View history of sent broadcasts, load templates, and track real-time delivery and read status.
+          </p>
+
+          {savedCampaigns.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', border: '1px dashed var(--border)', borderRadius: '12px', background: 'var(--surface-hover)' }}>
+              <AlertCircle size={32} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+              <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-main)' }}>No Campaigns Found</h4>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Send a bulk campaign with a specified Campaign Name to start tracking delivery status.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {savedCampaigns.map(camp => (
+                <div key={camp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-hover)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <strong style={{ color: 'var(--text-main)', fontSize: '1.05rem' }}>{camp.name}</strong>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRenameCampaign(camp.id, camp.name, e)}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}
+                        title="Rename Campaign"
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    </div>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <span><strong>Contacts:</strong> {camp.contacts?.length || 0}</span>
+                      <span>•</span>
+                      <span><strong>Sent On:</strong> {new Date(camp.createdAt).toLocaleString()}</span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="premium-btn-primary"
+                      style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px' }}
+                      onClick={() => handleTrackCampaign(camp.id)}
+                    >
+                      Track Status
+                    </button>
+                    <Link
+                      to="/dashboard/messaging?type=bulk"
+                      className="premium-btn-outline"
+                      style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px', display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text-main)' }}
+                      onClick={() => handleLoadCampaign(camp)}
+                    >
+                      Load List
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteCampaign(camp.id, e)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-error)', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+                      title="Delete Campaign"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderSchedulingUI = () => {
     return (
@@ -4179,6 +4469,8 @@ const SendMessage = () => {
           renderSchedulingUI()
         ) : typeParam === 'cycling' ? (
           renderCyclingUI()
+        ) : typeParam === 'campaigns' ? (
+          renderCampaignsUI()
         ) : (
           <div className="messaging-body">
             <div className="form-row" style={{ marginBottom: '24px' }}>
@@ -4435,19 +4727,47 @@ const SendMessage = () => {
                         ) : (
                           <div className="csv-upload-container animate-fade-in">
                             {!csvData.fileName ? (
-                              <div className="csv-dropzone">
-                                <input
-                                  type="file"
-                                  id="csv-file-input"
-                                  accept=".csv,.xlsx,.xls"
-                                  onChange={handleFileUpload}
-                                  hidden
-                                />
-                                <label htmlFor="csv-file-input" className="csv-dropzone-label">
-                                  <FileUp size={32} className="upload-icon" />
-                                  <span className="upload-title">Choose CSV/Excel File</span>
-                                  <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
-                                </label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div className="csv-dropzone">
+                                  <input
+                                    type="file"
+                                    id="csv-file-input"
+                                    accept=".csv,.xlsx,.xls"
+                                    onChange={handleFileUpload}
+                                    hidden
+                                  />
+                                  <label htmlFor="csv-file-input" className="csv-dropzone-label">
+                                    <FileUp size={32} className="upload-icon" />
+                                    <span className="upload-title">Choose CSV/Excel File</span>
+                                    <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
+                                  </label>
+                                </div>
+
+                                {savedCampaigns.length > 0 && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--surface-hover)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+                                      — Or load from saved —
+                                    </span>
+                                    <select
+                                      className="auth-input"
+                                      style={{ paddingLeft: '14px', height: '42px', background: 'var(--surface-card)', fontSize: '0.85rem' }}
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          const selectedCamp = savedCampaigns.find(c => String(c.id) === e.target.value);
+                                          if (selectedCamp) handleLoadCampaign(selectedCamp);
+                                        }
+                                      }}
+                                      defaultValue=""
+                                    >
+                                      <option value="" disabled>Select a saved list/campaign...</option>
+                                      {savedCampaigns.map(camp => (
+                                        <option key={camp.id} value={camp.id}>
+                                          {camp.name} ({camp.contacts?.length || 0} contacts)
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="csv-success-card">
@@ -4597,6 +4917,24 @@ const SendMessage = () => {
                             )}
                           </div>
                         )}
+
+                        {/* Campaign Name Input */}
+                        <div style={{ margin: '20px 0 10px 0', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                          <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
+                            Campaign / List Name
+                          </label>
+                          <input
+                            type="text"
+                            className="auth-input"
+                            style={{ paddingLeft: '14px' }}
+                            placeholder="Enter campaign name to save and track status (e.g. July Promotion)"
+                            value={campaignNameInput}
+                            onChange={(e) => setCampaignNameInput(e.target.value)}
+                          />
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px', paddingLeft: '2px' }}>
+                            Providing a name saves this list & template in your history for live delivery tracking and future re-use.
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -5022,6 +5360,119 @@ const SendMessage = () => {
                 style={{ minWidth: '120px' }}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Campaign Status Tracker Modal */}
+      {showCampaignTrackerModal && createPortal(
+        <div className="progress-modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="progress-modal-content glass animate-scale-up" style={{ maxWidth: '600px', width: '90%', padding: '24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)', fontWeight: '700' }}>
+                Campaign Status: {trackingCampaignData?.campaign?.name || 'Loading...'}
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowCampaignTrackerModal(false);
+                  setTrackingCampaignData(null);
+                }} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {loadingTrackingData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px', gap: '12px' }}>
+                <Loader2 className="animate-spin text-primary" size={32} />
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Fetching campaign metrics...</span>
+              </div>
+            ) : trackingCampaignData ? (
+              <div>
+                {/* Stats Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Sent</span>
+                    <strong style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}>
+                      {trackingCampaignData.statuses.filter(s => ['sent', 'delivered', 'read'].includes(s.status)).length}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Delivered</span>
+                    <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>
+                      {trackingCampaignData.statuses.filter(s => ['delivered', 'read'].includes(s.status)).length}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Read</span>
+                    <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>
+                      {trackingCampaignData.statuses.filter(s => s.status === 'read').length}
+                    </strong>
+                  </div>
+                  <div style={{ background: 'var(--surface-hover)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Failed</span>
+                    <strong style={{ fontSize: '1.2rem', color: '#ef4444' }}>
+                      {trackingCampaignData.statuses.filter(s => s.status === 'failed').length}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Recipient Wise Status Table */}
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 14px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                    Recipient-wise Status Logs
+                  </div>
+                  <div style={{ maxHeight: '220px', overflowY: 'auto' }} data-lenis-prevent>
+                    <table className="csv-preview-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '8px 12px' }}>Recipient</th>
+                          <th style={{ padding: '8px 12px' }}>Status</th>
+                          <th style={{ padding: '8px 12px' }}>Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trackingCampaignData.statuses.map(st => (
+                          <tr key={st.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '8px 12px', color: 'var(--text-main)' }}>{st.recipient}</td>
+                            <td style={{ padding: '8px 12px' }}>
+                              {renderStatusTicks(st.status)}
+                            </td>
+                            <td style={{ padding: '8px 12px', color: st.status === 'failed' ? '#ef4444' : 'var(--text-muted)', fontSize: '0.8rem' }}>
+                              {st.status === 'failed' 
+                                ? (st.errorMessage || 'Failed') 
+                                : new Date(st.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                No tracking statistics available.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              <button
+                type="button"
+                className="premium-btn-primary"
+                onClick={() => {
+                  setShowCampaignTrackerModal(false);
+                  setTrackingCampaignData(null);
+                }}
+                style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem' }}
+              >
+                Close Tracking
               </button>
             </div>
           </div>

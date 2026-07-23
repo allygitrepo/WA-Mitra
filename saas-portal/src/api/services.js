@@ -100,3 +100,11 @@ export const cycleService = {
   },
   deleteCycle: (id) => API.delete(`/cycles/${id}`),
 };
+
+export const campaignService = {
+  saveCampaign: (data) => API.post('/campaigns', data),
+  getCampaigns: () => API.get('/campaigns'),
+  deleteCampaign: (id) => API.delete(`/campaigns/${id}`),
+  getCampaignStatus: (id) => API.get(`/campaigns/${id}/status`),
+  updateCampaign: (id, data) => API.put(`/campaigns/${id}`, data),
+};

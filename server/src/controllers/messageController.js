@@ -118,6 +118,26 @@ const messageController = {
                 failed: 0
             });
 
+            // Create campaign list & track statuses
+            const { BulkCampaign, BulkMessageStatus } = require("../models/associations");
+            const campaignName = req.body.campaignName || `Bulk Campaign - ${new Date().toLocaleString()}`;
+            
+            const campaign = await BulkCampaign.create({
+                userId: req.user.id,
+                name: campaignName,
+                template: req.body.template || parsedMessages[0]?.message || '',
+                contacts: req.body.contacts || parsedMessages,
+                mediaPath: file ? file.path : null
+            });
+
+            // Initialize all statuses as pending
+            const pendingStatuses = parsedMessages.map(msg => ({
+                campaignId: campaign.id,
+                recipient: msg.number,
+                status: 'pending'
+            }));
+            await BulkMessageStatus.bulkCreate(pendingStatuses);
+
             let index = 0;
             let batchCounter = 0;
             let nextBatchThreshold = Math.floor(Math.random() * 6) + 15; // 15 to 20
@@ -145,6 +165,12 @@ const messageController = {
                             results.failed++;
                             results.errors.push({ number, error: errorMsg });
                             await logMessage(instance.id, number, type, status, errorMsg);
+
+                            // Update campaign status
+                            await BulkMessageStatus.update(
+                                { status: 'failed', errorMessage: errorMsg },
+                                { where: { campaignId: campaign.id, recipient: number } }
+                            );
 
                             res.write(JSON.stringify({
                                 type: 'progress',
@@ -191,28 +217,44 @@ const messageController = {
                         }
                     }
 
+                    let msgId = null;
                     if (file) {
                         const ext = path.extname(file.originalname).toLowerCase();
                         const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
+                        let response;
                         if (isImage) {
-                            await sock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
+                            response = await sock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
                         } else {
-                            await sock.sendMessage(targetJid, {
+                            response = await sock.sendMessage(targetJid, {
                                 document: { url: file.path },
                                 mimetype: file.mimetype,
                                 fileName: file.originalname,
                                 caption: message || ''
                             });
                         }
+                        msgId = response?.key?.id || null;
                     } else {
-                        await sock.sendMessage(targetJid, { text: message });
+                        const response = await sock.sendMessage(targetJid, { text: message });
+                        msgId = response?.key?.id || null;
                     }
                     status = 'sent';
                     results.sent++;
+
+                    // Update campaign status
+                    await BulkMessageStatus.update(
+                        { status: 'sent', msgId },
+                        { where: { campaignId: campaign.id, recipient: number } }
+                    );
                 } catch (error) {
                     errorMsg = error.message;
                     results.failed++;
                     results.errors.push({ number, error: errorMsg });
+
+                    // Update campaign status
+                    await BulkMessageStatus.update(
+                        { status: 'failed', errorMessage: errorMsg },
+                        { where: { campaignId: campaign.id, recipient: number } }
+                    );
                 }
 
                 await logMessage(instance.id, number, type, status, errorMsg);
@@ -262,12 +304,14 @@ const messageController = {
 
             res.write(JSON.stringify({
                 type: 'done',
+                campaignId: campaign.id,
                 results
             }) + '\n');
             res.end();
 
             emitSocket('bulk_progress', {
                 type: 'done',
+                campaignId: campaign.id,
                 results
             });
 

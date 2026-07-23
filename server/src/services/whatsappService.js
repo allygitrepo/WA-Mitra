@@ -399,6 +399,99 @@ async function _internalStartSession(instanceKey) {
         }
     });
 
+    // Message status update tracker (sent, delivered, read)
+    sock.ev.on('messages.update', async (updates) => {
+        for (const update of updates) {
+            const { key, update: msgUpdate } = update;
+            if (!msgUpdate || msgUpdate.status === undefined) continue;
+
+            const msgId = key.id;
+            const ackStatus = msgUpdate.status;
+
+            let status = null;
+            if (ackStatus >= 4) {
+                status = 'read';
+            } else if (ackStatus === 3) {
+                status = 'delivered';
+            } else if (ackStatus === 2) {
+                status = 'sent';
+            }
+
+            if (status) {
+                try {
+                    const { BulkMessageStatus } = require('../models/associations');
+                    const existing = await BulkMessageStatus.findOne({ where: { msgId } });
+                    if (existing) {
+                        const statusWeights = { pending: 0, failed: 0, sent: 1, delivered: 2, read: 3 };
+                        const currentWeight = statusWeights[existing.status] || 0;
+                        const newWeight = statusWeights[status] || 0;
+
+                        if (newWeight > currentWeight) {
+                            await BulkMessageStatus.update(
+                                { status },
+                                { where: { msgId } }
+                            );
+
+                            getIO().emit('bulk_message_status_update', {
+                                campaignId: existing.campaignId,
+                                msgId,
+                                recipient: existing.recipient,
+                                status
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('[MESSAGES UPDATE ERROR] Failed to update message status:', err.message);
+                }
+            }
+        }
+    });
+
+    // Message receipt status tracker
+    sock.ev.on('message-receipt.update', async (updates) => {
+        for (const update of updates) {
+            const { key, receipt } = update;
+            const msgId = key.id;
+
+            let status = null;
+            if (receipt.status >= 4 || receipt.readReceiptType === 'read') {
+                status = 'read';
+            } else if (receipt.status === 3) {
+                status = 'delivered';
+            } else if (receipt.status === 2) {
+                status = 'sent';
+            }
+
+            if (status) {
+                try {
+                    const { BulkMessageStatus } = require('../models/associations');
+                    const existing = await BulkMessageStatus.findOne({ where: { msgId } });
+                    if (existing) {
+                        const statusWeights = { pending: 0, failed: 0, sent: 1, delivered: 2, read: 3 };
+                        const currentWeight = statusWeights[existing.status] || 0;
+                        const newWeight = statusWeights[status] || 0;
+
+                        if (newWeight > currentWeight) {
+                            await BulkMessageStatus.update(
+                                { status },
+                                { where: { msgId } }
+                            );
+
+                            getIO().emit('bulk_message_status_update', {
+                                campaignId: existing.campaignId,
+                                msgId,
+                                recipient: existing.recipient,
+                                status
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('[RECEIPT UPDATE ERROR] Failed to update message status:', err.message);
+                }
+            }
+        }
+    });
+
     return sock;
 }
 

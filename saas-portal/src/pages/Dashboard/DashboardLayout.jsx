@@ -208,6 +208,12 @@ const DashboardLayout = () => {
                       >
                         Message cycling
                       </Link>
+                      <Link
+                        to="/dashboard/messaging?type=campaigns"
+                        className={`submenu-item ${activeType === 'campaigns' ? 'active' : ''}`}
+                      >
+                        Campaigns History
+                      </Link>
                     </div>
                   )}
                 </Fragment>

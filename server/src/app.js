@@ -12,6 +12,7 @@ const planRoutes = require('./routes/planRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const cycleRoutes = require('./routes/cycleRoutes');
+const campaignRoutes = require('./routes/campaignRoutes');
 const checkStatusMiddleware = require('./middleware/checkStatusMiddleware');
 const authMiddleware = require('./middleware/authMiddleware');
 
@@ -44,6 +45,7 @@ app.use(`${prefix}/api/whatsapp`, authMiddleware, checkStatusMiddleware, whatsap
 app.use(`${prefix}/api/templates`, authMiddleware, checkStatusMiddleware, templateRoutes);
 app.use(`${prefix}/api/schedules`, authMiddleware, checkStatusMiddleware, scheduleRoutes);
 app.use(`${prefix}/api/cycles`, authMiddleware, checkStatusMiddleware, cycleRoutes);
+app.use(`${prefix}/api/campaigns`, authMiddleware, checkStatusMiddleware, campaignRoutes);
 app.use(`${prefix}/api/payments`, paymentRoutes);
 app.use(`${prefix}/api/plans`, planRoutes);
 

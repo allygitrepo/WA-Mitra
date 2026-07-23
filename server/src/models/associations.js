@@ -54,4 +54,15 @@ Cycle.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 WhatsAppInstance.hasMany(AutoReplyRule, { foreignKey: 'instanceKey', sourceKey: 'instanceKey', as: 'rules' });
 AutoReplyRule.belongsTo(WhatsAppInstance, { foreignKey: 'instanceKey', targetKey: 'instanceKey', as: 'instance' });
 
-module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template, Schedule, Cycle, AutoReplyRule };
+const BulkCampaign = require('./bulkCampaignModel');
+const BulkMessageStatus = require('./bulkMessageStatusModel');
+
+// User <-> BulkCampaign
+User.hasMany(BulkCampaign, { foreignKey: 'userId', as: 'bulkCampaigns' });
+BulkCampaign.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// BulkCampaign <-> BulkMessageStatus
+BulkCampaign.hasMany(BulkMessageStatus, { foreignKey: 'campaignId', as: 'statuses', onDelete: 'CASCADE' });
+BulkMessageStatus.belongsTo(BulkCampaign, { foreignKey: 'campaignId', as: 'campaign', onDelete: 'CASCADE' });
+
+module.exports = { User, WhatsAppInstance, ApiToken, MessageLog, Package, Payment, Template, Schedule, Cycle, AutoReplyRule, BulkCampaign, BulkMessageStatus };
