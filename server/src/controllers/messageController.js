@@ -178,76 +178,18 @@ const messageController = {
                 index++;
 
                 try {
-                    const isJid = number.includes('@');
-                    let targetJid;
-                    if (isJid) {
-                        targetJid = number;
-                    } else {
-                        const cleanNumber = number.replace(/\D/g, '');
-                        const [result] = await sock.onWhatsApp(cleanNumber);
-
-                        if (result && result.exists) {
-                            targetJid = result.jid;
-                        } else {
-                            errorMsg = 'Number is not on WhatsApp';
-                            results.failed++;
-                            results.errors.push({ number, error: errorMsg });
-                            await logMessage(instance.id, number, type, status, errorMsg);
-
-                            // Update campaign status
-                            await BulkMessageStatus.update(
-                                { status: 'failed', errorMessage: errorMsg },
-                                { where: { campaignId: campaign.id, recipient: number } }
-                            );
-
-                            try {
-                                res.write(JSON.stringify({
-                                    type: 'progress',
-                                    index,
-                                    total: results.total,
-                                    sent: results.sent,
-                                    failed: results.failed,
-                                    currentNumber: number,
-                                    status: 'failed',
-                                    error: errorMsg
-                                }) + '\n');
-                            } catch (e) {
-                                // Connection closed
-                            }
-
-                            emitSocket('bulk_progress', {
-                                type: 'progress',
-                                index,
-                                total: results.total,
-                                sent: results.sent,
-                                failed: results.failed,
-                                currentNumber: number,
-                                status: 'failed',
-                                error: errorMsg
-                            });
-
-                            // Delay calculation inside check-failed path
-                            batchCounter++;
-                            if (index < parsedMessages.length) {
-                                if (batchCounter >= nextBatchThreshold) {
-                                    emitSocket('bulk_progress', {
-                                        type: 'pause',
-                                        message: `Taking a 15-second pause to prevent rate limiting...`,
-                                        nextBatchSize: nextBatchThreshold,
-                                        sent: results.sent,
-                                        failed: results.failed
-                                    });
-                                    await sleepMs(15000);
-                                    batchCounter = 0;
-                                    nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
-                                } else {
-                                    const delay = Math.floor(Math.random() * 7000) + 1000;
-                                    await sleepMs(delay);
-                                }
-                            }
-                            continue;
-                        }
+                    let activeSock = getSock(instanceKey);
+                    if (!activeSock) {
+                        await sleepMs(3000);
+                        activeSock = getSock(instanceKey);
                     }
+                    if (!activeSock) {
+                        throw new Error('WhatsApp connection lost or disconnected');
+                    }
+
+                    const isJid = number.includes('@');
+                    const cleanNumber = number.replace(/\D/g, '');
+                    const targetJid = isJid ? number : `${cleanNumber}@s.whatsapp.net`;
 
                     if (isAborted) {
                         console.log(`[BulkSend] Sending process aborted before message dispatch for campaign ${campaign.id}`);
@@ -264,9 +206,9 @@ const messageController = {
                         const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
                         let response;
                         if (isImage) {
-                            response = await sock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
+                            response = await activeSock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
                         } else {
-                            response = await sock.sendMessage(targetJid, {
+                            response = await activeSock.sendMessage(targetJid, {
                                 document: { url: file.path },
                                 mimetype: file.mimetype,
                                 fileName: file.originalname,
@@ -275,7 +217,7 @@ const messageController = {
                         }
                         msgId = response?.key?.id || null;
                     } else {
-                        const response = await sock.sendMessage(targetJid, { text: message });
+                        const response = await activeSock.sendMessage(targetJid, { text: message });
                         msgId = response?.key?.id || null;
                     }
                     status = 'sent';

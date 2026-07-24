@@ -183,6 +183,10 @@ async function _internalStartSession(instanceKey) {
         printQRInTerminal: false,
         syncFullHistory: false,
         markOnlineOnConnect: true,
+        keepAliveIntervalMs: 25000,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        retryRequestDelayMs: 250
     });
 
     // Initialize session state object

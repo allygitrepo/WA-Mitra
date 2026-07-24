@@ -75,20 +75,8 @@ const processSchedules = async () => {
       for (const number of recipients) {
         try {
           const isJid = number.includes('@');
-          let targetJid;
-          if (isJid) {
-            targetJid = number;
-          } else {
-            const cleanNumber = number.replace(/\D/g, '');
-            const [result] = await sock.onWhatsApp(cleanNumber);
-            if (result && result.exists) {
-              targetJid = result.jid;
-            } else {
-              failedCount++;
-              await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'failed', 'Number is not on WhatsApp');
-              continue;
-            }
-          }
+          const cleanNumber = number.replace(/\D/g, '');
+          const targetJid = isJid ? number : `${cleanNumber}@s.whatsapp.net`;
 
           if (campaign.mediaPath && fs.existsSync(campaign.mediaPath)) {
             const ext = path.extname(campaign.mediaPath).toLowerCase();
