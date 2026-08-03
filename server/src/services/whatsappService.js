@@ -2,6 +2,7 @@ let makeWASocket;
 let useMultiFileAuthState;
 let DisconnectReason;
 let Browsers;
+let fetchLatestWaWebVersion;
 
 async function loadBaileys() {
     if (makeWASocket) return;
@@ -10,6 +11,7 @@ async function loadBaileys() {
     useMultiFileAuthState = baileys.useMultiFileAuthState;
     DisconnectReason = baileys.DisconnectReason;
     Browsers = baileys.Browsers;
+    fetchLatestWaWebVersion = baileys.fetchLatestWaWebVersion;
 }
 
 const { Boom } = require('@hapi/boom');
@@ -20,6 +22,17 @@ const WhatsAppInstance = require('../models/instanceModel');
 const MessageLog = require('../models/messageLogModel');
 const pino = require('pino');
 const QRCode = require('qrcode');
+
+function safeEmit(event, data) {
+    try {
+        const io = getIO();
+        if (io) {
+            io.emit(event, data);
+        }
+    } catch (e) {
+        // Socket.io may not be initialized yet
+    }
+}
 
 // Memory Storage
 const sessions = new Map();             // Map<instanceKey, sessionData>
@@ -176,10 +189,20 @@ async function _internalStartSession(instanceKey) {
     const sessionDir = getSessionPath(instanceKey);
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
+    let waVersion;
+    try {
+        const versionRes = await fetchLatestWaWebVersion();
+        waVersion = versionRes.version;
+        console.log(`[WA VERSION] Initialized session ${instanceKey} with WA Web version:`, waVersion);
+    } catch (e) {
+        console.warn(`[WA VERSION] Failed to fetch latest version for ${instanceKey}, using default:`, e.message);
+    }
+
     const sock = makeWASocket({
+        ...(waVersion ? { version: waVersion } : {}),
         auth: state,
         logger: pino({ level: 'silent' }),
-        browser: Browsers.windows('Chrome'),
+        browser: Browsers.ubuntu('Chrome'),
         printQRInTerminal: false,
         syncFullHistory: false,
         markOnlineOnConnect: true,
@@ -209,7 +232,7 @@ async function _internalStartSession(instanceKey) {
             if (currentSession && (!currentSession.pushName || currentSession.pushName === 'WhatsApp User')) {
                 currentSession.pushName = update.me.name;
                 await updateInstanceStatusSafely(instanceKey, currentSession.connectionStatus, { pushName: update.me.name });
-                getIO().emit('connected', {
+                safeEmit('connected', {
                     instanceKey,
                     pushName: update.me.name,
                     phone: currentSession.userPhone,
@@ -232,7 +255,7 @@ async function _internalStartSession(instanceKey) {
                 currentSession.qrCodeData = qrDataURL;
                 currentSession.qrTimestamp = Date.now();
                 await updateInstanceStatusSafely(instanceKey, 'qr_ready');
-                getIO().emit('qr', { instanceKey, qr: qrDataURL });
+                safeEmit('qr', { instanceKey, qr: qrDataURL });
             } catch (err) {
                 console.error('Failed to generate QR Data URL:', err);
                 currentSession.qrCodeData = qr;
@@ -276,7 +299,7 @@ async function _internalStartSession(instanceKey) {
                         profilePic: null
                     });
 
-                    getIO().emit('disconnected', {
+                    safeEmit('disconnected', {
                         instanceKey,
                         error: "This WhatsApp number is already connected to another instance."
                     });
@@ -298,7 +321,7 @@ async function _internalStartSession(instanceKey) {
                 lastConnected: new Date()
             });
 
-            getIO().emit('connected', {
+            safeEmit('connected', {
                 instanceKey,
                 phone: currentSession.userPhone,
                 pushName: currentSession.pushName,
@@ -308,7 +331,10 @@ async function _internalStartSession(instanceKey) {
 
         // Connecting State
         if (connection === 'connecting') {
-            await updateInstanceStatusSafely(instanceKey, 'connecting');
+            // Preserve 'qr_ready' status if we already have valid QR code waiting to be scanned
+            if (currentSession.connectionStatus !== 'qr_ready' || !currentSession.qrCodeData) {
+                await updateInstanceStatusSafely(instanceKey, 'connecting');
+            }
         }
 
         // Connection Closed
@@ -319,8 +345,10 @@ async function _internalStartSession(instanceKey) {
             cleanupSocket(instanceKey);
 
             if (statusCode !== DisconnectReason.loggedOut) {
-                await updateInstanceStatusSafely(instanceKey, 'connecting');
-                getIO().emit('loading', { instanceKey, message: 'Reconnecting...' });
+                if (currentSession.connectionStatus !== 'qr_ready') {
+                    await updateInstanceStatusSafely(instanceKey, 'connecting');
+                    safeEmit('loading', { instanceKey, message: 'Reconnecting...' });
+                }
 
                 // Bounded exponential backoff delay (min 5s, max 30s)
                 const attempts = (reconnectAttempts.get(instanceKey) || 0) + 1;
@@ -343,7 +371,7 @@ async function _internalStartSession(instanceKey) {
                 if (fs.existsSync(sessionDir)) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
                 }
-                getIO().emit('disconnected', { instanceKey });
+                safeEmit('disconnected', { instanceKey });
             }
         }
     });
@@ -515,13 +543,22 @@ function getStatus(instanceKey) {
     }
 
     let currentQR = sessionData.qrCodeData;
+    let isExpired = false;
     if (sessionData.qrTimestamp && (Date.now() - sessionData.qrTimestamp > 40000)) {
         currentQR = null;
+        isExpired = true;
+    }
+
+    let liveStatus = sessionData.connectionStatus;
+    if (currentQR && liveStatus !== 'connected') {
+        liveStatus = 'qr_ready';
+    } else if (isExpired && liveStatus === 'qr_ready') {
+        liveStatus = 'qr_ready';
     }
 
     return {
-        connected: sessionData.connectionStatus === 'connected',
-        status: sessionData.connectionStatus,
+        connected: liveStatus === 'connected',
+        status: liveStatus,
         qr: currentQR,
         phone: sessionData.userPhone,
         pushName: sessionData.pushName,
@@ -551,7 +588,7 @@ async function disconnect(instanceKey) {
     }
 
     await WhatsAppInstance.destroy({ where: { instanceKey } });
-    getIO().emit('disconnected', { instanceKey });
+    safeEmit('disconnected', { instanceKey });
 }
 
 function getSock(instanceKey) {

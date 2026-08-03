@@ -109,9 +109,6 @@ const Instances = () => {
 
     socket.on('connect', () => {
       console.log('Instances socket connected:', socket.id);
-      instances.forEach(inst => {
-        socket.emit('join_room', inst.instanceKey);
-      });
     });
 
     const updateInstance = (instanceKey, updates) => {
@@ -155,16 +152,21 @@ const Instances = () => {
 
     socket.on('loading', (data) => {
       console.log('Socket loading event:', data);
-      updateInstance(data.instanceKey, {
-        liveStatus: 'connecting',
-        qr: null
-      });
+      setInstances(prev => prev.map(inst => {
+        if (inst.instanceKey === data?.instanceKey) {
+          return {
+            ...inst,
+            liveStatus: inst.qr ? 'qr_ready' : 'connecting'
+          };
+        }
+        return inst;
+      }));
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [instances.length]);
+  }, []);
 
   const isLimitReached = currentPackage &&
     currentPackage.instanceLimit !== -1 &&
@@ -176,19 +178,24 @@ const Instances = () => {
     const loadingToast = toast.loading("Creating instance...");
     try {
       const res = await instanceService.createInstance({ name: newName });
-      const newKey = res.data.instance.instanceKey;
+      const newKey = res.data.instance?.instanceKey;
 
-      // Immediately start the session so the QR code appears
-      await instanceService.initiateSession(newKey);
-
-      fetchInstances();
-      setStatusFilter('All Status'); // Ensure the new instance is visible
       setNewName('');
       setShowAddModal(false);
-      toast.success("Instance created and initialized!", { id: loadingToast });
+      setStatusFilter('All Status');
+      await fetchInstances();
+      toast.success("Instance created! Initializing QR code...", { id: loadingToast });
+
+      if (newKey) {
+        instanceService.initiateSession(newKey).then(() => {
+          fetchInstances();
+        }).catch(err => {
+          console.error("Initiate session background error:", err);
+        });
+      }
     } catch (err) {
-      console.error("Create & Link Error:", err);
-      toast.error("Failed to create and initiate instance", { id: loadingToast });
+      console.error("Create Instance Error:", err);
+      toast.error(err.response?.data?.message || "Failed to create instance", { id: loadingToast });
     } finally {
       setCreating(false);
     }
@@ -334,7 +341,7 @@ const Instances = () => {
             <div className="card-top">
               <div className="status-badge" data-status={inst.liveStatus}>
                 <span className="dot"></span>
-                {inst.liveStatus}
+                {inst.liveStatus === 'qr_ready' ? 'QR Ready' : inst.liveStatus}
               </div>
               <button className="icon-btn-sm" onClick={() => handleDelete(inst.instanceKey)}>
                 <Trash2 size={18} className="text-error" />
