@@ -120,16 +120,16 @@ const instanceController = {
 
       await startSession(instanceKey);
 
-      // Wait a moment to see if QR is generated immediately
+      // Wait a brief moment to check if session is already connected or QR available
       let attempts = 0;
       const checkQR = async () => {
         const liveStatus = getStatus(instanceKey);
         if (liveStatus.qr || liveStatus.connected) {
           return liveStatus;
         }
-        if (attempts > 10) return null; // Wait max 10 seconds for initial QR
+        if (attempts >= 3) return null; // Wait max 900ms for initial check
         attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 300));
         return checkQR();
       };
 
