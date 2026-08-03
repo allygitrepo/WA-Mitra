@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, HelpCircle, Info, X } from 'lucide-react';
 import './CustomModal.css';
 
@@ -40,6 +41,22 @@ const CustomModal = ({
     };
   }, [isOpen, type, defaultValue]);
 
+  // Lock scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleConfirm = (e) => {
@@ -62,8 +79,8 @@ const CustomModal = ({
     }
   };
 
-  return (
-    <div className="custom-modal-overlay">
+  return createPortal(
+    <div className="custom-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && onCancel) onCancel(); }}>
       <div className="custom-modal-container">
         <button type="button" className="custom-modal-close" onClick={onCancel}>
           <X size={18} />
@@ -112,7 +129,8 @@ const CustomModal = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
