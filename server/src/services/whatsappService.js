@@ -202,7 +202,7 @@ async function _internalStartSession(instanceKey) {
         ...(waVersion ? { version: waVersion } : {}),
         auth: state,
         logger: pino({ level: 'silent' }),
-        browser: Browsers.ubuntu('Chrome'),
+        browser: Browsers.macOS('Desktop'),
         printQRInTerminal: false,
         syncFullHistory: false,
         markOnlineOnConnect: true,
@@ -342,8 +342,6 @@ async function _internalStartSession(instanceKey) {
             const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
             cleanupSocket(instanceKey);
 
-            cleanupSocket(instanceKey);
-
             if (statusCode !== DisconnectReason.loggedOut) {
                 if (currentSession.connectionStatus !== 'qr_ready') {
                     await updateInstanceStatusSafely(instanceKey, 'connecting');
@@ -367,7 +365,12 @@ async function _internalStartSession(instanceKey) {
                 sessions.delete(instanceKey);
                 rulesCache.delete(instanceKey);
 
-                await WhatsAppInstance.destroy({ where: { instanceKey } });
+                await updateInstanceStatusSafely(instanceKey, 'disconnected', {
+                    phone: null,
+                    pushName: null,
+                    profilePic: null
+                });
+
                 if (fs.existsSync(sessionDir)) {
                     fs.rmSync(sessionDir, { recursive: true, force: true });
                 }

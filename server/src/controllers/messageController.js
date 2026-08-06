@@ -161,6 +161,16 @@ const messageController = {
                 }, 150);
             });
 
+            // Pre-read media file into Buffer to avoid repeated disk reads during loop
+            let fileBuffer = null;
+            if (file && fs.existsSync(file.path)) {
+                try {
+                    fileBuffer = fs.readFileSync(file.path);
+                } catch (e) {
+                    console.error("[BulkSend] Error reading uploaded media file:", e.message);
+                }
+            }
+
             for (const msg of parsedMessages) {
                 if (isAborted) {
                     console.log(`[BulkSend] Sending process aborted by client for campaign ${campaign.id}`);
@@ -187,9 +197,34 @@ const messageController = {
                         throw new Error('WhatsApp connection lost or disconnected');
                     }
 
-                    const isJid = number.includes('@');
-                    const cleanNumber = number.replace(/\D/g, '');
-                    const targetJid = isJid ? number : `${cleanNumber}@s.whatsapp.net`;
+                    const isJid = (number || '').includes('@');
+                    const cleanNumber = (number || '').toString().replace(/\D/g, '');
+
+                    if (!isJid && (!cleanNumber || cleanNumber.length < 5)) {
+                        throw new Error('Invalid or empty phone number format');
+                    }
+
+                    let targetJid;
+                    if (isJid) {
+                        targetJid = number;
+                    } else {
+                        let onWaResult = null;
+                        try {
+                            const [res] = await activeSock.onWhatsApp(cleanNumber);
+                            onWaResult = res;
+                        } catch (e) {
+                            console.warn(`[onWhatsApp lookup warning for ${cleanNumber}]:`, e.message);
+                        }
+
+                        if (!onWaResult || !onWaResult.exists) {
+                            throw new Error('Number is not registered on WhatsApp');
+                        }
+                        targetJid = onWaResult.jid;
+                    }
+
+                    if (!file && (!message || !message.trim())) {
+                        throw new Error('Message text content is required');
+                    }
 
                     if (isAborted) {
                         console.log(`[BulkSend] Sending process aborted before message dispatch for campaign ${campaign.id}`);
@@ -201,21 +236,23 @@ const messageController = {
                     }
 
                     let msgId = null;
-                    if (file) {
+                    if (file && fileBuffer) {
                         const ext = path.extname(file.originalname).toLowerCase();
                         const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
                         let response;
                         if (isImage) {
-                            response = await activeSock.sendMessage(targetJid, { image: { url: file.path }, caption: message || '' });
+                            response = await activeSock.sendMessage(targetJid, { image: fileBuffer, caption: message || '' });
                         } else {
                             response = await activeSock.sendMessage(targetJid, {
-                                document: { url: file.path },
+                                document: fileBuffer,
                                 mimetype: file.mimetype,
                                 fileName: file.originalname,
                                 caption: message || ''
                             });
                         }
                         msgId = response?.key?.id || null;
+                    } else if (file && !fileBuffer) {
+                        throw new Error('Media file unreadable or missing');
                     } else {
                         const response = await activeSock.sendMessage(targetJid, { text: message });
                         msgId = response?.key?.id || null;
@@ -341,6 +378,10 @@ const messageController = {
             if (!sock) {
                 if (file) fs.unlinkSync(file.path);
                 return res.status(500).json({ success: false, message: 'WhatsApp not connected for this instance' });
+            }
+
+            if (!file && (!message || !message.trim())) {
+                return res.status(400).json({ success: false, message: 'Message text content is required' });
             }
 
             const isJid = number.includes('@');
