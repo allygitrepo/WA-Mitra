@@ -326,8 +326,22 @@ const SendMessage = () => {
         return;
       }
 
-      const phoneHeader = headers[0];
-      const placeholders = headers.slice(1);
+      // Smart detection for phone number header column
+      let phoneHeader = headers.find(h => {
+        const l = (h || '').toLowerCase();
+        return l.includes('mobile') || l.includes('phone') || l.includes('number') || l.includes('whatsapp') || l.includes('contact');
+      });
+
+      if (!phoneHeader) {
+        phoneHeader = headers.find(h => {
+          return rows.some(r => {
+            const val = (r[h] || '').toString().replace(/\D/g, '');
+            return val.length >= 7 && val.length <= 15;
+          });
+        }) || headers[0];
+      }
+
+      const placeholders = headers.filter(h => h !== phoneHeader);
 
       const uniqueRows = [];
       const seen = new Set();
@@ -337,7 +351,7 @@ const SendMessage = () => {
         const rawNum = row[phoneHeader];
         if (!rawNum) return;
         const cleanNum = rawNum.toString().replace(/\D/g, '');
-        if (cleanNum) {
+        if (cleanNum && cleanNum.length >= 7 && cleanNum.length <= 15) {
           if (!seen.has(cleanNum)) {
             seen.add(cleanNum);
             uniqueRows.push({
@@ -733,8 +747,22 @@ const SendMessage = () => {
         return;
       }
 
-      const phoneHeader = headers[0];
-      const placeholders = headers.slice(1);
+      // Smart detection for phone number header column
+      let phoneHeader = headers.find(h => {
+        const l = (h || '').toLowerCase();
+        return l.includes('mobile') || l.includes('phone') || l.includes('number') || l.includes('whatsapp') || l.includes('contact');
+      });
+
+      if (!phoneHeader) {
+        phoneHeader = headers.find(h => {
+          return rows.some(r => {
+            const val = (r[h] || '').toString().replace(/\D/g, '');
+            return val.length >= 7 && val.length <= 15;
+          });
+        }) || headers[0];
+      }
+
+      const placeholders = headers.filter(h => h !== phoneHeader);
 
       const uniqueRows = [];
       const seen = new Set();
@@ -744,7 +772,7 @@ const SendMessage = () => {
         const rawNum = row[phoneHeader];
         if (!rawNum) return;
         const cleanNum = rawNum.toString().replace(/\D/g, '');
-        if (cleanNum) {
+        if (cleanNum && cleanNum.length >= 7 && cleanNum.length <= 15) {
           if (!seen.has(cleanNum)) {
             seen.add(cleanNum);
             uniqueRows.push({
@@ -1493,10 +1521,23 @@ const SendMessage = () => {
       }
 
       // Enforce first column must be the phone number column
-      const phoneHeader = headers[0];
-      const placeholders = headers.slice(1);
+      // Smart detection for phone number header column
+      let phoneHeader = headers.find(h => {
+        const l = (h || '').toLowerCase();
+        return l.includes('mobile') || l.includes('phone') || l.includes('number') || l.includes('whatsapp') || l.includes('contact');
+      });
 
-      // Deduplicate by clean phone number
+      if (!phoneHeader) {
+        phoneHeader = headers.find(h => {
+          return rows.some(r => {
+            const val = (r[h] || '').toString().replace(/\D/g, '');
+            return val.length >= 7 && val.length <= 15;
+          });
+        }) || headers[0];
+      }
+
+      const placeholders = headers.filter(h => h !== phoneHeader);
+
       const uniqueRows = [];
       const seen = new Set();
       let duplicateCount = 0;
@@ -1505,7 +1546,7 @@ const SendMessage = () => {
         const rawNum = row[phoneHeader];
         if (!rawNum) return;
         const cleanNum = rawNum.toString().replace(/\D/g, '');
-        if (cleanNum) {
+        if (cleanNum && cleanNum.length >= 7 && cleanNum.length <= 15) {
           if (!seen.has(cleanNum)) {
             seen.add(cleanNum);
             uniqueRows.push({

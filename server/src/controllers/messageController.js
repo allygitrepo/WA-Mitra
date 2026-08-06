@@ -204,23 +204,7 @@ const messageController = {
                         throw new Error('Invalid or empty phone number format');
                     }
 
-                    let targetJid;
-                    if (isJid) {
-                        targetJid = number;
-                    } else {
-                        let onWaResult = null;
-                        try {
-                            const [res] = await activeSock.onWhatsApp(cleanNumber);
-                            onWaResult = res;
-                        } catch (e) {
-                            console.warn(`[onWhatsApp lookup warning for ${cleanNumber}]:`, e.message);
-                        }
-
-                        if (!onWaResult || !onWaResult.exists) {
-                            throw new Error('Number is not registered on WhatsApp');
-                        }
-                        targetJid = onWaResult.jid;
-                    }
+                    const targetJid = isJid ? number : `${cleanNumber}@s.whatsapp.net`;
 
                     if (!file && (!message || !message.trim())) {
                         throw new Error('Message text content is required');
@@ -233,6 +217,16 @@ const messageController = {
                             { where: { campaignId: campaign.id, status: 'pending' } }
                         );
                         break;
+                    }
+
+                    // Simulate human typing presence to prevent anti-bot detection & bans
+                    try {
+                        await activeSock.presenceSubscribe(targetJid);
+                        await activeSock.sendPresenceUpdate('composing', targetJid);
+                        await sleepMs(Math.floor(Math.random() * 1500) + 1200);
+                        await activeSock.sendPresenceUpdate('paused', targetJid);
+                    } catch (pErr) {
+                        // Ignore presence simulation errors
                     }
 
                     let msgId = null;
@@ -305,22 +299,23 @@ const messageController = {
                     error: errorMsg
                 });
 
-                // Delay calculation inside standard path
+                // Safe anti-spam delay calculation
                 batchCounter++;
                 if (index < parsedMessages.length) {
                     if (batchCounter >= nextBatchThreshold) {
+                        const pauseDuration = Math.floor(Math.random() * 10000) + 20000; // 20-30s pause
                         emitSocket('bulk_progress', {
                             type: 'pause',
-                            message: `Taking a 15-second pause to prevent rate limiting...`,
+                            message: `Taking a ${Math.round(pauseDuration / 1000)}-second safety break to protect account health...`,
                             nextBatchSize: nextBatchThreshold,
                             sent: results.sent,
                             failed: results.failed
                         });
-                        await sleepMs(15000);
+                        await sleepMs(pauseDuration);
                         batchCounter = 0;
-                        nextBatchThreshold = Math.floor(Math.random() * 6) + 15;
+                        nextBatchThreshold = Math.floor(Math.random() * 6) + 10; // 10 to 15 messages
                     } else {
-                        const delay = Math.floor(Math.random() * 7000) + 1000;
+                        const delay = Math.floor(Math.random() * 5000) + 4000; // 4 to 9s random delay
                         await sleepMs(delay);
                     }
                 }
