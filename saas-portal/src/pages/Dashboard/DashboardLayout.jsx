@@ -184,12 +184,12 @@ const DashboardLayout = () => {
                       >
                         Contact
                       </Link>
-                      <Link
+                      {/* <Link
                         to="/dashboard/messaging?type=bulk"
                         className={`submenu-item ${activeType === 'bulk' ? 'active' : ''}`}
                       >
                         Bulk messaging
-                      </Link>
+                      </Link> */}
                       <Link
                         to="/dashboard/messaging?type=group"
                         className={`submenu-item ${activeType === 'group' ? 'active' : ''}`}
@@ -208,12 +208,12 @@ const DashboardLayout = () => {
                       >
                         Message cycling
                       </Link>
-                      <Link
+                      {/* <Link
                         to="/dashboard/messaging?type=campaigns"
                         className={`submenu-item ${activeType === 'campaigns' ? 'active' : ''}`}
                       >
                         Campaigns History
-                      </Link>
+                      </Link> */}
                     </div>
                   )}
                 </Fragment>

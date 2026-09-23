@@ -147,7 +147,7 @@ const Docs = () => {
               </div>
             </section>
 
-            {/* Zero-Config Session Flow */}
+            {/* 
             <section id="zero-config" className="docs-section card glass">
               <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -164,7 +164,6 @@ const Docs = () => {
               <div className="section-content">
                 <p>Link a WhatsApp account entirely via the API. This flow is ideal for creating "On-the-fly" sessions without pre-configuring them in the dashboard.</p>
 
-                {/* Visual Flow Diagram */}
                 <div className="flow-container">
                   <div className="flow-diagram">
                     <div className="flow-step">
@@ -470,6 +469,7 @@ const Docs = () => {
                 </div>
               </div>
             </section>
+            */}
 
             {/* Send Message */}
             <section id="sending-messages" className="docs-section card glass">
@@ -892,7 +892,7 @@ const Docs = () => {
               <ul className="quick-nav-list">
                 <li><a href="#getting-started"><span>Getting Started</span><ChevronRight size={14} className="nav-arrow" /></a></li>
                 <li><a href="#authentication"><span>Authentication</span><ChevronRight size={14} className="nav-arrow" /></a></li>
-                <li><a href="#zero-config"><span>Zero-Config Sessions</span><ChevronRight size={14} className="nav-arrow" /></a></li>
+                {/* <li><a href="#zero-config"><span>Zero-Config Sessions</span><ChevronRight size={14} className="nav-arrow" /></a></li> */}
                 <li><a href="#sending-messages"><span>Messaging API</span><ChevronRight size={14} className="nav-arrow" /></a></li>
                 <li><a href="#best-practices"><span>Error Codes</span><ChevronRight size={14} className="nav-arrow" /></a></li>
                 <li><a href="#faq"><span>Quick Q&A</span><ChevronRight size={14} className="nav-arrow" /></a></li>

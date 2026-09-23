@@ -22,7 +22,9 @@ const SendMessage = () => {
       setMode('single');
       setRecipientType('number');
     } else if (typeParam === 'bulk') {
-      setMode('bulk');
+      // Bulk messaging commented out as of now: fallback to single 1 at a time
+      setMode('single');
+      setRecipientType('number');
     } else if (typeParam === 'group') {
       setMode('single');
       setRecipientType('group');
@@ -32,7 +34,7 @@ const SendMessage = () => {
 
     const titles = {
       contact: 'Direct Messaging',
-      bulk: 'Bulk Campaigns',
+      bulk: 'Direct Messaging',
       group: 'Group Broadcasting',
       schedule: 'Message Scheduling',
       cycling: 'Message Cycling',
@@ -547,29 +549,12 @@ const SendMessage = () => {
       return;
     }
 
-    let recipientsList = [];
-    if (cycleInputMethod === 'csv') {
-      if (cycleCsvData.rows.length === 0) {
-        toast.error('Please upload a valid CSV/Excel file first.');
-        return;
-      }
-      recipientsList = cycleCsvData.rows.map(r => r._cleanPhone);
-    } else if (cycleInputMethod === 'group') {
-      if (cycleSelectedGroups.length === 0) {
-        toast.error('Please select at least one WhatsApp group.');
-        return;
-      }
-      recipientsList = cycleSelectedGroups.map(g => g.id);
-    } else {
-      const manualNumbers = cycleNumbers.map(n => n.trim()).filter(n => n);
-      const groupJids = cycleSelectedGroups.map(g => g.id);
-      recipientsList = [...manualNumbers, ...groupJids];
-
-      if (recipientsList.length === 0) {
-        toast.error('Please enter at least one recipient number or select a group.');
-        return;
-      }
+    const singleRecipient = (cycleNumbers[0] || '').trim();
+    if (!singleRecipient) {
+      toast.error('Please enter a recipient number.');
+      return;
     }
+    const recipientsList = [singleRecipient];
 
     if (!cycleMessage.trim()) {
       toast.error('Message content cannot be empty.');
@@ -1118,41 +1103,12 @@ const SendMessage = () => {
       return;
     }
 
-    let numbersList = [];
-    if (scheduleInputMethod === 'csv') {
-      if (scheduleCsvData.rows.length === 0) {
-        toast.error('Please upload a valid CSV/Excel file first.');
-        return;
-      }
-      numbersList = scheduleCsvData.rows.map(row => {
-        let personalized = scheduleMessage;
-        Object.keys(row).forEach(header => {
-          if (header !== '_cleanPhone') {
-            const regex = new RegExp(`\\{${header}\\}`, 'gi');
-            personalized = personalized.replace(regex, row[header] || '');
-          }
-        });
-        return {
-          number: row._cleanPhone,
-          message: personalized
-        };
-      });
-    } else if (scheduleInputMethod === 'group') {
-      if (scheduleSelectedGroups.length === 0) {
-        toast.error('Please select at least one WhatsApp group.');
-        return;
-      }
-      numbersList = scheduleSelectedGroups.map(g => g.id);
-    } else {
-      const manualNumbers = scheduleNumbers.map(n => n.trim()).filter(n => n);
-      const groupJids = scheduleSelectedGroups.map(g => g.id);
-      numbersList = [...manualNumbers, ...groupJids];
-
-      if (numbersList.length === 0) {
-        toast.error('Please enter at least one recipient number or select a group.');
-        return;
-      }
+    const singleNumber = (scheduleNumbers[0] || '').trim();
+    if (!singleNumber) {
+      toast.error('Please enter a recipient number.');
+      return;
     }
+    const numbersList = [singleNumber];
 
     const activeInstanceObj = instances.find(i => i.instanceKey === selectedInstance);
     const instanceName = activeInstanceObj ? activeInstanceObj.name : 'Instance';
@@ -2558,14 +2514,14 @@ const SendMessage = () => {
                       >
                         Track Status
                       </button>
-                      <Link
+                      {/* <Link
                         to="/dashboard/messaging?type=bulk"
                         className="premium-btn-outline"
                         style={{ height: '36px', padding: '0 16px', fontSize: '0.85rem', borderRadius: '8px', display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text-main)' }}
                         onClick={() => handleLoadCampaign(camp)}
                       >
                         Load List
-                      </Link>
+                      </Link> */}
                       <button
                         type="button"
                         onClick={(e) => handleDeleteCampaign(camp.id, e)}
@@ -2731,463 +2687,18 @@ const SendMessage = () => {
                 </div>
               </div>
 
-              {/* Recipients numbers same as bulk */}
+              {/* Single Recipient Input */}
               <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label>Recipients (Manual list, CSV/Excel or Groups Broadcast)</label>
-                <div className="bulk-numbers-section" style={{ marginTop: '8px' }}>
-                  <div className="input-method-selector">
-                    <button
-                      type="button"
-                      className={`method-btn ${scheduleInputMethod === 'manual' ? 'active' : ''}`}
-                      onClick={() => setScheduleInputMethod('manual')}
-                    >
-                      <Users size={16} /> Manual Input
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-btn ${scheduleInputMethod === 'csv' ? 'active' : ''}`}
-                      onClick={() => setScheduleInputMethod('csv')}
-                    >
-                      <FileUp size={16} /> CSV Upload
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-btn ${scheduleInputMethod === 'group' ? 'active' : ''}`}
-                      onClick={() => setScheduleInputMethod('group')}
-                    >
-                      <MessageSquare size={16} /> WhatsApp Groups
-                    </button>
-                  </div>
-
-                  {scheduleInputMethod === 'manual' ? (
-                    <>
-                      <div className="form-group mb-4" style={{ maxWidth: '250px' }}>
-                        <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>How many numbers do you have? (Optional)</label>
-                        <input
-                          type="number"
-                          className="auth-input"
-                          style={{ paddingLeft: '14px' }}
-                          placeholder="Enter count"
-                          value={scheduleNumberCount}
-                          min="1"
-                          onChange={(e) => handleScheduleNumberCountChange(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="numbers-list-grid" data-lenis-prevent style={{ maxHeight: '200px' }}>
-                        {scheduleNumbers.map((num, idx) => (
-                          <div key={idx} className="number-input-row">
-                            <div className="input-with-count">
-                              <span className="idx-tag">{idx + 1}</span>
-                              <input
-                                type="text"
-                                className="auth-input"
-                                style={{ paddingLeft: '35px' }}
-                                placeholder="919876543210"
-                                value={num}
-                                onChange={(e) => updateScheduleNumber(idx, e.target.value)}
-                                required={scheduleInputMethod === 'manual'}
-                              />
-                            </div>
-                            {scheduleNumbers.length > 1 && (
-                              <button type="button" className="remove-num-btn" onClick={() => removeScheduleNumberField(idx)}>
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <button type="button" className="add-number-btn mt-4" onClick={addScheduleNumberField}>
-                        <Plus size={16} /> Add Another Number
-                      </button>
-
-                      <div className="form-group mt-4 pt-4" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Target Groups (Optional)</label>
-                        <div className="searchable-dropdown-container" style={{ position: 'relative', marginTop: '8px' }}>
-                          {/* Render Selected Groups Tags */}
-                          {scheduleSelectedGroups.length > 0 && (
-                            <div className="selected-groups-tags" style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '6px',
-                              marginBottom: '10px'
-                            }}>
-                              {scheduleSelectedGroups.map(group => (
-                                <div key={group.id} className="selected-group-tag">
-                                  <span>{group.subject}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                    }}
-                                    className="selected-group-tag-remove"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <input
-                            type="text"
-                            className="auth-input"
-                            style={{ paddingLeft: '14px', width: '100%' }}
-                            placeholder={loadingScheduleGroups ? "Loading groups..." : "Search and select groups..."}
-                            value={scheduleGroupSearchQuery}
-                            onChange={(e) => {
-                              setScheduleGroupSearchQuery(e.target.value);
-                              setIsOpenScheduleGroupDropdown(true);
-                            }}
-                            onFocus={() => setIsOpenScheduleGroupDropdown(true)}
-                            disabled={loadingScheduleGroups}
-                          />
-
-                          {isOpenScheduleGroupDropdown && !loadingScheduleGroups && (
-                            <div className="group-dropdown-list" data-lenis-prevent style={{ zIndex: 10 }}>
-                              {scheduleGroups.length === 0 ? (
-                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                  No participating groups found for this instance
-                                </div>
-                              ) : filteredScheduleGroupsList.length === 0 ? (
-                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                  No groups found matching search query
-                                </div>
-                              ) : (
-                                <>
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const allFilteredSelected = filteredScheduleGroupsList.every(group =>
-                                        scheduleSelectedGroups.some(g => g.id === group.id)
-                                      );
-                                      if (allFilteredSelected) {
-                                        const filteredIds = filteredScheduleGroupsList.map(g => g.id);
-                                        setScheduleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
-                                      } else {
-                                        setScheduleSelectedGroups(prev => {
-                                          const existingIds = prev.map(g => g.id);
-                                          const toAdd = filteredScheduleGroupsList.filter(g => !existingIds.includes(g.id));
-                                          return [...prev, ...toAdd];
-                                        });
-                                      }
-                                    }}
-                                    className="group-dropdown-item select-all-item"
-                                    style={{
-                                      borderBottom: '1px solid var(--border)',
-                                      fontWeight: '600',
-                                      color: 'var(--primary)',
-                                      display: 'flex',
-                                      justifyContent: 'flex-start',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      padding: '12px 14px',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'rgba(0, 168, 132, 0.05)'
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={filteredScheduleGroupsList.every(group => scheduleSelectedGroups.some(g => g.id === group.id))}
-                                      readOnly
-                                      style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        cursor: 'pointer',
-                                        accentColor: 'var(--primary)'
-                                      }}
-                                    />
-                                    <span>
-                                      Select All Matching ({filteredScheduleGroupsList.length})
-                                    </span>
-                                  </div>
-                                  {filteredScheduleGroupsList.map(group => {
-                                    const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
-                                    return (
-                                      <div
-                                        key={group.id}
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                          } else {
-                                            setScheduleSelectedGroups(prev => [...prev, group]);
-                                          }
-                                          setScheduleGroupSearchQuery('');
-                                        }}
-                                        className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'flex-start',
-                                          alignItems: 'center',
-                                          gap: '10px',
-                                          padding: '10px 14px'
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isSelected}
-                                          readOnly
-                                          style={{
-                                            width: '16px',
-                                            height: '16px',
-                                            cursor: 'pointer',
-                                            accentColor: 'var(--primary)'
-                                          }}
-                                        />
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          <span className="group-subject">{group.subject}</span>
-                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : scheduleInputMethod === 'csv' ? (
-                    <div className="csv-upload-container animate-fade-in">
-                      {!scheduleCsvData.fileName ? (
-                        <div className="csv-dropzone">
-                          <input
-                            type="file"
-                            id="schedule-csv-file-input"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleScheduleFileUpload}
-                            hidden
-                          />
-                          <label htmlFor="schedule-csv-file-input" className="csv-dropzone-label">
-                            <FileUp size={32} className="upload-icon" />
-                            <span className="upload-title">Choose CSV/Excel File</span>
-                            <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
-                          </label>
-                        </div>
-                      ) : (
-                        <div className="csv-success-card">
-                          <div className="csv-success-header">
-                            <div className="csv-file-info">
-                              <div className="csv-icon-wrapper">
-                                <FileText size={24} className="csv-icon" />
-                              </div>
-                              <div>
-                                <span className="csv-filename">{scheduleCsvData.fileName}</span>
-                                <span className="csv-details">
-                                  {scheduleCsvData.rows.length} unique contacts parsed successfully
-                                </span>
-                              </div>
-                            </div>
-                            <button type="button" className="csv-clear-btn" onClick={clearScheduleCSV} title="Clear uploaded CSV">
-                              <X size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                        <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
-                          <FileText size={14} /> Download Sample CSV Template
-                        </button>
-                        <div style={{
-                          fontSize: '0.82rem',
-                          color: 'var(--text-secondary)',
-                          background: 'rgba(245, 158, 11, 0.08)',
-                          border: '1px solid rgba(245, 158, 11, 0.25)',
-                          padding: '12px 16px',
-                          borderRadius: '10px',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '10px',
-                          marginTop: '10px',
-                          lineHeight: '1.45'
-                        }}>
-                          <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-                          <span><strong>Note:</strong> The first column in the file must contain the phone numbers. Other columns will be used as placeholders (e.g. <code>{"{Name}"}</code>).</span>
-                        </div>
-                      </div>
-
-                      {scheduleCsvData.rows.length > 0 && (
-                        <div className="csv-preview-section">
-                          <div className="preview-header">
-                            <h3>CSV Data Preview ({scheduleCsvData.rows.length} Contacts)</h3>
-                            <span className="phone-indicator">Phone column: <strong>{scheduleCsvData.phoneHeader}</strong></span>
-                          </div>
-                          <div className="csv-preview-table-container" data-lenis-prevent style={{ maxHeight: '150px' }}>
-                            <table className="csv-preview-table">
-                              <thead>
-                                <tr>
-                                  <th>#</th>
-                                  {scheduleCsvData.headers.map((h, idx) => (
-                                    <th key={idx}>{h}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {scheduleCsvData.rows.slice(0, 5).map((row, rIdx) => (
-                                  <tr key={rIdx}>
-                                    <td>{rIdx + 1}</td>
-                                    {scheduleCsvData.headers.map((h, cIdx) => (
-                                      <td key={cIdx}>{row[h]}</td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="searchable-dropdown-container animate-fade-in" style={{ position: 'relative', marginTop: '16px' }}>
-                      {scheduleSelectedGroups.length > 0 && (
-                        <div className="selected-groups-tags" style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px',
-                          marginBottom: '10px'
-                        }}>
-                          {scheduleSelectedGroups.map(group => (
-                            <div key={group.id} className="selected-group-tag">
-                              <span>{group.subject}</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                }}
-                                className="selected-group-tag-remove"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <input
-                        type="text"
-                        className="auth-input"
-                        style={{ paddingLeft: '14px', width: '100%' }}
-                        placeholder={loadingScheduleGroups ? "Loading groups..." : "Search and select groups..."}
-                        value={scheduleGroupSearchQuery}
-                        onChange={(e) => {
-                          setScheduleGroupSearchQuery(e.target.value);
-                          setIsOpenScheduleGroupDropdown(true);
-                        }}
-                        onFocus={() => setIsOpenScheduleGroupDropdown(true)}
-                        disabled={loadingScheduleGroups}
-                        required={scheduleSelectedGroups.length === 0}
-                      />
-
-                      {isOpenScheduleGroupDropdown && !loadingScheduleGroups && (
-                        <div className="group-dropdown-list" data-lenis-prevent>
-                          {scheduleGroups.length === 0 ? (
-                            <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                              No participating groups found for this instance
-                            </div>
-                          ) : filteredScheduleGroupsList.length === 0 ? (
-                            <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                              No groups found matching search query
-                            </div>
-                          ) : (
-                            <>
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const allFilteredSelected = filteredScheduleGroupsList.every(group =>
-                                    scheduleSelectedGroups.some(g => g.id === group.id)
-                                  );
-                                  if (allFilteredSelected) {
-                                    const filteredIds = filteredScheduleGroupsList.map(g => g.id);
-                                    setScheduleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
-                                  } else {
-                                    setScheduleSelectedGroups(prev => {
-                                      const existingIds = prev.map(g => g.id);
-                                      const toAdd = filteredScheduleGroupsList.filter(g => !existingIds.includes(g.id));
-                                      return [...prev, ...toAdd];
-                                    });
-                                  }
-                                }}
-                                className="group-dropdown-item select-all-item"
-                                style={{
-                                  borderBottom: '1px solid var(--border)',
-                                  fontWeight: '600',
-                                  color: 'var(--primary)',
-                                  display: 'flex',
-                                  justifyContent: 'flex-start',
-                                  alignItems: 'center',
-                                  gap: '10px',
-                                  padding: '12px 14px',
-                                  cursor: 'pointer',
-                                  backgroundColor: 'rgba(0, 168, 132, 0.05)'
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={filteredScheduleGroupsList.every(group => scheduleSelectedGroups.some(g => g.id === group.id))}
-                                  readOnly
-                                  style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    cursor: 'pointer',
-                                    accentColor: 'var(--primary)'
-                                  }}
-                                />
-                                <span>
-                                  Select All Matching ({filteredScheduleGroupsList.length})
-                                </span>
-                              </div>
-                              {filteredScheduleGroupsList.map(group => {
-                                const isSelected = scheduleSelectedGroups.some(g => g.id === group.id);
-                                return (
-                                  <div
-                                    key={group.id}
-                                    onClick={() => {
-                                      if (isSelected) {
-                                        setScheduleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                      } else {
-                                        setScheduleSelectedGroups(prev => [...prev, group]);
-                                      }
-                                      setScheduleGroupSearchQuery('');
-                                    }}
-                                    className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'flex-start',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      padding: '10px 14px'
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      readOnly
-                                      style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        cursor: 'pointer',
-                                        accentColor: 'var(--primary)'
-                                      }}
-                                    />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span className="group-subject">{group.subject}</span>
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <label>Recipient Number</label>
+                <input
+                  type="text"
+                  className="auth-input"
+                  style={{ paddingLeft: '14px' }}
+                  placeholder="e.g. 919876543210"
+                  value={scheduleNumbers[0] || ''}
+                  onChange={(e) => setScheduleNumbers([e.target.value])}
+                  required
+                />
               </div>
 
               {/* Template select and editor */}
@@ -3839,447 +3350,18 @@ const SendMessage = () => {
                 </div>
               )}
 
-              {/* Recipients Section */}
+              {/* Single Recipient Input */}
               <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label>Recipients (Manual list, CSV/Excel or Groups Broadcast)</label>
-                <div className="bulk-numbers-section" style={{ marginTop: '8px' }}>
-                  <div className="input-method-selector">
-                    <button
-                      type="button"
-                      className={`method-btn ${cycleInputMethod === 'manual' ? 'active' : ''}`}
-                      onClick={() => setCycleInputMethod('manual')}
-                    >
-                      <Users size={16} /> Manual Input
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-btn ${cycleInputMethod === 'csv' ? 'active' : ''}`}
-                      onClick={() => setCycleInputMethod('csv')}
-                    >
-                      <FileUp size={16} /> CSV Upload
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-btn ${cycleInputMethod === 'group' ? 'active' : ''}`}
-                      onClick={() => setCycleInputMethod('group')}
-                    >
-                      <MessageSquare size={16} /> WhatsApp Groups
-                    </button>
-                  </div>
-
-                  {cycleInputMethod === 'manual' ? (
-                    <>
-                      <div className="form-group mb-4" style={{ maxWidth: '250px' }}>
-                        <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>How many numbers do you have? (Optional)</label>
-                        <input
-                          type="number"
-                          className="auth-input"
-                          style={{ paddingLeft: '14px' }}
-                          placeholder="Enter count"
-                          value={cycleNumberCount}
-                          min="1"
-                          onChange={(e) => handleCycleNumberCountChange(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="numbers-list-grid" data-lenis-prevent style={{ maxHeight: '200px' }}>
-                        {cycleNumbers.map((num, idx) => (
-                          <div key={idx} className="number-input-row">
-                            <div className="input-with-count">
-                              <span className="idx-tag">{idx + 1}</span>
-                              <input
-                                type="text"
-                                className="auth-input"
-                                style={{ paddingLeft: '35px' }}
-                                placeholder="919876543210"
-                                value={num}
-                                onChange={(e) => updateCycleNumber(idx, e.target.value)}
-                                required={cycleInputMethod === 'manual'}
-                              />
-                            </div>
-                            {cycleNumbers.length > 1 && (
-                              <button type="button" className="remove-num-btn" onClick={() => removeCycleNumberField(idx)}>
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <button type="button" className="add-number-btn mt-4" onClick={addCycleNumberField}>
-                        <Plus size={16} /> Add Another Number
-                      </button>
-
-                      <div className="form-group mt-4 pt-4" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Target Groups (Optional)</label>
-                        <div className="searchable-dropdown-container" style={{ position: 'relative', marginTop: '8px' }}>
-                          {/* Render Selected Groups Tags */}
-                          {cycleSelectedGroups.length > 0 && (
-                            <div className="selected-groups-tags" style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '6px',
-                              marginBottom: '10px'
-                            }}>
-                              {cycleSelectedGroups.map(group => (
-                                <div key={group.id} className="selected-group-tag">
-                                  <span>{group.subject}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                    }}
-                                    className="selected-group-tag-remove"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <input
-                            type="text"
-                            className="auth-input"
-                            style={{ paddingLeft: '14px', width: '100%' }}
-                            placeholder={loadingCycleGroups ? "Loading groups..." : "Search and select groups..."}
-                            value={cycleGroupSearchQuery}
-                            onChange={(e) => {
-                              setCycleGroupSearchQuery(e.target.value);
-                              setIsOpenCycleGroupDropdown(true);
-                            }}
-                            onFocus={() => setIsOpenCycleGroupDropdown(true)}
-                            disabled={loadingCycleGroups}
-                          />
-
-                          {isOpenCycleGroupDropdown && !loadingCycleGroups && (
-                            <div className="group-dropdown-list" data-lenis-prevent style={{ zIndex: 10 }}>
-                              {cycleGroups.length === 0 ? (
-                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                  No participating groups found for this instance
-                                </div>
-                              ) : filteredCycleGroupsList.length === 0 ? (
-                                <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                  No groups found matching search query
-                                </div>
-                              ) : (
-                                <>
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const allFilteredSelected = filteredCycleGroupsList.every(group =>
-                                        cycleSelectedGroups.some(g => g.id === group.id)
-                                      );
-                                      if (allFilteredSelected) {
-                                        const filteredIds = filteredCycleGroupsList.map(g => g.id);
-                                        setCycleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
-                                      } else {
-                                        setCycleSelectedGroups(prev => {
-                                          const existingIds = prev.map(g => g.id);
-                                          const toAdd = filteredCycleGroupsList.filter(g => !existingIds.includes(g.id));
-                                          return [...prev, ...toAdd];
-                                        });
-                                      }
-                                    }}
-                                    className="group-dropdown-item select-all-item"
-                                    style={{
-                                      borderBottom: '1px solid var(--border)',
-                                      fontWeight: '600',
-                                      color: 'var(--primary)',
-                                      display: 'flex',
-                                      justifyContent: 'flex-start',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      padding: '12px 14px',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'rgba(0, 168, 132, 0.05)'
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={filteredCycleGroupsList.every(group => cycleSelectedGroups.some(g => g.id === group.id))}
-                                      readOnly
-                                      style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        cursor: 'pointer',
-                                        accentColor: 'var(--primary)'
-                                      }}
-                                    />
-                                    <span>
-                                      Select All Matching ({filteredCycleGroupsList.length})
-                                    </span>
-                                  </div>
-                                  {filteredCycleGroupsList.map(group => {
-                                    const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
-                                    return (
-                                      <div
-                                        key={group.id}
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                          } else {
-                                            setCycleSelectedGroups(prev => [...prev, group]);
-                                          }
-                                          setCycleGroupSearchQuery('');
-                                        }}
-                                        className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'flex-start',
-                                          alignItems: 'center',
-                                          gap: '10px',
-                                          padding: '10px 14px'
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isSelected}
-                                          readOnly
-                                          style={{
-                                            width: '16px',
-                                            height: '16px',
-                                            cursor: 'pointer',
-                                            accentColor: 'var(--primary)'
-                                          }}
-                                        />
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          <span className="group-subject">{group.subject}</span>
-                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : cycleInputMethod === 'csv' ? (
-                    <div className="csv-upload-container animate-fade-in">
-                      {!cycleCsvData.fileName ? (
-                        <div className="csv-dropzone">
-                          <input
-                            type="file"
-                            id="cycle-csv-file-input"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleCycleFileUpload}
-                            hidden
-                          />
-                          <label htmlFor="cycle-csv-file-input" className="csv-dropzone-label">
-                            <FileUp size={32} className="upload-icon" />
-                            <span className="upload-title">Choose CSV/Excel File</span>
-                            <span className="upload-subtitle">Drag and drop or click to browse (.csv, .xlsx, .xls)</span>
-                          </label>
-                        </div>
-                      ) : (
-                        <div className="csv-success-card">
-                          <div className="csv-success-header">
-                            <div className="csv-file-info">
-                              <div className="csv-icon-wrapper">
-                                <FileText size={24} className="csv-icon" />
-                              </div>
-                              <div>
-                                <span className="csv-filename">{cycleCsvData.fileName}</span>
-                                <span className="csv-details">
-                                  {cycleCsvData.rows.length} unique contacts parsed successfully
-                                </span>
-                              </div>
-                            </div>
-                            <button type="button" className="csv-clear-btn" onClick={clearCycleCSV} title="Clear uploaded CSV">
-                              <X size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="csv-template-action" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                        <button type="button" className="download-template-link" onClick={downloadCSVTemplate}>
-                          <FileText size={14} /> Download Sample CSV Template
-                        </button>
-                      </div>
-
-                      {cycleCsvData.rows.length > 0 && (
-                        <div className="csv-preview-section">
-                          <div className="preview-header">
-                            <h3>CSV Data Preview ({cycleCsvData.rows.length} Contacts)</h3>
-                            <span className="phone-indicator">Phone column: <strong>{cycleCsvData.phoneHeader}</strong></span>
-                          </div>
-                          <div className="csv-preview-table-container" data-lenis-prevent style={{ maxHeight: '150px' }}>
-                            <table className="csv-preview-table">
-                              <thead>
-                                <tr>
-                                  <th>#</th>
-                                  {cycleCsvData.headers.map((h, idx) => (
-                                    <th key={idx}>{h}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {cycleCsvData.rows.slice(0, 5).map((row, rIdx) => (
-                                  <tr key={rIdx}>
-                                    <td>{rIdx + 1}</td>
-                                    {cycleCsvData.headers.map((h, cIdx) => (
-                                      <td key={cIdx}>{row[h]}</td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="searchable-dropdown-container animate-fade-in" style={{ position: 'relative', marginTop: '16px' }}>
-                      {cycleSelectedGroups.length > 0 && (
-                        <div className="selected-groups-tags" style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px',
-                          marginBottom: '10px'
-                        }}>
-                          {cycleSelectedGroups.map(group => (
-                            <div key={group.id} className="selected-group-tag">
-                              <span>{group.subject}</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                }}
-                                className="selected-group-tag-remove"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <input
-                        type="text"
-                        className="auth-input"
-                        style={{ paddingLeft: '14px', width: '100%' }}
-                        placeholder={loadingCycleGroups ? "Loading groups..." : "Search and select groups..."}
-                        value={cycleGroupSearchQuery}
-                        onChange={(e) => {
-                          setCycleGroupSearchQuery(e.target.value);
-                          setIsOpenCycleGroupDropdown(true);
-                        }}
-                        onFocus={() => setIsOpenCycleGroupDropdown(true)}
-                        disabled={loadingCycleGroups}
-                        required={cycleSelectedGroups.length === 0}
-                      />
-
-                      {isOpenCycleGroupDropdown && !loadingCycleGroups && (
-                        <div className="group-dropdown-list" data-lenis-prevent>
-                          {cycleGroups.length === 0 ? (
-                            <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                              No participating groups found for this instance
-                            </div>
-                          ) : filteredCycleGroupsList.length === 0 ? (
-                            <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                              No groups found matching search query
-                            </div>
-                          ) : (
-                            <>
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const allFilteredSelected = filteredCycleGroupsList.every(group =>
-                                    cycleSelectedGroups.some(g => g.id === group.id)
-                                  );
-                                  if (allFilteredSelected) {
-                                    const filteredIds = filteredCycleGroupsList.map(g => g.id);
-                                    setCycleSelectedGroups(prev => prev.filter(g => !filteredIds.includes(g.id)));
-                                  } else {
-                                    setCycleSelectedGroups(prev => {
-                                      const existingIds = prev.map(g => g.id);
-                                      const toAdd = filteredCycleGroupsList.filter(g => !existingIds.includes(g.id));
-                                      return [...prev, ...toAdd];
-                                    });
-                                  }
-                                }}
-                                className="group-dropdown-item select-all-item"
-                                style={{
-                                  borderBottom: '1px solid var(--border)',
-                                  fontWeight: '600',
-                                  color: 'var(--primary)',
-                                  display: 'flex',
-                                  justifyContent: 'flex-start',
-                                  alignItems: 'center',
-                                  gap: '10px',
-                                  padding: '12px 14px',
-                                  cursor: 'pointer',
-                                  backgroundColor: 'rgba(0, 168, 132, 0.05)'
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={filteredCycleGroupsList.every(group => cycleSelectedGroups.some(g => g.id === group.id))}
-                                  readOnly
-                                  style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    cursor: 'pointer',
-                                    accentColor: 'var(--primary)'
-                                  }}
-                                />
-                                <span>
-                                  Select All Matching ({filteredCycleGroupsList.length})
-                                </span>
-                              </div>
-                              {filteredCycleGroupsList.map(group => {
-                                const isSelected = cycleSelectedGroups.some(g => g.id === group.id);
-                                return (
-                                  <div
-                                    key={group.id}
-                                    onClick={() => {
-                                      if (isSelected) {
-                                        setCycleSelectedGroups(prev => prev.filter(g => g.id !== group.id));
-                                      } else {
-                                        setCycleSelectedGroups(prev => [...prev, group]);
-                                      }
-                                      setCycleGroupSearchQuery('');
-                                    }}
-                                    className={`group-dropdown-item ${isSelected ? 'selected' : ''}`}
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'flex-start',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      padding: '10px 14px'
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      readOnly
-                                      style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        cursor: 'pointer',
-                                        accentColor: 'var(--primary)'
-                                      }}
-                                    />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span className="group-subject">{group.subject}</span>
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({group.id})</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <label>Recipient Number</label>
+                <input
+                  type="text"
+                  className="auth-input"
+                  style={{ paddingLeft: '14px' }}
+                  placeholder="e.g. 919876543210"
+                  value={cycleNumbers[0] || ''}
+                  onChange={(e) => setCycleNumbers([e.target.value])}
+                  required
+                />
               </div>
 
               {/* Template & Message Content */}
@@ -4642,12 +3724,10 @@ const SendMessage = () => {
 
             <div className="messaging-layout">
               <div className="messaging-form-col">
-                <form className="messaging-form" onSubmit={mode === 'single' ? handleSendSingle : handleSendBulk}>
+                <form className="messaging-form" onSubmit={handleSendSingle}>
                   <div className="form-group">
                     <label>
-                      {mode === 'single'
-                        ? (recipientType === 'number' ? 'Recipient Number' : 'Select WhatsApp Group')
-                        : 'Recipient Numbers'}
+                      {recipientType === 'number' ? 'Recipient Number' : 'Select WhatsApp Group'}
                     </label>
 
                     {mode === 'single' ? (
