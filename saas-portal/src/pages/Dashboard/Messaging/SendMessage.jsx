@@ -210,6 +210,7 @@ const SendMessage = () => {
   const [isOpenScheduleGroupDropdown, setIsOpenScheduleGroupDropdown] = useState(false);
   const [scheduleGroups, setScheduleGroups] = useState([]);
   const [loadingScheduleGroups, setLoadingScheduleGroups] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState(Date.now());
   const [showCycleForm, setShowCycleForm] = useState(false);
 
   // Cycling (Recurring Campaign) States
@@ -657,7 +658,7 @@ const SendMessage = () => {
     localStorage.setItem('wa_mitra_scheduled_campaigns', JSON.stringify(scheduledCampaigns));
   }, [scheduledCampaigns]);
 
-  // Load schedules from database on mount (with localStorage fallback)
+  // Load schedules from database on mount & poll periodically
   useEffect(() => {
     const loadSchedules = async () => {
       try {
@@ -676,6 +677,16 @@ const SendMessage = () => {
       }
     };
     loadSchedules();
+    const interval = setInterval(loadSchedules, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Real-time 1-second ticker for live seconds countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // Update media preview for scheduling
@@ -936,33 +947,35 @@ const SendMessage = () => {
     }
   };
 
-  const getRemainingTime = (targetDate, targetTime) => {
+  const getRemainingTime = (targetDate, targetTime, status = 'scheduled', targetDateTime = null) => {
+    if (status === 'completed') return 'Completed';
+    if (status === 'failed') return 'Failed';
+    if (status === 'processing') return 'Processing...';
+
     if (!targetDate || !targetTime) return 'Invalid Date/Time';
-    const target = new Date(`${targetDate}T${targetTime}`);
-    const now = new Date();
-    const diffMs = target.getTime() - now.getTime();
+    const target = targetDateTime ? new Date(targetDateTime) : new Date(`${targetDate}T${targetTime}`);
+    const diffMs = target.getTime() - nowTimestamp;
 
     if (diffMs <= 0) {
-      return 'Sent';
+      return status === 'scheduled' ? 'Due / Sending...' : 'Completed';
     }
 
     const totalSecs = Math.floor(diffMs / 1000);
     const totalMins = Math.floor(totalSecs / 60);
     const totalHours = Math.floor(totalMins / 60);
 
-    if (totalHours >= 1) {
+    const secs = totalSecs % 60;
+    const mins = totalMins % 60;
+    const secsStr = String(secs).padStart(2, '0');
+    const minsStr = String(mins).padStart(2, '0');
+
+    if (totalHours >= 24) {
       const days = Math.floor(totalHours / 24);
       const remainingHours = totalHours % 24;
-      const remainingMins = totalMins % 60;
-      if (days > 0) {
-        return `${days}d ${remainingHours}h ${remainingMins}m`;
-      }
-      return `${remainingHours}h ${remainingMins}m`;
+      return `${days}d ${remainingHours}h ${minsStr}m ${secsStr}s`;
+    } else if (totalHours >= 1) {
+      return `${totalHours}h ${minsStr}m ${secsStr}s`;
     } else {
-      const mins = totalMins % 60;
-      const secs = totalSecs % 60;
-      const minsStr = String(mins).padStart(2, '0');
-      const secsStr = String(secs).padStart(2, '0');
       return `${minsStr}:${secsStr}sec`;
     }
   };
@@ -970,7 +983,7 @@ const SendMessage = () => {
   const getCycleRemainingTime = (cycle) => {
     if (!cycle || cycle.status !== 'active') return 'Paused';
     try {
-      const now = new Date();
+      const now = new Date(nowTimestamp);
       const [sendHour, sendMin] = cycle.sendTime.split(':').map(Number);
 
       let nextRun = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sendHour, sendMin, 0, 0);
@@ -1095,8 +1108,13 @@ const SendMessage = () => {
     }
 
     const targetDateTime = new Date(`${scheduleTargetDate}T${scheduleTargetTime}`);
-    if (targetDateTime.getTime() <= Date.now()) {
+    if (targetDateTime.getTime() < Date.now() - 15000) {
       toast.error('Target date/time must be in the future.');
+      return;
+    }
+
+    if (!scheduleMessage.trim()) {
+      toast.error('Message content cannot be empty.');
       return;
     }
 
@@ -1106,7 +1124,19 @@ const SendMessage = () => {
         toast.error('Please upload a valid CSV/Excel file first.');
         return;
       }
-      numbersList = scheduleCsvData.rows.map(r => r._cleanPhone);
+      numbersList = scheduleCsvData.rows.map(row => {
+        let personalized = scheduleMessage;
+        Object.keys(row).forEach(header => {
+          if (header !== '_cleanPhone') {
+            const regex = new RegExp(`\\{${header}\\}`, 'gi');
+            personalized = personalized.replace(regex, row[header] || '');
+          }
+        });
+        return {
+          number: row._cleanPhone,
+          message: personalized
+        };
+      });
     } else if (scheduleInputMethod === 'group') {
       if (scheduleSelectedGroups.length === 0) {
         toast.error('Please select at least one WhatsApp group.');
@@ -1124,11 +1154,6 @@ const SendMessage = () => {
       }
     }
 
-    if (!scheduleMessage.trim()) {
-      toast.error('Message content cannot be empty.');
-      return;
-    }
-
     const activeInstanceObj = instances.find(i => i.instanceKey === selectedInstance);
     const instanceName = activeInstanceObj ? activeInstanceObj.name : 'Instance';
 
@@ -1139,7 +1164,8 @@ const SendMessage = () => {
       targetTime: scheduleTargetTime,
       recipients: numbersList,
       message: scheduleMessage,
-      file: scheduleFile
+      file: scheduleFile,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
     const loadingToast = toast.loading('Scheduling campaign...');
@@ -3417,51 +3443,77 @@ const SendMessage = () => {
 
           {/* Table display */}
           <div className="schedules-list-card glass" style={{ padding: '24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '16px', color: 'var(--text-main)' }}>Active Schedules</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-main)' }}>Active Schedules</h3>
+            </div>
             <div className="csv-preview-table-container" style={{ maxHeight: 'none' }}>
               <table className="csv-preview-table">
                 <thead>
                   <tr>
                     <th>Campaign name</th>
-                    <th>instance</th>
-                    <th>Date&Time</th>
-                    <th>Remaining time</th>
+                    <th>Instance</th>
+                    <th>Date & Time</th>
+                    <th>Status</th>
+                    <th>Remaining Time</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scheduledCampaigns.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                         No campaigns scheduled yet.
                       </td>
                     </tr>
                   ) : (
-                    scheduledCampaigns.map((camp) => (
-                      <tr key={camp.id}>
-                        <td style={{ fontWeight: '600' }}>{camp.name}</td>
-                        <td>{camp.instanceName}</td>
-                        <td>{camp.targetDate} {camp.targetTime}</td>
-                        <td>
-                          <span style={{
-                            fontWeight: '600',
-                            color: getRemainingTime(camp.targetDate, camp.targetTime).includes('remaining') ? 'var(--primary)' : 'var(--text-muted)'
-                          }}>
-                            {getRemainingTime(camp.targetDate, camp.targetTime)}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="remove-num-btn"
-                            style={{ width: '28px', height: '28px' }}
-                            onClick={() => handleDeleteScheduleCampaign(camp.id)}
-                          >
-                            <X size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    scheduledCampaigns.map((camp) => {
+                      const displayInstance = camp.instanceName || instances.find(i => i.instanceKey === camp.instanceKey)?.name || camp.instanceKey;
+                      const statusVal = (camp.status || 'scheduled').toLowerCase();
+                      const statusColor = statusVal === 'completed' ? '#10b981' : statusVal === 'failed' ? '#ef4444' : statusVal === 'processing' ? '#f59e0b' : '#3b82f6';
+                      const statusBg = statusVal === 'completed' ? 'rgba(16, 185, 129, 0.12)' : statusVal === 'failed' ? 'rgba(239, 68, 68, 0.12)' : statusVal === 'processing' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)';
+                      const remaining = getRemainingTime(camp.targetDate, camp.targetTime, camp.status, camp.targetDateTime);
+
+                      return (
+                        <tr key={camp.id}>
+                          <td style={{ fontWeight: '600' }}>{camp.name}</td>
+                          <td>{displayInstance}</td>
+                          <td>{camp.targetDate} {camp.targetTime}</td>
+                          <td>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '3px 10px',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: statusColor,
+                              backgroundColor: statusBg,
+                              textTransform: 'capitalize'
+                            }}>
+                              {camp.status || 'Scheduled'}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{
+                              fontWeight: '600',
+                              color: remaining.includes('sec') || remaining.includes('m') || remaining.includes('d') ? 'var(--primary)' : 'var(--text-muted)'
+                            }}>
+                              {remaining}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="remove-num-btn"
+                              style={{ width: '28px', height: '28px' }}
+                              onClick={() => handleDeleteScheduleCampaign(camp.id)}
+                              title="Delete/Cancel Schedule"
+                            >
+                              <X size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

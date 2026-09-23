@@ -54,6 +54,14 @@ Cycle.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 WhatsAppInstance.hasMany(AutoReplyRule, { foreignKey: 'instanceKey', sourceKey: 'instanceKey', as: 'rules' });
 AutoReplyRule.belongsTo(WhatsAppInstance, { foreignKey: 'instanceKey', targetKey: 'instanceKey', as: 'instance' });
 
+// Instance <-> Schedule
+WhatsAppInstance.hasMany(Schedule, { foreignKey: 'instanceKey', sourceKey: 'instanceKey', as: 'schedules' });
+Schedule.belongsTo(WhatsAppInstance, { foreignKey: 'instanceKey', targetKey: 'instanceKey', as: 'instance' });
+
+// Instance <-> Cycle
+WhatsAppInstance.hasMany(Cycle, { foreignKey: 'instanceKey', sourceKey: 'instanceKey', as: 'cycles' });
+Cycle.belongsTo(WhatsAppInstance, { foreignKey: 'instanceKey', targetKey: 'instanceKey', as: 'instance' });
+
 const BulkCampaign = require('./bulkCampaignModel');
 const BulkMessageStatus = require('./bulkMessageStatusModel');
 

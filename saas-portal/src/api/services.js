@@ -72,7 +72,7 @@ export const scheduleService = {
     Object.keys(data).forEach(key => {
       if (key === 'recipients') {
         formData.append(key, JSON.stringify(data[key]));
-      } else {
+      } else if (data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
       }
     });

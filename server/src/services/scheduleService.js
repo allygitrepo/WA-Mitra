@@ -1,9 +1,10 @@
 const { Schedule, Cycle, WhatsAppInstance, MessageLog, User } = require('../models/associations');
-const { getSock } = require('./whatsappService');
+const { getSock, startSession } = require('./whatsappService');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment-timezone');
+
 const logMessage = async (instanceId, recipient, type, status, error = null) => {
   try {
     let userId = null;
@@ -25,26 +26,77 @@ const logMessage = async (instanceId, recipient, type, status, error = null) => 
       await WhatsAppInstance.increment('messageCount', { where: { id: instanceId } });
     }
   } catch (e) {
-    console.error("Logging Error:", e);
+    console.error('[Scheduler] Logging Error:', e);
+  }
+};
+
+const sendWhatsAppPayload = async (sock, targetJid, messageText, mediaPath) => {
+  if (mediaPath && fs.existsSync(mediaPath)) {
+    const mediaBuffer = fs.readFileSync(mediaPath);
+    const ext = path.extname(mediaPath).toLowerCase();
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+    const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext);
+    const isAudio = ['.mp3', '.ogg', '.wav', '.m4a', '.aac'].includes(ext);
+
+    if (isImage) {
+      const mimetype = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
+      return await sock.sendMessage(targetJid, {
+        image: mediaBuffer,
+        mimetype,
+        caption: messageText || ''
+      });
+    } else if (isVideo) {
+      return await sock.sendMessage(targetJid, {
+        video: mediaBuffer,
+        mimetype: 'video/mp4',
+        caption: messageText || ''
+      });
+    } else if (isAudio) {
+      return await sock.sendMessage(targetJid, {
+        audio: mediaBuffer,
+        mimetype: 'audio/mp4'
+      });
+    } else {
+      return await sock.sendMessage(targetJid, {
+        document: mediaBuffer,
+        mimetype: 'application/octet-stream',
+        fileName: path.basename(mediaPath),
+        caption: messageText || ''
+      });
+    }
+  } else {
+    return await sock.sendMessage(targetJid, { text: messageText || '' });
   }
 };
 
 const processSchedules = async () => {
   try {
     const now = new Date();
-    // Find all schedules that are scheduled and targetDateTime is <= now
-    const pendingSchedules = await Schedule.findAll({
+    // Find all scheduled campaigns
+    const allScheduled = await Schedule.findAll({
       where: {
-        status: 'scheduled',
-        targetDateTime: {
-          [Op.lte]: now
-        }
-      }
+        status: 'scheduled'
+      },
+      include: [{
+        model: User,
+        as: 'user'
+      }]
+    });
+
+    if (allScheduled.length === 0) return;
+
+    // Filter pending schedules based on either targetDateTime or user's local timezone target
+    const pendingSchedules = allScheduled.filter(campaign => {
+      const timezone = campaign.user?.timezone || 'UTC';
+      const localTargetMoment = moment.tz(`${campaign.targetDate}T${campaign.targetTime}`, timezone);
+      const isLocalDue = localTargetMoment.isValid() && localTargetMoment.toDate() <= now;
+      const isDbDue = campaign.targetDateTime && new Date(campaign.targetDateTime) <= now;
+      return isLocalDue || isDbDue;
     });
 
     if (pendingSchedules.length === 0) return;
 
-    console.log(`[Scheduler] Found ${pendingSchedules.length} pending campaign(s) to execute`);
+    console.log(`[Scheduler] Found ${pendingSchedules.length} pending campaign(s) ready to execute`);
 
     for (const campaign of pendingSchedules) {
       // Mark as processing immediately to prevent duplicate runs
@@ -55,10 +107,22 @@ const processSchedules = async () => {
       if (!instance) {
         campaign.status = 'failed';
         await campaign.save();
+        console.error(`[Scheduler] Instance not found for campaign: ${campaign.id}`);
         continue;
       }
 
-      const sock = getSock(campaign.instanceKey);
+      let sock = getSock(campaign.instanceKey);
+      if (!sock) {
+        try {
+          console.log(`[Scheduler] Sock not connected for ${campaign.instanceKey}, attempting startSession...`);
+          await startSession(campaign.instanceKey);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          sock = getSock(campaign.instanceKey);
+        } catch (sErr) {
+          console.error(`[Scheduler] Failed to auto-start session:`, sErr.message);
+        }
+      }
+
       if (!sock) {
         console.log(`[Scheduler] Sock not connected for instanceKey: ${campaign.instanceKey}`);
         campaign.status = 'failed';
@@ -67,43 +131,62 @@ const processSchedules = async () => {
         continue;
       }
 
-      const recipients = campaign.recipients; // Array of numbers
-      const message = campaign.message;
+      const recipients = Array.isArray(campaign.recipients) ? campaign.recipients : [];
       let sentCount = 0;
       let failedCount = 0;
 
-      for (const number of recipients) {
-        try {
-          const isJid = number.includes('@');
-          const cleanNumber = number.replace(/\D/g, '');
-          const targetJid = isJid ? number : `${cleanNumber}@s.whatsapp.net`;
+      for (const item of recipients) {
+        let rawNumber = '';
+        let targetMessage = campaign.message || '';
 
-          if (campaign.mediaPath && fs.existsSync(campaign.mediaPath)) {
-            const ext = path.extname(campaign.mediaPath).toLowerCase();
-            const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
-            const mimetype = isImage ? `image/${ext.substring(1)}` : 'application/octet-stream';
-
-            if (isImage) {
-              await sock.sendMessage(targetJid, { image: { url: campaign.mediaPath }, caption: message || '' });
-            } else {
-              await sock.sendMessage(targetJid, {
-                document: { url: campaign.mediaPath },
-                mimetype: mimetype,
-                fileName: path.basename(campaign.mediaPath),
-                caption: message || ''
-              });
-            }
-          } else {
-            await sock.sendMessage(targetJid, { text: message });
+        if (typeof item === 'object' && item !== null) {
+          rawNumber = String(item.number || item.phone || item.recipient || item.jid || '');
+          if (item.message && typeof item.message === 'string' && item.message.trim()) {
+            targetMessage = item.message;
           }
-          sentCount++;
-          await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'sent');
-        } catch (err) {
-          failedCount++;
-          await logMessage(instance.id, number, campaign.mediaPath ? 'media' : 'text', 'failed', err.message);
+        } else {
+          rawNumber = String(item || '');
         }
 
-        // Delay between dispatches (e.g. 1 second)
+        rawNumber = rawNumber.trim();
+        if (!rawNumber) continue;
+
+        const isJid = rawNumber.includes('@');
+        let targetJid;
+
+        if (isJid) {
+          targetJid = rawNumber;
+        } else {
+          const cleanNumber = rawNumber.replace(/\D/g, '');
+          if (!cleanNumber || cleanNumber.length < 5) {
+            failedCount++;
+            await logMessage(instance.id, rawNumber, campaign.mediaPath ? 'media' : 'text', 'failed', 'Invalid phone number format');
+            continue;
+          }
+
+          try {
+            const [onWa] = await sock.onWhatsApp(cleanNumber);
+            if (onWa && onWa.exists && onWa.jid) {
+              targetJid = onWa.jid;
+            } else {
+              targetJid = `${cleanNumber}@s.whatsapp.net`;
+            }
+          } catch (e) {
+            targetJid = `${cleanNumber}@s.whatsapp.net`;
+          }
+        }
+
+        try {
+          await sendWhatsAppPayload(sock, targetJid, targetMessage, campaign.mediaPath);
+          sentCount++;
+          await logMessage(instance.id, rawNumber, campaign.mediaPath ? 'media' : 'text', 'sent');
+        } catch (err) {
+          failedCount++;
+          console.error(`[Scheduler] Error sending scheduled message to ${rawNumber}:`, err.message);
+          await logMessage(instance.id, rawNumber, campaign.mediaPath ? 'media' : 'text', 'failed', err.message);
+        }
+
+        // Delay between dispatches (1 second)
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
@@ -112,11 +195,11 @@ const processSchedules = async () => {
         try {
           fs.unlinkSync(campaign.mediaPath);
         } catch (e) {
-          console.error('[Scheduler] Failed to clean up completed schedule media:', e);
+          console.error('[Scheduler] Failed to clean up completed schedule media:', e.message);
         }
       }
 
-      campaign.status = failedCount === recipients.length ? 'failed' : 'completed';
+      campaign.status = (recipients.length > 0 && failedCount === recipients.length) ? 'failed' : 'completed';
       await campaign.save();
       console.log(`[Scheduler] Campaign "${campaign.name}" processing complete. Sent: ${sentCount}, Failed: ${failedCount}`);
     }
@@ -144,8 +227,6 @@ const processCycles = async () => {
       const timezone = user?.timezone || 'UTC';
       const userNow = moment().tz(timezone);
       const currentTimeStr = userNow.format('HH:mm');
-
-
 
       if (cycle.sendTime !== currentTimeStr) {
         continue;
@@ -221,57 +302,56 @@ const processCycles = async () => {
       const instance = await WhatsAppInstance.findOne({ where: { instanceKey: cycle.instanceKey } });
       if (!instance) continue;
 
-      const sock = getSock(cycle.instanceKey);
+      let sock = getSock(cycle.instanceKey);
+      if (!sock) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        sock = getSock(cycle.instanceKey);
+      }
+
       if (!sock) {
         console.log(`[Scheduler] Sock not connected for cycle instance: ${cycle.instanceKey}`);
         await logMessage(instance.id, 'all', 'text', 'failed', 'WhatsApp instance not connected at recurring schedule time');
         continue;
       }
 
-      const recipients = cycle.recipients;
-      const message = cycle.message;
+      const recipients = Array.isArray(cycle.recipients) ? cycle.recipients : [];
       const mediaPath = cycle.mediaPath;
 
-      for (const number of recipients) {
+      for (const item of recipients) {
+        let rawNumber = '';
+        let targetMessage = cycle.message || '';
+
+        if (typeof item === 'object' && item !== null) {
+          rawNumber = String(item.number || item.phone || item.recipient || item.jid || '');
+          if (item.message && typeof item.message === 'string' && item.message.trim()) {
+            targetMessage = item.message;
+          }
+        } else {
+          rawNumber = String(item || '');
+        }
+
+        rawNumber = rawNumber.trim();
+        if (!rawNumber) continue;
+
         try {
-          const isJid = number.includes('@');
+          const isJid = rawNumber.includes('@');
           let targetJid;
           if (isJid) {
-            targetJid = number;
+            targetJid = rawNumber;
           } else {
-            const cleanNumber = number.replace(/\D/g, '');
-            const [result] = await sock.onWhatsApp(cleanNumber);
-            if (result && result.exists) {
-              targetJid = result.jid;
-            } else {
-              await logMessage(instance.id, number, mediaPath ? 'media' : 'text', 'failed', 'Number is not on WhatsApp');
+            const cleanNumber = rawNumber.replace(/\D/g, '');
+            if (!cleanNumber || cleanNumber.length < 5) {
+              await logMessage(instance.id, rawNumber, mediaPath ? 'media' : 'text', 'failed', 'Invalid phone number');
               continue;
             }
+            targetJid = `${cleanNumber}@s.whatsapp.net`;
           }
 
-          if (mediaPath && fs.existsSync(mediaPath)) {
-            const ext = path.extname(mediaPath).toLowerCase();
-            const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
-            const mimetype = isImage ? `image/${ext.substring(1)}` : 'application/octet-stream';
-
-            if (isImage) {
-              await sock.sendMessage(targetJid, { image: { url: mediaPath }, caption: message || '' });
-            } else {
-              await sock.sendMessage(targetJid, {
-                document: { url: mediaPath },
-                mimetype: mimetype,
-                fileName: path.basename(mediaPath),
-                caption: message || ''
-              });
-            }
-          } else {
-            await sock.sendMessage(targetJid, { text: message });
-          }
-
-          await logMessage(instance.id, number, mediaPath ? 'media' : 'text', 'sent');
+          await sendWhatsAppPayload(sock, targetJid, targetMessage, mediaPath);
+          await logMessage(instance.id, rawNumber, mediaPath ? 'media' : 'text', 'sent');
         } catch (err) {
-          console.error(`[Scheduler] Cycle sending error for number ${number}:`, err);
-          await logMessage(instance.id, number, mediaPath ? 'media' : 'text', 'failed', err.message);
+          console.error(`[Scheduler] Cycle sending error for number ${rawNumber}:`, err.message);
+          await logMessage(instance.id, rawNumber, mediaPath ? 'media' : 'text', 'failed', err.message);
         }
 
         // Delay between dispatches

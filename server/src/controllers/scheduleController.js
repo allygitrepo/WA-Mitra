@@ -7,9 +7,19 @@ module.exports = {
       const userId = req.user.id;
       const schedules = await Schedule.findAll({
         where: { userId },
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          attributes: ['id', 'name', 'instanceKey', 'phone', 'status']
+        }],
         order: [['targetDateTime', 'ASC']]
       });
-      res.json(schedules);
+      const formattedSchedules = schedules.map(s => {
+        const json = s.toJSON();
+        json.instanceName = json.instance?.name || json.instanceKey;
+        return json;
+      });
+      res.json(formattedSchedules);
     } catch (err) {
       console.error('Error fetching schedules:', err);
       res.status(500).json({ success: false, message: 'Failed to fetch schedules' });
@@ -55,8 +65,16 @@ module.exports = {
         if (file) fs.unlinkSync(file.path);
         return res.status(404).json({ success: false, message: 'Instance not found or unauthorized' });
       }
+      
+      const clientTimezone = req.headers['x-user-timezone'] || req.body.timezone;
       const user = await User.findByPk(userId);
-      const timezone = user?.timezone || 'UTC';
+      let timezone = clientTimezone || user?.timezone || 'UTC';
+      
+      if (clientTimezone && user && user.timezone !== clientTimezone) {
+        user.timezone = clientTimezone;
+        await user.save().catch(e => console.error('Failed to update user timezone:', e));
+      }
+
       const parsedMoment = moment.tz(`${targetDate}T${targetTime}`, timezone);
       if (!parsedMoment.isValid()) {
         if (file) fs.unlinkSync(file.path);
@@ -64,7 +82,7 @@ module.exports = {
       }
 
       const targetDateTime = parsedMoment.toDate();
-      if (targetDateTime.getTime() <= Date.now()) {
+      if (targetDateTime.getTime() < Date.now() - 15000) {
         if (file) fs.unlinkSync(file.path);
         return res.status(400).json({ success: false, message: 'Target date/time must be in the future' });
       }
@@ -81,7 +99,10 @@ module.exports = {
         status: 'scheduled'
       });
 
-      res.status(201).json({ success: true, message: 'Campaign scheduled successfully', schedule });
+      const responseSchedule = schedule.toJSON();
+      responseSchedule.instanceName = instance.name || instance.instanceKey;
+
+      res.status(201).json({ success: true, message: 'Campaign scheduled successfully', schedule: responseSchedule });
     } catch (err) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       console.error('Error creating schedule:', err);

@@ -1,4 +1,4 @@
-const { Cycle, WhatsAppInstance } = require('../models/associations');
+const { Cycle, WhatsAppInstance, User } = require('../models/associations');
 const fs = require('fs');
 
 module.exports = {
@@ -7,9 +7,19 @@ module.exports = {
       const userId = req.user.id;
       const cycles = await Cycle.findAll({
         where: { userId },
+        include: [{
+          model: WhatsAppInstance,
+          as: 'instance',
+          attributes: ['id', 'name', 'instanceKey', 'phone', 'status']
+        }],
         order: [['createdAt', 'DESC']]
       });
-      res.json(cycles);
+      const formattedCycles = cycles.map(c => {
+        const json = c.toJSON();
+        json.instanceName = json.instance?.name || json.instanceKey;
+        return json;
+      });
+      res.json(formattedCycles);
     } catch (err) {
       console.error('Error fetching cycles:', err);
       res.status(500).json({ success: false, message: 'Failed to fetch cycles' });
@@ -75,6 +85,15 @@ module.exports = {
         return res.status(404).json({ success: false, message: 'Instance not found or unauthorized' });
       }
 
+      const clientTimezone = req.headers['x-user-timezone'] || req.body.timezone;
+      if (clientTimezone) {
+        const user = await User.findByPk(userId);
+        if (user && user.timezone !== clientTimezone) {
+          user.timezone = clientTimezone;
+          await user.save().catch(e => console.error('Failed to update user timezone:', e));
+        }
+      }
+
       const cycle = await Cycle.create({
         userId,
         instanceKey,
@@ -88,7 +107,10 @@ module.exports = {
         status: 'active'
       });
 
-      res.status(201).json({ success: true, message: 'Campaign cycle scheduled successfully', cycle });
+      const responseCycle = cycle.toJSON();
+      responseCycle.instanceName = instance.name || instance.instanceKey;
+
+      res.status(201).json({ success: true, message: 'Campaign cycle scheduled successfully', cycle: responseCycle });
     } catch (err) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       console.error('Error creating cycle:', err);
